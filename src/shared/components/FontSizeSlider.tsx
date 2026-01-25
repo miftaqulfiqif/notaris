@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 
 export function FontSizeSlider() {
-    const [stepIndex, setStepIndex] = useState(1);
-    const steps = [0.85, 1, 1.15];
+    const [stepIndex, setStepIndex] = useState(2);
+    const steps = [0.85, 0.925, 1, 1.075, 1.15];
 
     useEffect(() => {
         const saved = localStorage.getItem('font-scale');
@@ -33,16 +33,16 @@ export function FontSizeSlider() {
                 <input
                     type="range"
                     min="0"
-                    max="2"
+                    max="4"
                     step="1"
                     value={stepIndex}
                     onChange={onSliderChange}
                     className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[var(--sidebar-primary)] focus:outline-none"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2 absolute w-full -left-1 px-1">
-                    <span className={`${stepIndex === 0 ? 'font-bold text-gray-900' : ''}`}>Kecil</span>
-                    <span className={`${stepIndex === 1 ? 'font-bold text-gray-900' : ''}`}>Sedang</span>
-                    <span className={`${stepIndex === 2 ? 'font-bold text-gray-900' : ''}`}>Besar</span>
+                    <span className={`text-[0.85rem] ${stepIndex === 0 ? 'font-bold text-gray-900' : ''}`}>Kecil</span>
+                    <span className={`text-[1rem] ${stepIndex === 2 ? 'font-bold text-gray-900' : ''}`}>Sedang</span>
+                    <span className={`text-[1.15rem] leading-none ${stepIndex === 4 ? 'font-bold text-gray-900' : ''}`}>Besar</span>
                 </div>
             </div>
         </div>

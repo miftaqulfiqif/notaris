@@ -1,23 +1,5 @@
 import { Folder, MoreVertical } from 'lucide-react';
-
-const folders = [
-    { name: "Pendirian" },
-    { name: "RUPS Umum" },
-    { name: "RUPS Tahunan" },
-    { name: "Pendaftaran Fidusia" },
-    { name: "Pembukaan Cabang" },
-    { name: "Rapat Anggota" },
-    { name: "Pelaporan bulanan" },
-    { name: "Pelaporan Tahunan" },
-    { name: "Pendirian" },
-    { name: "RUPS Umum" },
-    { name: "RUPS Tahunan" },
-    { name: "Pendaftaran Fidusia" },
-    { name: "Pembukaan Cabang" },
-    { name: "Rapat Anggota" },
-    { name: "Pelaporan bulanan" },
-    { name: "Pelaporan Tahunan" },
-];
+import { folders } from '@/features/dashboard/data';
 
 export function FolderGrid() {
     return (

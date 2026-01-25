@@ -14,24 +14,8 @@ import {
 import Link from 'next/link';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
 import { useState } from 'react';
-
-const user = {
-    name: "Johny Marten",
-    email: "Example@gmail.com",
-    avatar: "https://i.pravatar.cc/150?u=johny"
-};
-
-const services = [
-    { name: "PT" },
-    { name: "CV" },
-    { name: "Fidusia" },
-    { name: "Firma" },
-    { name: "Koperasi" },
-    { name: "MPD" },
-    { name: "Persekutuan" },
-];
-
 import { useSidebar } from '@/layout/providers/SidebarContext';
+import { currentUser, services } from '@/layout/data/sidebar.data';
 
 export function Sidebar() {
     const [isServicesOpen, setIsServicesOpen] = useState(false);
@@ -83,8 +67,8 @@ export function Sidebar() {
                             </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                            <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                     </div>
