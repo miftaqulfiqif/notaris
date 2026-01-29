@@ -1,4 +1,4 @@
-export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Dalam Proses';
+export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Dalam Proses' | 'Terjadi Kesalahan';
 
 export interface Activity {
     id: string;
@@ -9,4 +9,5 @@ export interface Activity {
     modifiedDate: string;
     status: ActivityStatus;
     isFavorite: boolean;
+    isStarred?: boolean;
 }

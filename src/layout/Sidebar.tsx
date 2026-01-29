@@ -12,15 +12,24 @@ import {
     Folder
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
 import { useState } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { currentUser, services } from '@/layout/data/sidebar.data';
 
 export function Sidebar() {
+    const pathname = usePathname();
     const [isServicesOpen, setIsServicesOpen] = useState(false);
     const [activeService, setActiveService] = useState('PT');
     const { isOpen, close } = useSidebar();
+
+    const isActive = (path: string) => pathname === path;
+    const isServiceActive = pathname.startsWith('/services/');
+
+    if (isServiceActive && !isServicesOpen) {
+        setIsServicesOpen(true);
+    }
 
     return (
         <>
@@ -32,7 +41,7 @@ export function Sidebar() {
                 />
             )}
 
-            <aside className={`w-64 h-screen bg-[var(--sidebar-bg)] border-r border-gray-100 flex flex-col fixed left-0 top-0 overflow-y-auto z-40 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:visible ${isOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
+            <aside className={`w-64 h-screen bg-(--sidebar-bg) border-r border-gray-100 flex flex-col fixed left-0 top-0 overflow-y-auto z-40 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:visible ${isOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
                 }`}>
                 <div className="h-16 flex items-center px-6 border-b border-gray-100">
                     <div className="flex items-center gap-2">
@@ -75,19 +84,33 @@ export function Sidebar() {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-1">
-                    <Link href="/dashboard" className="flex items-center gap-3 px-3 py-3 text-white bg-[var(--sidebar-primary)] rounded-lg shadow-sm">
+                    <Link
+                        href="/dashboard"
+                        onClick={() => setIsServicesOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/dashboard')
+                            ? 'text-white bg-[var(--sidebar-primary)]'
+                            : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                            }`}
+                    >
                         <LayoutDashboard className="w-5 h-5" />
                         <span className="font-medium">Dashboard</span>
                     </Link>
 
-                    <Link href="#" className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors">
+                    <Link
+                        href="/starred"
+                        onClick={() => setIsServicesOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/starred')
+                            ? 'text-white bg-[var(--sidebar-primary)]'
+                            : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                            }`}
+                    >
                         <Star className="w-5 h-5" />
                         <span className="font-medium">Berbintang</span>
                     </Link>
                     <div className="space-y-1 cursor-pointer">
                         <button
                             onClick={() => setIsServicesOpen(!isServicesOpen)}
-                            className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-colors ${isServicesOpen
+                            className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-colors ${isServicesOpen || isServiceActive
                                 ? 'bg-[var(--sidebar-primary)] text-white'
                                 : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
                                 }`}
@@ -105,37 +128,53 @@ export function Sidebar() {
                         >
                             <div className="overflow-hidden">
                                 <div className="pl-4 space-y-1 pt-1">
-                                    {services.map((service) => (
-                                        <Link
-                                            key={service.name}
-                                            href="#"
-                                            onClick={() => setActiveService(service.name)}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${activeService === service.name
-                                                ? 'bg-[var(--sidebar-primary)] text-white'
-                                                : 'text-gray-600 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
-                                                }`}
-                                        >
-                                            <Folder className={`w-5 h-5 ${activeService === service.name ? 'fill-yellow-400 text-yellow-400' : 'fill-yellow-400 text-yellow-400'
-                                                }`} />
-                                            <span className="font-medium">{service.name}</span>
-                                        </Link>
-                                    ))}
+                                    {services.map((service) => {
+                                        const servicePath = `/services/${service.name.toLowerCase()}`;
+                                        const isCurrentService = pathname === servicePath;
+
+                                        return (
+                                            <Link
+                                                key={service.name}
+                                                href={servicePath}
+                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isCurrentService
+                                                    ? 'bg-[#B39B7D] text-white' // Making it visually distinct but within theme
+                                                    : 'text-gray-600 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                                                    }`}
+                                            >
+                                                <Folder className={`w-5 h-5 ${isCurrentService ? 'fill-yellow-400 text-yellow-400' : 'fill-yellow-400 text-yellow-400'
+                                                    }`} />
+                                                <span className="font-medium">{service.name}</span>
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <Link href="#" className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors">
+                    <Link
+                        href="#"
+                        onClick={() => setIsServicesOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                    >
                         <Building2 className="w-5 h-5" />
                         <span className="font-medium">Perusahaan</span>
                     </Link>
 
-                    <Link href="#" className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors">
+                    <Link
+                        href="#"
+                        onClick={() => setIsServicesOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                    >
                         <Trash2 className="w-5 h-5" />
                         <span className="font-medium">File dihapus</span>
                     </Link>
 
-                    <Link href="#" className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors">
+                    <Link
+                        href="#"
+                        onClick={() => setIsServicesOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                    >
                         <Settings className="w-5 h-5" />
                         <span className="font-medium">Setting</span>
                     </Link>
