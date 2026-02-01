@@ -1,0 +1,9 @@
+node_modules
+.next
+.netlify
+.git
+.github
+.vscode
+.env
+.env.*
+README.md

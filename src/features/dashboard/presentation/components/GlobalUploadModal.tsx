@@ -9,8 +9,6 @@ export function GlobalUploadModal() {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initial files loading only when modal opens is not needed as we use context directly
-
     if (!isOpen) return null;
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -26,7 +24,6 @@ export function GlobalUploadModal() {
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        // Handle file drop here
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             setFiles(e.dataTransfer.files);
         }
@@ -41,8 +38,7 @@ export function GlobalUploadModal() {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">Upload data baru</h2>
                         <p className="text-sm text-gray-500 mt-1">Silahkan unggah data baru sesuai tipe layanan</p>
@@ -55,16 +51,14 @@ export function GlobalUploadModal() {
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 space-y-6">
-                    {/* Layanan & Tipe Layanan */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 space-y-[14px]">
+                    <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
                                 Layanan <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none">
+                                <select className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none">
                                     <option>PT</option>
                                     <option>CV</option>
                                 </select>
@@ -80,7 +74,7 @@ export function GlobalUploadModal() {
                                 Tipe Layanan <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none">
+                                <select className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none">
                                     <option>Pendirian, Pembubaran Dll</option>
                                 </select>
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
@@ -90,16 +84,12 @@ export function GlobalUploadModal() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Form Fields */}
-                    <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Kedudukan</label>
                             <input
                                 type="text"
                                 placeholder="Pendirian"
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
                         </div>
 
@@ -108,7 +98,7 @@ export function GlobalUploadModal() {
                             <input
                                 type="text"
                                 placeholder="Pendirian"
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
                         </div>
 
@@ -117,7 +107,7 @@ export function GlobalUploadModal() {
                             <input
                                 type="text"
                                 placeholder="Pendirian"
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
                         </div>
 
@@ -128,7 +118,7 @@ export function GlobalUploadModal() {
                             <input
                                 type="text"
                                 placeholder="Pendirian"
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
                         </div>
 
@@ -139,12 +129,11 @@ export function GlobalUploadModal() {
                             <input
                                 type="text"
                                 placeholder="Pendirian"
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
                         </div>
                     </div>
 
-                    {/* Upload Area */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">
                             Upload File <span className="text-red-500">*</span>
@@ -190,7 +179,7 @@ export function GlobalUploadModal() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+                <div className="flex items-center justify-center gap-3 p-6 border-t border-gray-100">
                     <button
                         onClick={closeModal}
                         className="px-6 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"

@@ -23,7 +23,7 @@ export function DashboardHeader() {
                 <input
                     type="text"
                     placeholder="Cari file, folder, nomor akta, nama klien"
-                    className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 placeholder:text-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--sidebar-primary)] focus:border-transparent transition-all shadow-sm"
+                    className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 placeholder:text-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-(--sidebar-primary) text-black focus:border-transparent transition-all shadow-sm"
                 />
             </div>
 

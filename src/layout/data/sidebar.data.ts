@@ -13,6 +13,6 @@ export const services: Service[] = [
     { name: "Fidusia" },
     { name: "Firma" },
     { name: "Koperasi" },
-    { name: "MPD" },
+    { name: "Yayasan" },
     { name: "Persekutuan" },
 ];
