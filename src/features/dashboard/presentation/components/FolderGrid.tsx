@@ -9,17 +9,12 @@ export function FolderGrid() {
                 {folders.map((folder, index) => (
                     <div
                         key={index}
-                        className="group flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-[var(--sidebar-primary)] transition-all cursor-pointer h-full"
+                        className="group flex items-center justify-between py-1 px-2 bg-[#FAFAFA] rounded-xl hover:bg-[#f1f1f1] transition-all cursor-pointer h-full"
                     >
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="p-2 bg-gray-50 rounded-lg group-hover:bg-[#FDF8F3] transition-colors">
-                                <Folder className="w-5 h-5 text-gray-600 group-hover:text-[var(--sidebar-primary)]" />
-                            </div>
+                            <Folder className="w-10 h-10 text-yellow-400 fill-yellow-400" />
                             <span className="font-semibold text-gray-700 truncate group-hover:text-gray-900">{folder.name}</span>
                         </div>
-                        <button className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all">
-                            <MoreVertical className="w-4 h-4" />
-                        </button>
                     </div>
                 ))}
             </div>

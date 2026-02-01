@@ -88,8 +88,8 @@ export function Sidebar() {
                         href="/dashboard"
                         onClick={() => setIsServicesOpen(false)}
                         className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/dashboard')
-                            ? 'text-white bg-[var(--sidebar-primary)]'
-                            : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                            ? 'text-white bg-(--sidebar-primary)'
+                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
                             }`}
                     >
                         <LayoutDashboard className="w-5 h-5" />
@@ -100,8 +100,8 @@ export function Sidebar() {
                         href="/starred"
                         onClick={() => setIsServicesOpen(false)}
                         className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/starred')
-                            ? 'text-white bg-[var(--sidebar-primary)]'
-                            : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                            ? 'text-white bg-(--sidebar-primary)'
+                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
                             }`}
                     >
                         <Star className="w-5 h-5" />
@@ -111,8 +111,8 @@ export function Sidebar() {
                         <button
                             onClick={() => setIsServicesOpen(!isServicesOpen)}
                             className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-colors ${isServicesOpen || isServiceActive
-                                ? 'bg-[var(--sidebar-primary)] text-white'
-                                : 'text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                                ? 'bg-(--sidebar-primary) text-white'
+                                : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
                                 }`}
                         >
                             <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export function Sidebar() {
                                                 href={servicePath}
                                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isCurrentService
                                                     ? 'bg-[#B39B7D] text-white' // Making it visually distinct but within theme
-                                                    : 'text-gray-600 hover:bg-[var(--sidebar-hover)] hover:text-gray-900'
+                                                    : 'text-gray-600 hover:bg-(--sidebar-hover) hover:text-gray-900'
                                                     }`}
                                             >
                                                 <Folder className={`w-5 h-5 ${isCurrentService ? 'fill-yellow-400 text-yellow-400' : 'fill-yellow-400 text-yellow-400'
@@ -155,7 +155,7 @@ export function Sidebar() {
                     <Link
                         href="#"
                         onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
                     >
                         <Building2 className="w-5 h-5" />
                         <span className="font-medium">Perusahaan</span>
@@ -164,16 +164,16 @@ export function Sidebar() {
                     <Link
                         href="#"
                         onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
                     >
                         <Trash2 className="w-5 h-5" />
-                        <span className="font-medium">File dihapus</span>
+                        <span className="font-medium">Sampah</span>
                     </Link>
 
                     <Link
                         href="#"
                         onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-[var(--sidebar-hover)] hover:text-gray-900 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
                     >
                         <Settings className="w-5 h-5" />
                         <span className="font-medium">Setting</span>

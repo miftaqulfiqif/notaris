@@ -9,22 +9,18 @@ export function GlobalDragDropListener() {
     useEffect(() => {
         const handleDragEnter = (e: DragEvent) => {
             e.preventDefault();
-            // Check if the dragged item is a file
             if (e.dataTransfer?.types.includes('Files')) {
-                // Determine if we should open the modal immediately or just indicate drag
-                // Here we open it to show the user they can drop
                 openModal();
             }
         };
 
         const handleDragOver = (e: DragEvent) => {
-            e.preventDefault(); // Prevent default behavior to allow drop
+            e.preventDefault();
         };
 
         const handleDrop = (e: DragEvent) => {
             e.preventDefault();
 
-            // If files are dropped, capture them and open modal if not already open
             if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
                 setFiles(e.dataTransfer.files);
                 openModal();
@@ -42,5 +38,5 @@ export function GlobalDragDropListener() {
         };
     }, [openModal, setFiles]);
 
-    return null; // This component doesn't render anything
+    return null;
 }
