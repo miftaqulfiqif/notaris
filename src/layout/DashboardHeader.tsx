@@ -1,11 +1,34 @@
 'use client';
 
 import React from 'react';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, LogOut } from 'lucide-react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 
 export function DashboardHeader() {
     const { toggle } = useSidebar();
+    const { user, logout } = useAuthContext();
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    React.useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    // Get initials from user name
+    const getInitials = (name?: string) => {
+        if (!name) return 'U';
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
 
     return (
         <header className="flex items-center gap-4">
@@ -23,7 +46,7 @@ export function DashboardHeader() {
                 <input
                     type="text"
                     placeholder="Cari file, folder, nomor akta, nama klien"
-                    className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 placeholder:text-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-(--sidebar-primary) text-black focus:border-transparent transition-all shadow-sm"
+                    className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 placeholder:text-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B39B7D] text-black focus:border-transparent transition-all shadow-sm"
                 />
             </div>
 
@@ -33,10 +56,35 @@ export function DashboardHeader() {
                     <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                 </button>
 
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-200 shadow-sm hidden sm:block">
-                    <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">
-                        JM
-                    </div>
+                <div className="relative" ref={dropdownRef}>
+                    <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-200 shadow-sm hidden sm:block focus:outline-none focus:ring-2 focus:ring-[#B39B7D] focus:ring-offset-2 transition-all"
+                    >
+                        <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">
+                            {getInitials(user?.name)}
+                        </div>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isDropdownOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="px-4 py-3 border-b border-gray-100">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'User'}</p>
+                                <p className="text-xs text-gray-500 truncate">{user?.email || 'email@example.com'}</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    logout();
+                                    setIsDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Keluar
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </header>
