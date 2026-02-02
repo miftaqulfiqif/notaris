@@ -1,4 +1,4 @@
-export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Dalam Proses' | 'Terjadi Kesalahan';
+export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Proses';
 
 export interface Activity {
     id: string;

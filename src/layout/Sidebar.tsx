@@ -45,7 +45,7 @@ export function Sidebar() {
                 }`}>
                 <div className="h-16 flex items-center px-6 border-b border-gray-100">
                     <div className="flex items-center gap-2">
-                        <div className="text-[var(--sidebar-primary)]">
+                        <div className="text-(--sidebar-primary)">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"
@@ -162,9 +162,12 @@ export function Sidebar() {
                     </Link>
 
                     <Link
-                        href="#"
+                        href="/trash"
                         onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/trash')
+                            ? 'text-white bg-(--sidebar-primary)'
+                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
+                            }`}
                     >
                         <Trash2 className="w-5 h-5" />
                         <span className="font-medium">Sampah</span>

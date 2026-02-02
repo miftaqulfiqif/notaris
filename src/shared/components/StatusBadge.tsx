@@ -8,7 +8,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     return (
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status as ActivityStatus)} min-w-[100px] text-center inline-block ${className}`}>
+        <span className={`px-3 py-1 rounded text-xs font-semibold ${getStatusColor(status as ActivityStatus)} min-w-[100px] text-center inline-block ${className}`}>
             {status}
         </span>
     );

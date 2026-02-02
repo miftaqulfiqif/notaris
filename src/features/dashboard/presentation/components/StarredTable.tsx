@@ -3,29 +3,32 @@
 import React, { useState } from 'react';
 import { Folder, FileText, File, MoreVertical, Star, ArrowUpDown } from 'lucide-react';
 import { StarredItem } from '@/features/dashboard/data/starred.data';
+import { useSelection } from '@/shared/hooks/useSelection';
+import { usePagination } from '@/shared/hooks/usePagination';
+import { Pagination } from '@/shared/components/Pagination';
 
 interface StarredTableProps {
     items: StarredItem[];
 }
 
 export function StarredTable({ items }: StarredTableProps) {
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const {
+        selectedItems,
+        toggleSelectAll,
+        toggleSelectItem,
+        isSelected,
+        isAllSelected
+    } = useSelection({ items, itemIdKey: 'id' });
 
-    const toggleSelectAll = () => {
-        if (selectedItems.length === items.length) {
-            setSelectedItems([]);
-        } else {
-            setSelectedItems(items.map(item => item.id));
-        }
-    };
-
-    const toggleSelectItem = (id: string) => {
-        if (selectedItems.includes(id)) {
-            setSelectedItems(selectedItems.filter(item => item !== id));
-        } else {
-            setSelectedItems([...selectedItems, id]);
-        }
-    };
+    const {
+        currentPage,
+        totalPages,
+        paginatedItems,
+        setPage,
+        startIndex,
+        endIndex,
+        totalItems
+    } = usePagination({ items, itemsPerPage: 5 });
 
     const getIcon = (type: 'folder' | 'file', name: string) => {
         if (type === 'folder') {
@@ -47,7 +50,7 @@ export function StarredTable({ items }: StarredTableProps) {
                                 <input
                                     type="checkbox"
                                     className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
-                                    checked={selectedItems.length === items.length && items.length > 0}
+                                    checked={isAllSelected}
                                     onChange={toggleSelectAll}
                                 />
                             </div>
@@ -79,14 +82,14 @@ export function StarredTable({ items }: StarredTableProps) {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                    {items.map((item) => (
+                    {paginatedItems.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50 group">
                             <td className="p-4 w-4">
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
                                         className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
-                                        checked={selectedItems.includes(item.id)}
+                                        checked={isSelected(item.id)}
                                         onChange={() => toggleSelectItem(item.id)}
                                     />
                                 </div>
@@ -119,6 +122,14 @@ export function StarredTable({ items }: StarredTableProps) {
                     ))}
                 </tbody>
             </table>
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                totalItems={totalItems}
+            />
         </div>
     );
 }

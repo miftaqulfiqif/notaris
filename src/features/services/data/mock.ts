@@ -28,7 +28,7 @@ export const serviceActivities: Activity[] = [
         service: 'Perubahan AD',
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
-        status: 'Terjadi Kesalahan',
+        status: 'Terjeda',
         isFavorite: false,
     },
     {
@@ -38,7 +38,7 @@ export const serviceActivities: Activity[] = [
         service: 'Perubahan',
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
-        status: 'Dalam Proses',
+        status: 'Proses',
         isFavorite: false,
     },
     {
@@ -48,7 +48,7 @@ export const serviceActivities: Activity[] = [
         service: 'Pembubaran',
         author: 'Admin 1',
         modifiedDate: 'April, 15 2025',
-        status: 'Terjadi Kesalahan',
+        status: 'Terjeda',
         isFavorite: false,
     },
     {
@@ -68,7 +68,7 @@ export const serviceActivities: Activity[] = [
         service: 'Sirkuler',
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
-        status: 'Dalam Proses',
+        status: 'Proses',
         isFavorite: false,
     },
     {

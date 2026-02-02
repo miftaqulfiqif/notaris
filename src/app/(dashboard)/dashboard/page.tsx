@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { FolderGrid } from '@/features/dashboard/presentation/components/FolderGrid';
 import { ActivitySection } from '@/features/dashboard/presentation/components/ActivitySection';
@@ -13,6 +14,42 @@ import { useUploadModal } from '@/features/dashboard/context/UploadModalContext'
 export default function DashboardPage() {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const { openModal } = useUploadModal();
+    const { user } = useAuthContext();
+    const [loginCount, setLoginCount] = useState<number>(0);
+    const [isChecking, setIsChecking] = useState(true);
+
+    useEffect(() => {
+        const checkLoginStatus = () => {
+            const today = new Date().toISOString().split('T')[0];
+            const storedDate = localStorage.getItem('lastLoginDate');
+            let count = parseInt(localStorage.getItem('dailyLoginCount') || '0', 10);
+            const sessionInitialized = sessionStorage.getItem('session_initialized');
+
+            if (storedDate !== today) {
+                // New day, reset count
+                count = 0;
+                localStorage.setItem('lastLoginDate', today);
+                localStorage.setItem('dailyLoginCount', '0');
+            }
+
+            if (!sessionInitialized) {
+                // New session
+                count += 1;
+                localStorage.setItem('dailyLoginCount', count.toString());
+                sessionStorage.setItem('session_initialized', 'true');
+            }
+
+            setLoginCount(count);
+            setIsChecking(false);
+        };
+
+        checkLoginStatus();
+    }, []);
+
+    const showGreeting = useMemo(() => {
+        if (isChecking) return false;
+        return loginCount === 1;
+    }, [loginCount, isChecking]);
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -27,8 +64,16 @@ export default function DashboardPage() {
                         {/* Welcome Section */}
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 mt-4">
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900 mb-2">Selamat Datang, Dummy User</h1>
-                                <p className="text-gray-500">Selamat datang kembali, ayo mulai aktivitas mu lagi di Notarix</p>
+                                {showGreeting ? (
+                                    <>
+                                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Selamat Datang, {user?.name || 'User'}</h1>
+                                        <p className="text-gray-500">Selamat datang kembali, ayo mulai aktivitas mu lagi di Notarix</p>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center text-sm font-medium text-gray-500">
+                                        <span>Dashboard</span>
+                                    </div>
+                                )}
                             </div>
                             <button
                                 onClick={openModal}
