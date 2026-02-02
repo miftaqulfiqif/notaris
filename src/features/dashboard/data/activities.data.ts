@@ -28,7 +28,7 @@ export const mockActivities: Activity[] = [
         service: 'Perubahan',
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
-        status: 'Dalam Proses',
+        status: 'Proses',
         isFavorite: false
     },
     {
@@ -58,7 +58,7 @@ export const mockActivities: Activity[] = [
         service: 'Sirkuler',
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
-        status: 'Dalam Proses',
+        status: 'Proses',
         isFavorite: false
     },
     {
