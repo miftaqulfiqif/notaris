@@ -11,6 +11,9 @@ import { SortableHeader } from '@/shared/components/SortableHeader';
 import { FilterTabs } from '@/shared/components/FilterTabs';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { useActivityTabs } from '@/features/dashboard/presentation/hooks/useActivityTabs';
+import { useSelection } from '@/shared/hooks/useSelection';
+import { usePagination } from '@/shared/hooks/usePagination';
+import { Pagination } from '@/shared/components/Pagination';
 
 interface ServiceActivityTableProps {
     onSelectActivity?: (activity: Activity) => void;
@@ -18,6 +21,24 @@ interface ServiceActivityTableProps {
 
 export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
+
+    const {
+        selectedItems,
+        toggleSelectAll,
+        toggleSelectItem,
+        isSelected,
+        isAllSelected
+    } = useSelection({ items: serviceActivities, itemIdKey: 'id' });
+
+    const {
+        currentPage,
+        totalPages,
+        paginatedItems,
+        setPage,
+        startIndex,
+        endIndex,
+        totalItems
+    } = usePagination({ items: serviceActivities, itemsPerPage: 5 });
 
     return (
         <div className="mt-8">
@@ -32,6 +53,16 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-100 bg-gray-50/50">
+                                <th className="p-4 w-4">
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
+                                            checked={isAllSelected}
+                                            onChange={toggleSelectAll}
+                                        />
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 first:pl-6">
                                     <SortableHeader label="Nama Perusahaan" />
                                 </th>
@@ -56,8 +87,18 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {serviceActivities.map((activity) => (
+                            {paginatedItems.map((activity) => (
                                 <tr key={activity.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="p-4 w-4">
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
+                                                checked={isSelected(activity.id)}
+                                                onChange={() => toggleSelectItem(activity.id)}
+                                            />
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 min-w-70">
                                         <button
                                             onClick={() => onSelectActivity?.(activity)}
@@ -100,6 +141,14 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                     </table>
                 </div>
             </div>
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                totalItems={totalItems}
+            />
         </div>
     );
 }
