@@ -1,13 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { UploadPreSelection } from '@/features/dashboard/types';
 
 interface UploadModalContextType {
     isOpen: boolean;
-    openModal: () => void;
+    openModal: (preSelection?: UploadPreSelection) => void;
     closeModal: () => void;
     files: FileList | null;
     setFiles: (files: FileList | null) => void;
+    preSelection: UploadPreSelection | null;
 }
 
 const UploadModalContext = createContext<UploadModalContextType | undefined>(undefined);
@@ -15,15 +17,28 @@ const UploadModalContext = createContext<UploadModalContextType | undefined>(und
 export function UploadModalProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [files, setFiles] = useState<FileList | null>(null);
+    const [preSelection, setPreSelection] = useState<UploadPreSelection | null>(null);
 
-    const openModal = () => setIsOpen(true);
+    const openModal = (selection?: UploadPreSelection) => {
+        setPreSelection(selection || null);
+        setIsOpen(true);
+    };
+
     const closeModal = () => {
         setIsOpen(false);
         setFiles(null);
+        setPreSelection(null);
     };
 
     return (
-        <UploadModalContext.Provider value={{ isOpen, openModal, closeModal, files, setFiles }}>
+        <UploadModalContext.Provider value={{
+            isOpen,
+            openModal,
+            closeModal,
+            files,
+            setFiles,
+            preSelection
+        }}>
             {children}
         </UploadModalContext.Provider>
     );

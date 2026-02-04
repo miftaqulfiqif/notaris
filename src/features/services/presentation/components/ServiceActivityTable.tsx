@@ -3,7 +3,8 @@
 import {
     Star,
     Folder,
-    MoreVertical
+    MoreVertical,
+    Clock
 } from 'lucide-react';
 import { Activity } from '@/features/dashboard/types';
 import { serviceActivities } from '@/features/services/data/mock';
@@ -45,7 +46,14 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
             <h3 className="text-lg font-bold text-gray-800 mb-4">Aktivitas</h3>
 
             {/* Filter Tabs */}
-            <FilterTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <FilterTabs
+                tabs={[
+                    { id: 'recent', label: 'Baru di tambahkan', icon: Clock },
+                    { id: 'favorite', label: 'Favorite', icon: Star },
+                ]}
+                activeTab={activeTab}
+                onChange={(id) => setActiveTab(id as any)}
+            />
 
             {/* Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">

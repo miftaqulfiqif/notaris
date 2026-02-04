@@ -1,13 +1,6 @@
 import { Activity } from '@/features/dashboard/types';
 
-export const serviceFolders = [
-    { name: "Pendirian" },
-    { name: "Perubahan AD" },
-    { name: "RUPS" },
-    { name: "Berita acara" },
-    { name: "Sirkuler" },
-    { name: "Pembukaan Cabang" },
-];
+
 
 export const serviceActivities: Activity[] = [
     {

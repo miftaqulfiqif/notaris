@@ -1,23 +1,49 @@
 'use client';
 
-import { useState, use, useMemo } from 'react';
+import { useState, use, useMemo, useEffect } from 'react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { Plus, LayoutGrid, Rows, ChevronRight } from 'lucide-react';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
+import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 import { ServiceFolderGrid } from '@/features/services/presentation/components/ServiceFolderGrid';
 import { ServiceActivityTable } from '@/features/services/presentation/components/ServiceActivityTable';
 import { Activity } from '@/features/dashboard/types';
 import { ActivityDetailSidebar } from '@/features/dashboard/presentation/components/ActivityDetailSidebar';
 import Link from 'next/link';
+import { useSidebar } from '@/layout/providers/SidebarContext';
+import { ServiceTypesProvider } from '@/features/services/context/ServiceTypesContext';
 
 export default function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
     const { openModal } = useUploadModal();
+    const { setPreSelection } = useDragDropContext();
+    const { services } = useSidebar();
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
-    const serviceName = useMemo(() => {
-        return slug.toUpperCase();
-    }, [slug]);
+    const currentService = useMemo(() => {
+        if (!services.length) return null;
+        return services.find(s =>
+            s.name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase() ||
+            s.name.toLowerCase() === slug.toLowerCase()
+        );
+    }, [services, slug]);
+
+    const serviceName = currentService?.name || slug.toUpperCase();
+
+    // Set drag-drop pre-selection when on service page
+    useEffect(() => {
+        if (currentService) {
+            setPreSelection({
+                layananId: currentService.id,
+                layananName: currentService.name,
+            });
+        }
+
+        // Cleanup: reset pre-selection when leaving the page
+        return () => {
+            setPreSelection(null);
+        };
+    }, [currentService, setPreSelection]);
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -35,11 +61,16 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
                                     Dashboard
                                 </Link>
                                 <ChevronRight className="w-4 h-4" />
+                                <p>Layanan</p>
+                                <ChevronRight className="w-4 h-4" />
                                 <span className="font-semibold text-gray-500">{serviceName}</span>
                             </div>
 
                             <button
-                                onClick={openModal}
+                                onClick={() => openModal({
+                                    layananId: currentService?.id,
+                                    layananName: currentService?.name,
+                                })}
                                 className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
                             >
                                 <Plus className="w-5 h-5" />

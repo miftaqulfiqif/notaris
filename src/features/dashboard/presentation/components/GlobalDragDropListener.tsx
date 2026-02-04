@@ -2,15 +2,17 @@
 
 import { useEffect } from 'react';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
+import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 
 export function GlobalDragDropListener() {
     const { openModal, setFiles } = useUploadModal();
+    const { preSelection } = useDragDropContext();
 
     useEffect(() => {
         const handleDragEnter = (e: DragEvent) => {
             e.preventDefault();
             if (e.dataTransfer?.types.includes('Files')) {
-                openModal();
+                openModal(preSelection || undefined);
             }
         };
 
@@ -23,7 +25,7 @@ export function GlobalDragDropListener() {
 
             if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
                 setFiles(e.dataTransfer.files);
-                openModal();
+                openModal(preSelection || undefined);
             }
         };
 
@@ -36,7 +38,7 @@ export function GlobalDragDropListener() {
             window.removeEventListener('dragover', handleDragOver);
             window.removeEventListener('drop', handleDrop);
         };
-    }, [openModal, setFiles]);
+    }, [openModal, setFiles, preSelection]);
 
     return null;
 }

@@ -16,13 +16,13 @@ import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
 import { useState } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
-import { currentUser, services } from '@/layout/data/sidebar.data';
+import { currentUser } from '@/layout/data/sidebar.data';
 
 export function Sidebar() {
     const pathname = usePathname();
     const [isServicesOpen, setIsServicesOpen] = useState(false);
     const [activeService, setActiveService] = useState('PT');
-    const { isOpen, close } = useSidebar();
+    const { isOpen, close, services } = useSidebar();
 
     const isActive = (path: string) => pathname === path;
     const isServiceActive = pathname.startsWith('/services/');
