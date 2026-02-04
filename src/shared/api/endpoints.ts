@@ -11,5 +11,7 @@ export const ENDPOINTS = {
         SERVICE_TYPES: `${API_BASE_URL}/user/layanan/:serviceId/tipe-layanan`,
         UPLOAD_FILE: `${API_BASE_URL}/upload-file`,
         FOLDERS: `${API_BASE_URL}/folders`,
+        FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
+        FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
     },
 } as const;

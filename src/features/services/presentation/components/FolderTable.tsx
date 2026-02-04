@@ -1,6 +1,7 @@
 'use client';
 
 import { MoreVertical, Search, Filter } from 'lucide-react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import folderIcon from '@/assets/icons/folder.png';
 import { FolderItem } from '@/features/services/types';
@@ -11,7 +12,15 @@ interface FolderTableProps {
 }
 
 export function FolderTable({ items }: FolderTableProps) {
+    const router = useRouter();
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const { slug, typeSlug } = params as { slug: string; typeSlug: string };
+    const typeId = searchParams.get('id');
 
+    const handleRowClick = (folderId: string) => {
+        router.push(`/services/${slug}/${typeSlug}/${folderId}?id=${typeId}`);
+    };
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -45,8 +54,12 @@ export function FolderTable({ items }: FolderTableProps) {
                             </tr>
                         ) : (
                             items.map((item) => (
-                                <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
-                                    <td className="px-6 py-4">
+                                <tr
+                                    key={item.id}
+                                    className="group hover:bg-gray-50/80 transition-colors cursor-pointer"
+                                    onClick={() => handleRowClick(item.id)}
+                                >
+                                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <input type="checkbox" className="rounded border-gray-300 text-[#8B7355] focus:ring-[#8B7355]" />
                                     </td>
                                     <td className="px-6 py-4">
@@ -71,7 +84,7 @@ export function FolderTable({ items }: FolderTableProps) {
                                     <td className="px-6 py-4">
                                         <StatusBadge status={item.status} />
                                     </td>
-                                    <td className="px-6 py-4 text-right">
+                                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                         <button className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all">
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
