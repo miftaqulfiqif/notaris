@@ -6,4 +6,10 @@ export const ENDPOINTS = {
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
     },
+    USER: {
+        SERVICES: `${API_BASE_URL}/user/layanan`,
+        SERVICE_TYPES: `${API_BASE_URL}/user/layanan/:serviceId/tipe-layanan`,
+        UPLOAD_FILE: `${API_BASE_URL}/upload-file`,
+        FOLDERS: `${API_BASE_URL}/folders`,
+    },
 } as const;

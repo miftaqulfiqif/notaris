@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityTab } from '@/shared/components/FilterTabs';
+
+export type ActivityTab = 'recent' | 'favorite';
 
 export function useActivityTabs(initialTab: ActivityTab = 'recent') {
     const [activeTab, setActiveTab] = useState<ActivityTab>(initialTab);
