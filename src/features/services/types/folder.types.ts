@@ -18,3 +18,19 @@ export interface FoldersResponse {
     message: string;
     data: FolderItem[];
 }
+
+export interface FolderDetail {
+    id: string;
+    folder_name: string;
+    kedudukan: string;
+    nomor_akta: string;
+    nomor_pt: string;
+    nama_penghadap: string;
+    nik_penghadap: string;
+    status: string;
+}
+
+export interface FolderDetailResponse {
+    message: string;
+    data: FolderDetail;
+}
