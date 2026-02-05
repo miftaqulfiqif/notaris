@@ -8,6 +8,7 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 import { apiGet, apiPost, ApiResponse } from '@/shared/api/api-client';
 import { UploadFormData, EMPTY_UPLOAD_FORM } from '@/features/dashboard/types';
 import { ServiceType } from '@/features/services/types';
+import { DebouncedInput } from '@/shared/components/DebouncedInput';
 
 export function GlobalUploadModal() {
     const { isOpen, closeModal, files, setFiles, preSelection } = useUploadModal();
@@ -263,10 +264,10 @@ export function GlobalUploadModal() {
                         {/* Folder Name */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Nama Folder</label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.folder_name}
-                                onChange={(e) => handleInputChange('folder_name', e.target.value)}
+                                onChange={(value) => handleInputChange('folder_name', value as string)}
                                 placeholder="Contoh: PT MasPek Jaya"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
@@ -275,10 +276,10 @@ export function GlobalUploadModal() {
                         {/* Kedudukan */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Kedudukan</label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.kedudukan}
-                                onChange={(e) => handleInputChange('kedudukan', e.target.value)}
+                                onChange={(value) => handleInputChange('kedudukan', value as string)}
                                 placeholder="Kedudukan"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
@@ -287,10 +288,10 @@ export function GlobalUploadModal() {
                         {/* Nomor Akta */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Nomor Akta</label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.nomor_akta}
-                                onChange={(e) => handleInputChange('nomor_akta', e.target.value)}
+                                onChange={(value) => handleInputChange('nomor_akta', value as string)}
                                 placeholder="Nomor Akta"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
@@ -299,10 +300,10 @@ export function GlobalUploadModal() {
                         {/* Nomor PT */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Nomor PT</label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.nomor_pt}
-                                onChange={(e) => handleInputChange('nomor_pt', e.target.value)}
+                                onChange={(value) => handleInputChange('nomor_pt', value as string)}
                                 placeholder="Nomor PT"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
@@ -313,10 +314,10 @@ export function GlobalUploadModal() {
                             <label className="text-sm font-medium text-gray-700">
                                 Nama Penghadap <span className="text-red-500">*</span>
                             </label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.nama_penghadap}
-                                onChange={(e) => handleInputChange('nama_penghadap', e.target.value)}
+                                onChange={(value) => handleInputChange('nama_penghadap', value as string)}
                                 placeholder="Nama Penghadap"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
@@ -327,10 +328,10 @@ export function GlobalUploadModal() {
                             <label className="text-sm font-medium text-gray-700">
                                 NIK Penghadap <span className="text-red-500">*</span>
                             </label>
-                            <input
+                            <DebouncedInput
                                 type="text"
                                 value={formData.nik_penghadap}
-                                onChange={(e) => handleInputChange('nik_penghadap', e.target.value)}
+                                onChange={(value) => handleInputChange('nik_penghadap', value as string)}
                                 placeholder="NIK Penghadap"
                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
                             />
