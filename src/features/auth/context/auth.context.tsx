@@ -14,6 +14,7 @@ interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
+    isVerified: boolean;
     login: (credentials: LoginCredentials) => Promise<boolean>;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
@@ -113,6 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             user,
             isLoading,
             isAuthenticated: !!user,
+            isVerified: !!user?.verified_at,
             login,
             logout,
             checkAuth,

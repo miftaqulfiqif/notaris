@@ -20,6 +20,9 @@ export interface User {
     name: string;
     role_id: string;
     notaris_id: string;
+    notaris_name: string;
+    profile_picture: string | null;
+    verified_at: string | null;
     created_at: string;
     updated_at: string;
     role: Role;

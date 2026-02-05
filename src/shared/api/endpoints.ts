@@ -3,6 +3,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export const ENDPOINTS = {
     AUTH: {
         LOGIN: `${API_BASE_URL}/user/login`,
+        REGISTER: `${API_BASE_URL}/user/register`,
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
     },
@@ -13,5 +14,7 @@ export const ENDPOINTS = {
         FOLDERS: `${API_BASE_URL}/folders`,
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
+        OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
+        OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,
     },
 } as const;
