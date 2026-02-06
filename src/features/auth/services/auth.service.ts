@@ -55,7 +55,7 @@ export const authService = {
             const data = await response.json();
 
             if (!response.ok) {
-                return { success: false, error: data.message || 'Login failed' };
+                return { success: false, error: data.errors || data.message || 'Login failed' };
             }
 
             return { success: true };

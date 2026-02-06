@@ -22,9 +22,7 @@ interface FolderTableProps {
 export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const router = useRouter();
     const params = useParams();
-    const searchParams = useSearchParams();
     const { slug, typeSlug } = params as { slug: string; typeSlug: string };
-    const typeId = searchParams.get('id');
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
     const { toast, showToast, hideToast } = useToast();
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
@@ -50,7 +48,7 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                 await addToFavorite(activeFolder.id);
                 showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
             }
-            onRefresh?.();
+            setTimeout(() => onRefresh?.(), 500);
         } catch (error) {
             const message =
                 error instanceof Error
@@ -80,7 +78,7 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     );
 
     const handleRowClick = (folderId: string) => {
-        router.push(`/services/${slug}/${typeSlug}/${folderId}?id=${typeId}`);
+        router.push(`/services/${slug}/${typeSlug}/${folderId}`);
     };
 
     return (

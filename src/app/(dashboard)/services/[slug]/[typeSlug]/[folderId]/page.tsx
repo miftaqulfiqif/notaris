@@ -8,6 +8,7 @@ import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { StatusBadge } from '@/shared/components';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
+import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { FolderDetail, FolderDetailResponse } from '@/features/services/types';
 import { FileItem, FilesResponse } from '@/features/services/types/file.types';
@@ -22,6 +23,7 @@ export default function FolderDetailPage({
 }) {
     const { slug, typeSlug, folderId } = use(params);
     const { openModal } = useUploadModal();
+    const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
     const { serviceTypes } = useServiceTypes();
 
@@ -84,6 +86,20 @@ export default function FolderDetailPage({
         }
     }, [folderId, refreshKey]);
 
+    useEffect(() => {
+        if (currentService && currentServiceType) {
+            setPreSelection({
+                layananId: currentService.id,
+                layananName: currentService.name,
+                tipeLayananId: currentServiceType.id,
+                tipeLayananName: typeName,
+                onSuccess: () => setRefreshKey(prev => prev + 1)
+            });
+        }
+
+        return () => setPreSelection(null);
+    }, [currentService, currentServiceType, typeName, setPreSelection]);
+
     const handleUploadDefault = () => {
         openModal({
             layananId: currentService?.id,
@@ -145,12 +161,6 @@ export default function FolderDetailPage({
 
                                         <span className="font-medium text-gray-900">Nomor akta</span>
                                         <span className="text-gray-600">: <span className="font-semibold">{folder?.nomor_akta || '-'}</span></span>
-
-                                        <span className="font-medium text-gray-900">Nomor PT</span>
-                                        <span className="text-gray-600">: <span className="font-semibold">{folder?.nomor_pt || '-'}</span></span>
-
-                                        <span className="font-medium text-gray-900">NIK</span>
-                                        <span className="text-gray-600">: <span className="font-semibold">{folder?.nik_penghadap || '-'}</span></span>
 
                                         <span className="font-medium text-gray-900">Status</span>
                                         <div className="flex items-center gap-2 text-gray-900">
