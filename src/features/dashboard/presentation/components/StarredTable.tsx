@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Folder, FileText, File, MoreVertical, Star, ArrowUpDown } from 'lucide-react';
 import { StarredItem } from '@/features/dashboard/data/starred.data';
 import { useSelection } from '@/shared/hooks/useSelection';
@@ -12,13 +12,10 @@ interface StarredTableProps {
 }
 
 export function StarredTable({ items }: StarredTableProps) {
-    const {
-        selectedItems,
-        toggleSelectAll,
-        toggleSelectItem,
-        isSelected,
-        isAllSelected
-    } = useSelection({ items, itemIdKey: 'id' });
+    const { toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
+        items,
+        itemIdKey: 'id',
+    });
 
     const {
         currentPage,

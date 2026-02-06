@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2 } from 'lucide-react';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import folderIcon from '@/assets/icons/folder.png';
 import { FolderItem } from '@/features/services/types';

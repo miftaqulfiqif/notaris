@@ -37,7 +37,7 @@ export const EmailVerificationForm = () => {
                 setError(data.message || 'Gagal mengirim kode OTP. Silakan coba lagi.');
                 setOtpSent(false);
             }
-        } catch (err) {
+        } catch {
             setError('Terjadi kesalahan. Silakan coba lagi.');
             setOtpSent(false);
         } finally {
@@ -123,7 +123,7 @@ export const EmailVerificationForm = () => {
                 const data = await response.json();
                 setError(data.message || 'Kode OTP tidak valid. Silakan coba lagi.');
             }
-        } catch (err) {
+        } catch {
             setError('Terjadi kesalahan. Silakan coba lagi.');
         } finally {
             setIsVerifying(false);
