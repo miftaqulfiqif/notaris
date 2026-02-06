@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://api.jmlnotaris.com/api
 
   build_and_push_image:
     if: github.event_name == 'push'
@@ -31,12 +33,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set tag
+      - name: Set tag and API URL
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             echo "TAG=prod" >> $GITHUB_ENV
+            echo "API_URL=https://api.jmlnotaris.com/api" >> $GITHUB_ENV
           else
             echo "TAG=dev" >> $GITHUB_ENV
+            echo "API_URL=https://api.jmlnotaris.com/api" >> $GITHUB_ENV
           fi
 
       - name: Login GHCR
@@ -45,7 +49,9 @@ jobs:
       - name: Build & Push
         run: |
           IMAGE=ghcr.io/${{ github.repository }}:${TAG}
-          docker build -t $IMAGE -f Containerfile .
+          docker build \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${API_URL} \
+            -t $IMAGE -f Containerfile .
           docker push $IMAGE
 
   deploy_vps:
