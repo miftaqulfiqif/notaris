@@ -39,22 +39,13 @@ export default function TrashPage() {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
     const {
-        selectedItems,
         toggleSelectAll,
         toggleSelectItem,
         isSelected,
         isAllSelected
     } = useSelection({ items: trashItems, itemIdKey: 'id' });
 
-    const {
-        currentPage,
-        totalPages,
-        paginatedItems,
-        setPage,
-        startIndex,
-        endIndex,
-        totalItems
-    } = usePagination({ items: trashItems, itemsPerPage: 10 });
+    const { paginatedItems } = usePagination({ items: trashItems, itemsPerPage: 10 });
 
     const [activeDropdown, setActiveDropdown] = useState<{ id: number; top: number; right: number } | null>(null);
 

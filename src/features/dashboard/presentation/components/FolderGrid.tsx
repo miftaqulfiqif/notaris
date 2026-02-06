@@ -1,4 +1,4 @@
-import { Folder, MoreVertical } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { folders } from '@/features/dashboard/data';
 
 export function FolderGrid() {

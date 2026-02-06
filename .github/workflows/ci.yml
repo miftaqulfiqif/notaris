@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, development]
   pull_request:
-    branches: [main, dev]
+    branches: [main, development]
 
 jobs:
   ci:
@@ -53,7 +53,7 @@ jobs:
     needs: build_and_push_image
     runs-on: ubuntu-latest
     steps:
-      - name: Restart service on VPS
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -61,9 +61,11 @@ jobs:
           key: ${{ secrets.VPS_PRIVATE_KEY }}
           script: |
             if [ "${{ github.ref_name }}" = "main" ]; then
-              systemctl --user restart fe-prod
-              systemctl --user --no-pager status fe-prod || true
+              podman pull ghcr.io/${{ github.repository }}:prod
+              systemctl restart fe-prod
+              systemctl --no-pager status fe-prod || true
             else
-              systemctl --user restart fe-dev || true
-              systemctl --user --no-pager status fe-dev || true
+              podman pull ghcr.io/${{ github.repository }}:dev
+              systemctl restart fe-dev
+              systemctl --no-pager status fe-dev || true
             fi
