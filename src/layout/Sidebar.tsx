@@ -36,14 +36,14 @@ export function Sidebar() {
             {/* Mobile Overlay */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    className="lg:hidden z-30 fixed inset-0 bg-black/50"
                     onClick={close}
                 />
             )}
 
             <aside className={`w-64 h-screen bg-(--sidebar-bg) border-r border-gray-100 flex flex-col fixed left-0 top-0 overflow-y-auto z-40 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:visible ${isOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
                 }`}>
-                <div className="h-16 flex items-center px-6 border-b border-gray-100">
+                <div className="flex items-center px-6 border-gray-100 border-b h-16">
                     <div className="flex items-center gap-2">
                         <div className="text-(--sidebar-primary)">
                             <svg
@@ -64,26 +64,26 @@ export function Sidebar() {
                                 <path d="M16 2v20" />
                             </svg>
                         </div>
-                        <span className="text-xl font-bold text-[#2A3F6D]">Notarix</span>
+                        <span className="font-bold text-[#2A3F6D] text-xl">Notarix</span>
                     </div>
                 </div>
 
-                <div className="p-4 border-b border-gray-100">
-                    <div className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors group">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden relative">
-                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 font-bold">
+                <div className="p-4 border-gray-100 border-b">
+                    <div className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
+                        <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
+                            <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
                                 JM
                             </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
+                            <p className="font-bold text-gray-900 text-sm truncate">{currentUser.name}</p>
+                            <p className="text-gray-500 text-xs truncate">{currentUser.email}</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                     </div>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1">
+                <nav className="flex-1 space-y-1 px-4 py-6">
                     <Link
                         href="/dashboard"
                         onClick={() => setIsServicesOpen(false)}
@@ -127,7 +127,7 @@ export function Sidebar() {
                                 }`}
                         >
                             <div className="overflow-hidden">
-                                <div className="pl-4 space-y-1 pt-1">
+                                <div className="space-y-1 pt-1 pl-4">
                                     {services.map((service) => {
                                         const servicePath = `/services/${service.name.toLowerCase()}`;
                                         const isCurrentService = pathname.startsWith(servicePath);
