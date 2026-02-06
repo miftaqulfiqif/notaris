@@ -26,8 +26,10 @@ export function GlobalUploadModal() {
     const isLayananLocked = !!preSelection?.layananId;
     const isTipeLayananLocked = !!preSelection?.tipeLayananId;
 
+    const [prevIsOpen, setPrevIsOpen] = useState(false);
+
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !prevIsOpen) {
             setFormData({
                 ...EMPTY_UPLOAD_FORM,
                 layanan_id: preSelection?.layananId || '',
@@ -35,7 +37,8 @@ export function GlobalUploadModal() {
             });
             setError(null);
         }
-    }, [isOpen, preSelection]);
+        setPrevIsOpen(isOpen);
+    }, [isOpen, preSelection, prevIsOpen]);
 
     useEffect(() => {
         const fetchTipeLayanan = async () => {
