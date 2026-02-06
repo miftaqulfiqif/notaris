@@ -1,54 +1,114 @@
 'use client';
 
-import { MoreVertical, Search, Filter } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
+import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2 } from 'lucide-react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import folderIcon from '@/assets/icons/folder.png';
 import { FolderItem } from '@/features/services/types';
 import { StatusBadge } from '@/shared/components';
+import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFavoriteFolder';
+import { useDropdown } from '@/shared/hooks/useDropdown';
+import { useToast } from '@/shared/hooks/useToast';
+import { DropdownMenu } from '@/shared/components/DropdownMenu';
+import { Toast } from '@/shared/components/Toast';
+import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 
 interface FolderTableProps {
     items: FolderItem[];
+    onRefresh?: () => void;
 }
 
-export function FolderTable({ items }: FolderTableProps) {
+export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
     const { slug, typeSlug } = params as { slug: string; typeSlug: string };
     const typeId = searchParams.get('id');
+    const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
+    const { toast, showToast, hideToast } = useToast();
+    const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
+        useDropdown<string>({
+            triggerClass: 'folder-table-dropdown-trigger',
+            menuClass: 'folder-table-dropdown-menu',
+        });
+
+    const activeFolder = useMemo(() => {
+        if (!activeDropdown) return null;
+        return items.find((item) => item.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, items]);
+
+    const handleToggleFavorite = useCallback(async () => {
+        if (!activeFolder) return;
+
+        const isFavorite = activeFolder.is_favorite;
+        try {
+            if (isFavorite) {
+                await removeFromFavorite(activeFolder.id);
+                showToast({ message: 'Berhasil dihapus dari Berbintang', variant: 'success' });
+            } else {
+                await addToFavorite(activeFolder.id);
+                showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
+            }
+            onRefresh?.();
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : isFavorite
+                      ? 'Gagal menghapus dari Berbintang'
+                      : 'Gagal menambahkan ke Berbintang';
+            showToast({ message, variant: 'error' });
+        }
+    }, [activeFolder, addToFavorite, removeFromFavorite, showToast, onRefresh]);
+
+    const folderMenuItems = useMemo<DropdownMenuItem[]>(
+        () => [
+            { label: 'Download file', icon: <Download className="w-4 h-4" /> },
+            { label: 'Ganti nama', icon: <Edit3 className="w-4 h-4" />, hasDivider: true },
+            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
+            {
+                label: activeFolder?.is_favorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
+                icon: activeFolder?.is_favorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
+                onClick: handleToggleFavorite,
+                hasDivider: true,
+                className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
+            },
+            { label: 'Tambahkan ke sampah', icon: <Trash2 className="w-4 h-4" /> },
+        ],
+        [handleToggleFavorite, isFavoriteLoading, activeFolder],
+    );
 
     const handleRowClick = (folderId: string) => {
         router.push(`/services/${slug}/${typeSlug}/${folderId}?id=${typeId}`);
     };
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white shadow-sm hover:shadow-md border border-gray-200 rounded-xl overflow-hidden transition-shadow">
             <div className="overflow-x-auto">
                 <table className="w-full">
                     <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100">
-                            <th className="w-12 px-6 py-4">
-                                <input type="checkbox" className="rounded border-gray-300 text-[#8B7355] focus:ring-[#8B7355]" />
+                        <tr className="bg-gray-50/50 border-gray-100 border-b">
+                            <th className="px-6 py-4 w-12">
+                                <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Penghadap</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Author</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dimodifikasi</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Nama</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Author</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Dimodifikasi</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-right uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {items.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-12 text-center">
-                                    <div className="flex flex-col items-center justify-center">
-                                        <div className="p-3 bg-gray-50 rounded-full mb-3">
+                                    <div className="flex flex-col justify-center items-center">
+                                        <div className="bg-gray-50 mb-3 p-3 rounded-full">
                                             <Search className="w-6 h-6 text-gray-400" />
                                         </div>
                                         <p className="font-medium text-gray-900">Belum ada data</p>
-                                        <p className="text-sm text-gray-500 mt-1">Buat folder baru untuk memulai</p>
+                                        <p className="mt-1 text-gray-500 text-sm">Buat folder baru untuk memulai</p>
                                     </div>
                                 </td>
                             </tr>
@@ -60,21 +120,25 @@ export function FolderTable({ items }: FolderTableProps) {
                                     onClick={() => handleRowClick(item.id)}
                                 >
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                        <input type="checkbox" className="rounded border-gray-300 text-[#8B7355] focus:ring-[#8B7355]" />
+                                        <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="">
                                                 <Image src={folderIcon} alt="Folder" width={20} height={20} className="w-5 h-5" />
                                             </div>
-                                            <span className="font-medium text-gray-900 group-hover:text-[#8B7355] transition-colors">
-                                                {item.folder_name}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-gray-900 group-hover:text-[#8B7355] transition-colors">
+                                                    {item.folder_name}
+                                                </span>
+                                                {item.is_favorite && (
+                                                    <Star className="fill-gray-900 w-4 h-4 text-gray-900" />
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">{item.nama_penghadap}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">{item.user}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 text-nowrap">
+                                    <td className="px-6 py-4 text-gray-600 text-sm">{item.user}</td>
+                                    <td className="px-6 py-4 text-gray-600 text-sm text-nowrap">
                                         {new Date(item.updated_at).toLocaleDateString('id-ID', {
                                             day: 'numeric',
                                             month: 'long',
@@ -85,7 +149,10 @@ export function FolderTable({ items }: FolderTableProps) {
                                         <StatusBadge status={item.status} />
                                     </td>
                                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                        <button className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all">
+                                        <button
+                                            onClick={(e) => openDropdown(e, item.id)}
+                                            className={`p-1 rounded-full cursor-pointer transition-all ${triggerClass} ${isOpen(item.id) ? 'bg-gray-200 text-gray-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                        >
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
                                     </td>
@@ -95,6 +162,15 @@ export function FolderTable({ items }: FolderTableProps) {
                     </tbody>
                 </table>
             </div>
+
+            <DropdownMenu
+                dropdown={activeDropdown}
+                menuClass={menuClass}
+                items={folderMenuItems}
+                onClose={closeDropdown}
+            />
+
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
 }

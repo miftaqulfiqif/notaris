@@ -7,9 +7,6 @@ export interface UploadFormData {
     folder_name: string;
     kedudukan: string;
     nomor_akta: string;
-    nomor_pt: string;
-    nama_penghadap: string;
-    nik_penghadap: string;
     file_name: string;
 }
 
@@ -39,8 +36,5 @@ export const EMPTY_UPLOAD_FORM: UploadFormData = {
     folder_name: '',
     kedudukan: '',
     nomor_akta: '',
-    nomor_pt: '',
-    nama_penghadap: '',
-    nik_penghadap: '',
     file_name: '',
 };

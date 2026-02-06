@@ -130,7 +130,7 @@ export function Sidebar() {
                                 <div className="pl-4 space-y-1 pt-1">
                                     {services.map((service) => {
                                         const servicePath = `/services/${service.name.toLowerCase()}`;
-                                        const isCurrentService = pathname === servicePath;
+                                        const isCurrentService = pathname.startsWith(servicePath);
 
                                         return (
                                             <Link

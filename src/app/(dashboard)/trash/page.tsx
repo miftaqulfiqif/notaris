@@ -108,7 +108,7 @@ export default function TrashPage() {
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 lg:bg-white">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                <div className="max-w-[1600px] mx-auto min-h-screen flex flex-col">
+                <div className="w-full min-h-screen flex flex-col">
                     {/* Header */}
                     <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-b border-gray-100/50">
                         <DashboardHeader />

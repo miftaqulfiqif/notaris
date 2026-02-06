@@ -54,13 +54,13 @@ export default function DashboardPage() {
     return (
         <div className="flex h-screen overflow-hidden">
             {/* Main Content - shrinks when sidebar is open */}
-            <div className={`flex-1 overflow-y-auto transition-all duration-300 ${selectedActivity ? 'mr-0' : ''}`} style={{ scrollbarWidth: 'none' }}>
-                <div className="max-w-[1600px] mx-auto min-h-screen flex flex-col">
-                    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-b border-gray-100/50">
+            <div className={`flex-1 min-w-0 overflow-y-auto overflow-x-hidden transition-all duration-300`} style={{ scrollbarWidth: 'none' }}>
+                <div className="w-full min-h-screen flex flex-col">
+                    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-4 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-gray-100/50">
                         <DashboardHeader />
                     </div>
 
-                    <div className="px-8 pb-8 flex-1">
+                    <div className="px-4 sm:px-8 pb-8 flex-1">
                         {/* Welcome Section */}
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 mt-4">
                             <div>

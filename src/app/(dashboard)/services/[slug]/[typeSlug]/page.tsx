@@ -8,11 +8,23 @@ import Link from 'next/link';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 import { FilterTabs } from '@/shared/components/FilterTabs';
-import { apiGet, ApiResponse } from '@/shared/api/api-client';
+import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { FolderTable } from '@/features/services/presentation/components/FolderTable';
 import { FolderItem, FoldersResponse } from '@/features/services/types';
 import { useSidebar } from '@/layout/providers/SidebarContext';
+
+const normalizeFolders = (response: FoldersResponse): FolderItem[] => {
+    if (Array.isArray(response.data)) {
+        return response.data;
+    }
+
+    if (response.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+    }
+
+    return [];
+};
 
 export default function ServiceTypeDetailPage({
     params
@@ -51,7 +63,7 @@ export default function ServiceTypeDetailPage({
             try {
                 const url = `${ENDPOINTS.USER.FOLDERS}?tipe_layanan_id=${typeId}`;
                 const data = await apiGet<FoldersResponse>(url);
-                setFolders(data.data || []);
+                setFolders(normalizeFolders(data));
             } catch (err) {
                 console.error('Failed to fetch folders', err);
             } finally {
@@ -88,16 +100,16 @@ export default function ServiceTypeDetailPage({
     return (
         <div className="flex h-screen overflow-hidden">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                <div className="max-w-[1600px] mx-auto min-h-screen w-full flex flex-col">
-                    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-b border-gray-100/50">
+                <div className="flex flex-col w-full min-h-screen">
+                    <div className="top-0 z-10 sticky bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-gray-100/50 border-b">
                         <DashboardHeader />
                     </div>
 
-                    <div className="px-8 pb-8 flex-1">
+                    <div className="flex-1 px-8 pb-8">
                         {/* Breadcrumb & Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 mt-4">
+                        <div className="flex sm:flex-row flex-col justify-between sm:items-end gap-4 mt-4 mb-8">
                             <div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                                <div className="flex items-center gap-2 mb-2 text-gray-500 text-sm">
                                     <Link href="/dashboard" className="hover:text-(--sidebar-primary) transition-colors">
                                         Dashboard
                                     </Link>
@@ -110,7 +122,7 @@ export default function ServiceTypeDetailPage({
                                     <ChevronRight className="w-4 h-4" />
                                     <span className="font-semibold text-gray-500">{typeName}</span>
                                 </div>
-                                <h1 className="text-3xl font-bold text-gray-900">{typeName}</h1>
+                                <h1 className="font-bold text-gray-900 text-3xl">{typeName}</h1>
                             </div>
 
                             <button
@@ -121,7 +133,7 @@ export default function ServiceTypeDetailPage({
                                     tipeLayananName: typeName,
                                     onSuccess: () => setRefreshKey(prev => prev + 1),
                                 })}
-                                className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
+                                className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
                             >
                                 <Plus className="w-5 h-5" />
                                 <span>Tambah Baru</span>
@@ -137,11 +149,11 @@ export default function ServiceTypeDetailPage({
                         {isLoading ? (
                             <div className="space-y-4">
                                 {[1, 2, 3].map((i) => (
-                                    <div key={i} className="h-16 bg-gray-100 animate-pulse rounded-xl" />
+                                    <div key={i} className="bg-gray-100 rounded-xl h-16 animate-pulse" />
                                 ))}
                             </div>
                         ) : (
-                            <FolderTable items={folders} />
+                            <FolderTable items={folders} onRefresh={() => setRefreshKey(prev => prev + 1)} />
                         )}
                     </div>
                 </div>

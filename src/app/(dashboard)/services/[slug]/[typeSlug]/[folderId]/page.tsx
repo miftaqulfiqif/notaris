@@ -95,25 +95,25 @@ export default function FolderDetailPage({
 
     if (!folder && isLoading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="flex justify-center items-center h-screen">
+                <div className="border-primary border-b-2 rounded-full w-8 h-8 animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-white">
+        <div className="flex bg-white h-screen overflow-hidden">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                <div className="max-w-[1600px] mx-auto min-h-screen w-full flex flex-col">
-                    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-b border-gray-100/50">
+                <div className="flex flex-col w-full min-h-screen">
+                    <div className="top-0 z-10 sticky bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-gray-100/50 border-b">
                         <DashboardHeader />
                     </div>
 
-                    <div className="px-8 pb-8 flex-1">
+                    <div className="flex-1 px-8 pb-8">
                         {/* Breadcrumb & Header */}
-                        <div className="flex flex-col gap-6 mb-8 mt-4">
+                        <div className="flex flex-col gap-6 mt-4 mb-8">
                             {/* Breadcrumb */}
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="flex items-center gap-2 text-gray-500 text-sm">
                                 <Link href="/dashboard" className="hover:text-(--sidebar-primary) transition-colors">
                                     Dashboard
                                 </Link>
@@ -132,17 +132,17 @@ export default function FolderDetailPage({
                             </div>
 
                             {/* Header Content */}
-                            <div className="flex items-start justify-between">
+                            <div className="flex justify-between items-start">
                                 <div className="space-y-6 max-w-2xl">
                                     <div className="flex items-center gap-3">
-                                        <h1 className="text-3xl font-bold text-gray-900">{folder?.folder_name}</h1>
+                                        <h1 className="font-bold text-gray-900 text-3xl">{folder?.folder_name}</h1>
                                         <button className="text-gray-400 hover:text-gray-600 transition-colors">
                                             <Pencil className="w-5 h-5" />
                                         </button>
                                     </div>
 
                                     {/* Info Grid */}
-                                    <div className="grid grid-cols-[140px_auto] gap-y-3 text-sm">
+                                    <div className="gap-y-3 grid grid-cols-[140px_auto] text-sm">
                                         <span className="font-medium text-gray-900">Kedudukan</span>
                                         <span className="text-gray-600">: <span className="font-semibold">{folder?.kedudukan || '-'}</span></span>
 
@@ -151,9 +151,6 @@ export default function FolderDetailPage({
 
                                         <span className="font-medium text-gray-900">Nomor PT</span>
                                         <span className="text-gray-600">: <span className="font-semibold">{folder?.nomor_pt || '-'}</span></span>
-
-                                        <span className="font-medium text-gray-900">Nama Pengadap</span>
-                                        <span className="text-gray-600">: <span className="font-semibold">{folder?.nama_penghadap || '-'}</span></span>
 
                                         <span className="font-medium text-gray-900">NIK</span>
                                         <span className="text-gray-600">: <span className="font-semibold">{folder?.nik_penghadap || '-'}</span></span>
@@ -167,7 +164,7 @@ export default function FolderDetailPage({
 
                                 <button
                                     onClick={handleUploadDefault}
-                                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
+                                    className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
                                 >
                                     <Plus className="w-5 h-5" />
                                     <span>Tambah File Baru</span>
@@ -175,12 +172,12 @@ export default function FolderDetailPage({
                             </div>
                         </div>
 
-                        <div className="border-t border-gray-100 my-8" />
+                        <div className="my-8 border-gray-100 border-t" />
 
                         {/* Files Section */}
                         <div className="space-y-4">
-                            <div className="flex items-center justify-end gap-2">
-                                <div className="flex bg-gray-100 rounded-lg p-1">
+                            <div className="flex justify-end items-center gap-2">
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
                                     <button
                                         onClick={() => setViewMode('grid')}
                                         className={`p-2 rounded-md transition-all ${viewMode === 'grid'

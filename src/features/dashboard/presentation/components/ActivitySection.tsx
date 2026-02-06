@@ -18,10 +18,21 @@ import { Pagination } from '@/shared/components/Pagination';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
+    /** Optional: Custom activities data. Falls back to mockActivities if not provided */
+    activities?: Activity[];
+    /** Optional: Custom label for client name column. Defaults to "Nama Klien" */
+    clientHeaderLabel?: string;
 }
 
-export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
+export function ActivitySection({
+    onSelectActivity,
+    activities,
+    clientHeaderLabel = 'Nama Klien'
+}: ActivitySectionProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
+
+    // Use provided activities or fallback to mock data
+    const activityData = activities ?? mockActivities;
 
     const {
         selectedItems,
@@ -29,7 +40,7 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
         toggleSelectItem,
         isSelected,
         isAllSelected
-    } = useSelection({ items: mockActivities, itemIdKey: 'id' });
+    } = useSelection({ items: activityData, itemIdKey: 'id' });
 
     const {
         currentPage,
@@ -39,7 +50,7 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
         startIndex,
         endIndex,
         totalItems
-    } = usePagination({ items: mockActivities, itemsPerPage: 5 });
+    } = usePagination({ items: activityData, itemsPerPage: 5 });
 
     return (
         <div className="mt-8">
@@ -75,7 +86,7 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
                                     <SortableHeader label="Nama Perusahaan" />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Nama Klien" />
+                                    <SortableHeader label={clientHeaderLabel} />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                                     <SortableHeader label="Layanan" />
