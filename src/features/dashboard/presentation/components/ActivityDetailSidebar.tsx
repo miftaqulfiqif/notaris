@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Folder, FileText } from 'lucide-react';
+import { X, Folder } from 'lucide-react';
 import { Activity } from '@/features/dashboard/types';
 
 interface ActivityDetailSidebarProps {
@@ -11,15 +11,12 @@ interface ActivityDetailSidebarProps {
 export function ActivityDetailSidebar({ activity, onClose }: ActivityDetailSidebarProps) {
     return (
         <>
-            {/* Backdrop overlay */}
             <div
                 className="fixed inset-0 bg-black/30 z-40 transition-opacity"
                 onClick={onClose}
             />
 
-            {/* Offcanvas sidebar */}
             <div className="fixed top-0 right-0 w-[400px] max-w-full bg-white border-l border-gray-200 h-full flex flex-col z-50 shadow-2xl animate-slide-in-right">
-                {/* Header - Fixed at top */}
                 <div className="p-6 border-b border-gray-100 bg-white">
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -42,9 +39,7 @@ export function ActivityDetailSidebar({ activity, onClose }: ActivityDetailSideb
                     </div>
                 </div>
 
-                {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto">
-                    {/* Detail Folder */}
                     <div className="p-6 border-b border-gray-100">
                         <h3 className="text-sm font-bold text-gray-900 mb-4">Detail Folder</h3>
                         <div className="space-y-4">
@@ -63,7 +58,6 @@ export function ActivityDetailSidebar({ activity, onClose }: ActivityDetailSideb
                         </div>
                     </div>
 
-                    {/* Detail Status */}
                     <div className="p-6 border-b border-gray-100">
                         <h3 className="text-sm font-bold text-gray-900 mb-4">Detail Status</h3>
                         <div className="space-y-3">
@@ -88,7 +82,6 @@ export function ActivityDetailSidebar({ activity, onClose }: ActivityDetailSideb
                         </div>
                     </div>
 
-                    {/* Aktivitas Timeline */}
                     <div className="p-6">
                         <h3 className="text-sm font-bold text-gray-900 mb-6">Aktivitas</h3>
                         <div className="space-y-6 relative before:absolute before:left-2 before:top-2 before:bottom-0 before:w-0.5 before:bg-gray-100">

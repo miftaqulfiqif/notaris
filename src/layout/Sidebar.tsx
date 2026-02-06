@@ -1,12 +1,6 @@
 'use client';
 
 import {
-    LayoutDashboard,
-    Star,
-    BookOpen,
-    Building2,
-    Trash2,
-    Settings,
     ChevronRight,
     ChevronDown,
     Folder
@@ -14,26 +8,36 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { currentUser } from '@/layout/data/sidebar.data';
+import { navigationItems } from '@/layout/data/navigation.data';
+import { getInitials } from '@/shared/utils/initials';
 
 export function Sidebar() {
     const pathname = usePathname();
     const [isServicesOpen, setIsServicesOpen] = useState(false);
-    const [activeService, setActiveService] = useState('PT');
     const { isOpen, close, services } = useSidebar();
 
     const isActive = (path: string) => pathname === path;
     const isServiceActive = pathname.startsWith('/services/');
 
-    if (isServiceActive && !isServicesOpen) {
-        setIsServicesOpen(true);
-    }
+    useEffect(() => {
+        if (isServiceActive && !isServicesOpen) {
+            setIsServicesOpen(true);
+        }
+    }, [isServiceActive, isServicesOpen]);
+
+    const getNavItemClasses = (path: string, hasSubmenu?: boolean) => {
+        const active = hasSubmenu ? (isServicesOpen || isServiceActive) : isActive(path);
+        return `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${active
+                ? 'text-white bg-(--sidebar-primary)'
+                : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
+            }`;
+    };
 
     return (
         <>
-            {/* Mobile Overlay */}
             {isOpen && (
                 <div
                     className="lg:hidden z-30 fixed inset-0 bg-black/50"
@@ -72,7 +76,7 @@ export function Sidebar() {
                     <div className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
                         <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
                             <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
-                                JM
+                                {getInitials(currentUser.name)}
                             </div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -84,103 +88,64 @@ export function Sidebar() {
                 </div>
 
                 <nav className="flex-1 space-y-1 px-4 py-6">
-                    <Link
-                        href="/dashboard"
-                        onClick={() => setIsServicesOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/dashboard')
-                            ? 'text-white bg-(--sidebar-primary)'
-                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
-                            }`}
-                    >
-                        <LayoutDashboard className="w-5 h-5" />
-                        <span className="font-medium">Dashboard</span>
-                    </Link>
+                    {navigationItems.map((item) => {
+                        if (item.hasSubmenu) {
+                            return (
+                                <div key={item.id} className="space-y-1 cursor-pointer">
+                                    <button
+                                        onClick={() => setIsServicesOpen(!isServicesOpen)}
+                                        className={`w-full flex items-center justify-between ${getNavItemClasses(item.path, true)}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <item.icon className="w-5 h-5" />
+                                            <span className="font-medium">{item.label}</span>
+                                        </div>
+                                        <ChevronDown className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
+                                    </button>
 
-                    <Link
-                        href="/starred"
-                        onClick={() => setIsServicesOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/starred')
-                            ? 'text-white bg-(--sidebar-primary)'
-                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
-                            }`}
-                    >
-                        <Star className="w-5 h-5" />
-                        <span className="font-medium">Berbintang</span>
-                    </Link>
-                    <div className="space-y-1 cursor-pointer">
-                        <button
-                            onClick={() => setIsServicesOpen(!isServicesOpen)}
-                            className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-colors ${isServicesOpen || isServiceActive
-                                ? 'bg-(--sidebar-primary) text-white'
-                                : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
-                                }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <BookOpen className="w-5 h-5" />
-                                <span className="font-medium">Layanan</span>
-                            </div>
-                            <ChevronDown className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
-                        </button>
+                                    <div
+                                        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isServicesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                                            }`}
+                                    >
+                                        <div className="overflow-hidden">
+                                            <div className="space-y-1 pt-1 pl-4">
+                                                {services.map((service) => {
+                                                    const servicePath = `/services/${service.name.toLowerCase()}`;
+                                                    const isCurrentService = pathname.startsWith(servicePath);
 
-                        <div
-                            className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isServicesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                                }`}
-                        >
-                            <div className="overflow-hidden">
-                                <div className="space-y-1 pt-1 pl-4">
-                                    {services.map((service) => {
-                                        const servicePath = `/services/${service.name.toLowerCase()}`;
-                                        const isCurrentService = pathname.startsWith(servicePath);
-
-                                        return (
-                                            <Link
-                                                key={service.name}
-                                                href={servicePath}
-                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isCurrentService
-                                                    ? 'bg-[#B39B7D] text-white' // Making it visually distinct but within theme
-                                                    : 'text-gray-600 hover:bg-(--sidebar-hover) hover:text-gray-900'
-                                                    }`}
-                                            >
-                                                <Folder className={`w-5 h-5 ${isCurrentService ? 'fill-yellow-400 text-yellow-400' : 'fill-yellow-400 text-yellow-400'
-                                                    }`} />
-                                                <span className="font-medium">{service.name}</span>
-                                            </Link>
-                                        );
-                                    })}
+                                                    return (
+                                                        <Link
+                                                            key={service.name}
+                                                            href={servicePath}
+                                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isCurrentService
+                                                                ? 'bg-[#B39B7D] text-white'
+                                                                : 'text-gray-600 hover:bg-(--sidebar-hover) hover:text-gray-900'
+                                                                }`}
+                                                        >
+                                                            <Folder className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                                            <span className="font-medium">{service.name}</span>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                            );
+                        }
 
-                    <Link
-                        href="#"
-                        onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
-                    >
-                        <Building2 className="w-5 h-5" />
-                        <span className="font-medium">Perusahaan</span>
-                    </Link>
-
-                    <Link
-                        href="/trash"
-                        onClick={() => setIsServicesOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${isActive('/trash')
-                            ? 'text-white bg-(--sidebar-primary)'
-                            : 'text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900'
-                            }`}
-                    >
-                        <Trash2 className="w-5 h-5" />
-                        <span className="font-medium">Sampah</span>
-                    </Link>
-
-                    <Link
-                        href="#"
-                        onClick={() => setIsServicesOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 text-gray-500 hover:bg-(--sidebar-hover) hover:text-gray-900 rounded-lg transition-colors"
-                    >
-                        <Settings className="w-5 h-5" />
-                        <span className="font-medium">Setting</span>
-                    </Link>
+                        return (
+                            <Link
+                                key={item.id}
+                                href={item.path}
+                                onClick={() => setIsServicesOpen(false)}
+                                className={getNavItemClasses(item.path)}
+                            >
+                                <item.icon className="w-5 h-5" />
+                                <span className="font-medium">{item.label}</span>
+                            </Link>
+                        );
+                    })}
                 </nav>
 
                 <FontSizeSlider />

@@ -18,19 +18,14 @@ export function GlobalUploadModal() {
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Form state
     const [formData, setFormData] = useState<UploadFormData>(EMPTY_UPLOAD_FORM);
 
-    // Tipe layanan for selected layanan
     const [tipeLayananList, setTipeLayananList] = useState<ServiceType[]>([]);
     const [isLoadingTipeLayanan, setIsLoadingTipeLayanan] = useState(false);
 
-    // Check if layanan is pre-selected (locked)
     const isLayananLocked = !!preSelection?.layananId;
-    // Check if tipe layanan is pre-selected (locked) - for future use
     const isTipeLayananLocked = !!preSelection?.tipeLayananId;
 
-    // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
             setFormData({
@@ -42,7 +37,6 @@ export function GlobalUploadModal() {
         }
     }, [isOpen, preSelection]);
 
-    // Fetch tipe layanan when layanan changes
     useEffect(() => {
         const fetchTipeLayanan = async () => {
             if (!formData.layanan_id) {
@@ -66,7 +60,6 @@ export function GlobalUploadModal() {
         fetchTipeLayanan();
     }, [formData.layanan_id]);
 
-    // Sync file_name with selected files
     useEffect(() => {
         if (files && files.length > 0) {
             setFormData(prev => ({
@@ -104,14 +97,12 @@ export function GlobalUploadModal() {
 
     const handleInputChange = (field: keyof UploadFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Reset tipe_layanan when layanan changes
         if (field === 'layanan_id') {
             setFormData(prev => ({ ...prev, tipe_layanan_id: '' }));
         }
     };
 
     const handleSubmit = async () => {
-        // Validation
         if (!formData.layanan_id) {
             setError('Layanan harus dipilih');
             return;
@@ -146,7 +137,6 @@ export function GlobalUploadModal() {
         }
     };
 
-    // Get display name for locked layanan
     const getLayananDisplayName = () => {
         if (preSelection?.layananName) return preSelection.layananName;
         const service = services.find(s => s.id === formData.layanan_id);
@@ -177,7 +167,6 @@ export function GlobalUploadModal() {
                     )}
 
                     <div className="space-y-4">
-                        {/* Layanan Select */}
                         <div className="space-y-2">
                             <label className="font-medium text-gray-700 text-sm">
                                 Layanan <span className="text-red-500">*</span>
@@ -214,7 +203,6 @@ export function GlobalUploadModal() {
                             </div>
                         </div>
 
-                        {/* Tipe Layanan Select */}
                         <div className="space-y-2">
                             <label className="font-medium text-gray-700 text-sm">
                                 Tipe Layanan <span className="text-red-500">*</span>
@@ -258,7 +246,6 @@ export function GlobalUploadModal() {
                             </div>
                         </div>
 
-                        {/* Folder Name */}
                         <div className="space-y-2">
                             <label className="font-medium text-gray-700 text-sm">Nama Folder</label>
                             <DebouncedInput
@@ -270,7 +257,6 @@ export function GlobalUploadModal() {
                             />
                         </div>
 
-                        {/* Kedudukan */}
                         <div className="space-y-2">
                             <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
                             <DebouncedInput
@@ -282,7 +268,6 @@ export function GlobalUploadModal() {
                             />
                         </div>
 
-                        {/* Nomor Akta */}
                         <div className="space-y-2">
                             <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
                             <DebouncedInput
@@ -296,7 +281,6 @@ export function GlobalUploadModal() {
 
                     </div>
 
-                    {/* File Upload */}
                     <div className="space-y-2">
                         <label className="font-medium text-gray-700 text-sm">Upload File</label>
                         <div
@@ -339,7 +323,6 @@ export function GlobalUploadModal() {
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex justify-center items-center gap-3 p-6 border-gray-100 border-t">
                     <button
                         onClick={closeModal}

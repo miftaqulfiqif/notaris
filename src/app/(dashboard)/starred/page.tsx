@@ -15,7 +15,6 @@ export default function StarredPage() {
                 </div>
 
                 <div className="flex-1 px-8 pb-8 overflow-y-auto">
-                    {/* Header Section */}
                     <div className="flex sm:flex-row flex-col justify-between sm:items-end gap-4 mt-4 mb-8">
                         <div>
                             <div className="mb-2">
@@ -25,7 +24,6 @@ export default function StarredPage() {
                         </div>
                     </div>
 
-                    {/* Toolbar */}
                     <div className="flex justify-end mb-4">
                         <div className="flex bg-gray-100 p-1 rounded-lg">
                             <button className="p-1.5 rounded text-gray-400 hover:text-gray-600">
@@ -37,7 +35,6 @@ export default function StarredPage() {
                         </div>
                     </div>
 
-                    {/* Table */}
                     <div className="shadow-sm border border-gray-100 rounded-xl overflow-hidden">
                         <StarredTable items={starredItems} />
                     </div>

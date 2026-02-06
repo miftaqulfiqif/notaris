@@ -29,7 +29,7 @@ export function Toast({ toast, onClose, position = 'bottom-left' }: ToastProps) 
 
     return (
         <div className={`fixed z-50 ${POSITION_CLASS[position]}`}>
-            <div className={`flex items-start gap-3 rounded-lg px-4 py-3 text-white shadow-lg ${variantClass}`}>
+            <div className={`flex items-center gap-3 rounded-lg px-4 py-3 text-white shadow-lg ${variantClass}`}>
                 <p className="font-medium text-sm">{toast.message}</p>
                 <button
                     type="button"
@@ -37,7 +37,7 @@ export function Toast({ toast, onClose, position = 'bottom-left' }: ToastProps) 
                     onClick={onClose}
                     aria-label="Tutup notifikasi"
                 >
-                    <span aria-hidden="true" className="ml-1">×</span>
+                    <span className="ml-1 text-2xl">×</span>
                 </button>
             </div>
         </div>

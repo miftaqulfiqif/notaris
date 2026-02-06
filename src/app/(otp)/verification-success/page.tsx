@@ -14,7 +14,6 @@ export default function VerificationSuccessPage() {
     return (
         <div className="w-full max-w-md">
             <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                {/* Illustration */}
                 <div className="flex justify-center mb-6">
                     <Image
                         src={successIllustration}
@@ -26,12 +25,10 @@ export default function VerificationSuccessPage() {
                     />
                 </div>
 
-                {/* Title */}
                 <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">
                     Akun Anda telah berhasil dibuat
                 </h1>
 
-                {/* Login Button */}
                 <button
                     onClick={handleLogin}
                     className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all flex items-center justify-center"

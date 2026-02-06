@@ -4,11 +4,6 @@ import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-/**
- * Route guard for pages that should only be accessible by unverified users.
- * Redirects to dashboard if user is already verified.
- * Redirects to login if user is not authenticated.
- */
 export const UnverifiedOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated, isVerified, isLoading } = useAuthContext();
     const router = useRouter();
@@ -18,7 +13,6 @@ export const UnverifiedOnlyRoute = ({ children }: { children: React.ReactNode })
             if (!isAuthenticated) {
                 router.push('/login');
             } else if (isVerified) {
-                // Redirect verified users to dashboard
                 router.push('/dashboard');
             }
         }

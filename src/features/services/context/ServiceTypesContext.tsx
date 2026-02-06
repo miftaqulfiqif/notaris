@@ -22,7 +22,6 @@ export function ServiceTypesProvider({ children, serviceId }: { children: ReactN
             setIsLoading(true);
 
             try {
-                // Construct URL dynamically
                 const url = ENDPOINTS.USER.SERVICE_TYPES.replace(':serviceId', serviceId);
                 const data = await apiGet<ApiResponse<ServiceType[]>>(url);
                 setServiceTypes(data.data || []);

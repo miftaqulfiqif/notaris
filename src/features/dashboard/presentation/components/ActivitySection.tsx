@@ -18,9 +18,7 @@ import { Pagination } from '@/shared/components/Pagination';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
-    /** Optional: Custom activities data. Falls back to mockActivities if not provided */
     activities?: Activity[];
-    /** Optional: Custom label for client name column. Defaults to "Nama Klien" */
     clientHeaderLabel?: string;
 }
 
@@ -31,7 +29,6 @@ export function ActivitySection({
 }: ActivitySectionProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
 
-    // Use provided activities or fallback to mock data
     const activityData = activities ?? mockActivities;
 
     const {
@@ -56,7 +53,6 @@ export function ActivitySection({
         <div className="mt-8">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Aktivitas</h3>
 
-            {/* Filter Tabs */}
             <FilterTabs
                 tabs={[
                     { id: 'recent', label: 'Baru di tambahkan', icon: Clock },
@@ -66,7 +62,6 @@ export function ActivitySection({
                 onChange={(id) => setActiveTab(id as any)}
             />
 
-            {/* Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full">

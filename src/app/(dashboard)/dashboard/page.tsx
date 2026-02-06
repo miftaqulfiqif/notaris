@@ -8,7 +8,6 @@ import { ActivitySection } from '@/features/dashboard/presentation/components/Ac
 import { Activity } from '@/features/dashboard/types';
 import { ActivityDetailSidebar } from '@/features/dashboard/presentation/components/ActivityDetailSidebar';
 import { Plus } from 'lucide-react';
-
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 
 export default function DashboardPage() {
@@ -26,14 +25,12 @@ export default function DashboardPage() {
             const sessionInitialized = sessionStorage.getItem('session_initialized');
 
             if (storedDate !== today) {
-                // New day, reset count
                 count = 0;
                 localStorage.setItem('lastLoginDate', today);
                 localStorage.setItem('dailyLoginCount', '0');
             }
 
             if (!sessionInitialized) {
-                // New session
                 count += 1;
                 localStorage.setItem('dailyLoginCount', count.toString());
                 sessionStorage.setItem('session_initialized', 'true');
@@ -53,7 +50,6 @@ export default function DashboardPage() {
 
     return (
         <div className="flex h-screen overflow-hidden">
-            {/* Main Content - shrinks when sidebar is open */}
             <div className={`flex-1 min-w-0 overflow-y-auto overflow-x-hidden transition-all duration-300`} style={{ scrollbarWidth: 'none' }}>
                 <div className="w-full min-h-screen flex flex-col">
                     <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-4 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-gray-100/50">
@@ -61,7 +57,6 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="px-4 sm:px-8 pb-8 flex-1">
-                        {/* Welcome Section */}
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 mt-4">
                             <div>
                                 {showGreeting ? (
@@ -91,7 +86,6 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Detail Sidebar */}
             {selectedActivity && (
                 <ActivityDetailSidebar
                     activity={selectedActivity}

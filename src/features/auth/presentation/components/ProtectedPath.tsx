@@ -13,7 +13,6 @@ export const ProtectedPath = ({ children }: { children: React.ReactNode }) => {
             if (!isAuthenticated) {
                 router.push('/login');
             } else if (!isVerified) {
-                // Redirect unverified users to verify-email page
                 router.push('/verify-email');
             }
         }

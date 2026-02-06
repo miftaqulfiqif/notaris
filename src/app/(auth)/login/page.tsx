@@ -9,7 +9,6 @@ export default function LoginPage() {
     return (
         <PublicOnlyRoute>
             <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-                {/* Left Side - Form */}
                 <div className="flex flex-col justify-center px-4 py-12 sm:px-6 lg:px-20 xl:px-24 bg-white z-10">
                     <div className="w-full max-w-md mx-auto">
                         <LoginForm />

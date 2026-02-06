@@ -39,7 +39,7 @@ export function ServiceFolderGrid() {
         } catch (error) {
             const message =
                 error instanceof Error
-                    ? error.message
+                    ? "Gagal memproses permintaan"
                     : 'Gagal menambahkan ke Berbintang';
             showToast({ message, variant: 'error' });
         }
@@ -78,7 +78,7 @@ export function ServiceFolderGrid() {
                         return (
                             <Link
                                 key={index}
-                                href={`/services/${serviceSlug}/${typeSlug}?id=${folder.id}`}
+                                href={`/services/${serviceSlug}/${typeSlug}`}
                                 className="group flex justify-between items-center bg-gray-100/60 hover:bg-gray-100 px-3 py-2 border border-gray-200 rounded-xl w-[210px] transition-all cursor-pointer shrink-0"
                                 title={folder.name}
                             >

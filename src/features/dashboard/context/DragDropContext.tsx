@@ -4,9 +4,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { UploadPreSelection } from '@/features/dashboard/types';
 
 interface DragDropContextType {
-    /** Current pre-selection for drag and drop uploads */
     preSelection: UploadPreSelection | null;
-    /** Set pre-selection (call from pages to set context) */
     setPreSelection: (preSelection: UploadPreSelection | null) => void;
 }
 

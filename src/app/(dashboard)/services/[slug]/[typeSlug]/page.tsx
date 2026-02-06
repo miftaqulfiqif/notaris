@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, use, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { DashboardHeader } from '@/layout/DashboardHeader';
-import { ChevronRight, Plus, Folder, Clock, Star } from 'lucide-react';
+import { ChevronRight, Plus, Clock, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
@@ -13,6 +12,7 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 import { FolderTable } from '@/features/services/presentation/components/FolderTable';
 import { FolderItem, FoldersResponse } from '@/features/services/types';
 import { useSidebar } from '@/layout/providers/SidebarContext';
+import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
 
 const normalizeFolders = (response: FoldersResponse): FolderItem[] => {
     if (Array.isArray(response.data)) {
@@ -32,11 +32,10 @@ export default function ServiceTypeDetailPage({
     params: Promise<{ slug: string; typeSlug: string }>
 }) {
     const { slug, typeSlug } = use(params);
-    const searchParams = useSearchParams();
-    const typeId = searchParams.get('id');
     const { openModal } = useUploadModal();
     const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
+    const { serviceTypes } = useServiceTypes();
 
     const currentService = useMemo(() => {
         if (!services.length) return null;
@@ -46,15 +45,23 @@ export default function ServiceTypeDetailPage({
         );
     }, [services, slug]);
 
+    const currentServiceType = useMemo(() => {
+        if (!serviceTypes.length) return null;
+        return serviceTypes.find(t =>
+            t.name.toLowerCase().replace(/\s+/g, '-') === typeSlug.toLowerCase()
+        );
+    }, [serviceTypes, typeSlug]);
+
+    const typeId = currentServiceType?.id || null;
+
     const [activeTab, setActiveTab] = useState('baru');
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
 
     const serviceName = slug.replace(/-/g, ' ').toUpperCase();
-    const typeName = typeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const typeName = currentServiceType?.name || typeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-    // Fetch folders
     useEffect(() => {
         const fetchFolders = async () => {
             if (!typeId) return;
@@ -76,9 +83,6 @@ export default function ServiceTypeDetailPage({
         [typeId, refreshKey]
     );
 
-
-
-    // Set pre-selection for upload modal
     useEffect(() => {
         if (typeId && currentService) {
             setPreSelection({
@@ -106,7 +110,6 @@ export default function ServiceTypeDetailPage({
                     </div>
 
                     <div className="flex-1 px-8 pb-8">
-                        {/* Breadcrumb & Header */}
                         <div className="flex sm:flex-row flex-col justify-between sm:items-end gap-4 mt-4 mb-8">
                             <div>
                                 <div className="flex items-center gap-2 mb-2 text-gray-500 text-sm">
@@ -140,12 +143,10 @@ export default function ServiceTypeDetailPage({
                             </button>
                         </div>
 
-                        {/* Tabs */}
                         <div className="mb-6">
                             <FilterTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
                         </div>
 
-                        {/* Table */}
                         {isLoading ? (
                             <div className="space-y-4">
                                 {[1, 2, 3].map((i) => (

@@ -1,14 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, UserResponse } from '../types/user.types';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { User } from '../types/user.types';
 import { useRouter } from 'next/navigation';
-import { ENDPOINTS } from '@/shared/api/endpoints';
-
-interface LoginCredentials {
-    emailOrUsername: string;
-    password: string;
-}
+import { authService, LoginCredentials } from '../services/auth.service';
 
 interface AuthContextType {
     user: User | null;
@@ -29,84 +24,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    const checkAuth = async () => {
-        try {
-            // We don't set loading to true here to avoid flashing if called in background,
-            // but for initial load it's already true.
-            const response = await fetch(ENDPOINTS.AUTH.CURRENT, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                cache: 'no-store'
-            });
-
-            if (response.ok) {
-                const data: UserResponse = await response.json();
-                setUser(data.data);
-            } else {
-                setUser(null);
-            }
-        } catch (err) {
-            console.error('Auth check failed', err);
+    const checkAuth = useCallback(async () => {
+        const result = await authService.getCurrentUser();
+        if (result.success && result.data) {
+            setUser(result.data);
+        } else {
             setUser(null);
-        } finally {
-            setIsLoading(false);
         }
-    };
+        setIsLoading(false);
+    }, []);
 
     useEffect(() => {
-        checkAuth();
+        let mounted = true;
+
+        const fetchAuth = async () => {
+            const result = await authService.getCurrentUser();
+            if (mounted) {
+                if (result.success && result.data) {
+                    setUser(result.data);
+                } else {
+                    setUser(null);
+                }
+                setIsLoading(false);
+            }
+        };
+
+        fetchAuth();
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     const login = async (credentials: LoginCredentials): Promise<boolean> => {
         setIsLoading(true);
         setError(null);
-        try {
-            const response = await fetch(ENDPOINTS.AUTH.LOGIN, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    username: credentials.emailOrUsername,
-                    password: credentials.password,
-                }),
-            });
 
-            const data = await response.json();
+        const result = await authService.login(credentials);
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
-            }
-
-            // After successful login, fetch the user data
+        if (result.success) {
             await checkAuth();
-            return true;
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed');
-            return false;
-        } finally {
             setIsLoading(false);
+            return true;
+        } else {
+            setError(result.error || 'Login failed');
+            setIsLoading(false);
+            return false;
         }
     };
 
     const logout = async () => {
         setIsLoading(true);
-        try {
-            await fetch(ENDPOINTS.AUTH.LOGOUT, {
-                method: 'POST',
-                credentials: 'include',
-            });
-            setUser(null);
-            router.push('/login');
-        } catch (error) {
-            console.error('Logout failed', error);
-        } finally {
-            setIsLoading(false);
-        }
+        await authService.logout();
+        setUser(null);
+        setIsLoading(false);
+        router.push('/login');
     };
 
     return (

@@ -54,10 +54,10 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         } catch (error) {
             const message =
                 error instanceof Error
-                    ? error.message
+                    ? "Gagal memproses permintaan"
                     : isFavorite
-                      ? 'Gagal menghapus dari Berbintang'
-                      : 'Gagal menambahkan ke Berbintang';
+                        ? 'Gagal menghapus dari Berbintang'
+                        : 'Gagal menambahkan ke Berbintang';
             showToast({ message, variant: 'error' });
         }
     }, [activeFolder, addToFavorite, removeFromFavorite, showToast, onRefresh]);

@@ -1,4 +1,3 @@
-import { Folder, FileText } from 'lucide-react';
 
 export interface StarredItem {
     id: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { SortableHeader } from '@/shared/components/SortableHeader';
@@ -15,9 +15,7 @@ import {
 } from 'lucide-react';
 import { useSelection } from '@/shared/hooks/useSelection';
 import { usePagination } from '@/shared/hooks/usePagination';
-import { Pagination } from '@/shared/components/Pagination';
 
-// Mock Data
 const trashItems = [
     {
         id: 1,
@@ -58,14 +56,11 @@ export default function TrashPage() {
         totalItems
     } = usePagination({ items: trashItems, itemsPerPage: 10 });
 
-    // Dropdown state
     const [activeDropdown, setActiveDropdown] = useState<{ id: number; top: number; right: number } | null>(null);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Element;
-            // Check if click is outside both the button and the menu
             if (activeDropdown &&
                 !target.closest('.action-dropdown-btn') &&
                 !target.closest('.action-dropdown-menu')) {
@@ -73,21 +68,18 @@ export default function TrashPage() {
             }
         }
 
-        // Handle scroll to close dropdown
         function handleScroll() {
             if (activeDropdown) setActiveDropdown(null);
         }
 
         document.addEventListener("mousedown", handleClickOutside);
-        window.addEventListener("scroll", handleScroll, true); // Capture phase for all scrolling elements
+        window.addEventListener("scroll", handleScroll, true);
 
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener("scroll", handleScroll, true);
         };
     }, [activeDropdown]);
-
-
 
     const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
         e.stopPropagation();
@@ -99,7 +91,7 @@ export default function TrashPage() {
             const rect = e.currentTarget.getBoundingClientRect();
             setActiveDropdown({
                 id,
-                top: rect.bottom + 4, // 4px gap
+                top: rect.bottom + 4,
                 right: window.innerWidth - rect.right
             });
         }
@@ -109,13 +101,11 @@ export default function TrashPage() {
         <div className="flex h-screen overflow-hidden bg-gray-50 lg:bg-white">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                 <div className="w-full min-h-screen flex flex-col">
-                    {/* Header */}
                     <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-8 pt-8 pb-4 border-b border-gray-100/50">
                         <DashboardHeader />
                     </div>
 
                     <div className="px-8 pb-8 flex-1">
-                        {/* Page Title & Actions */}
                         <div className="flex items-center justify-between mb-6 mt-6">
                             <h1 className="text-2xl font-bold text-gray-900">Sampah</h1>
 
@@ -139,7 +129,6 @@ export default function TrashPage() {
                             </div>
                         </div>
 
-                        {/* Warning/Info Banner */}
                         <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center justify-between">
                             <p className="text-red-600 text-sm font-medium">
                                 Item dalam sampah akan dihapus selamanya setelah 30 hari
@@ -149,7 +138,6 @@ export default function TrashPage() {
                             </button>
                         </div>
 
-                        {/* Table Content */}
                         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
@@ -229,7 +217,6 @@ export default function TrashPage() {
                 </div>
             </div>
 
-            {/* Portal Dropdown */}
             {activeDropdown && typeof document !== 'undefined' && createPortal(
                 <div
                     className="fixed z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 w-48 action-dropdown-menu animate-in fade-in zoom-in-95 duration-100"

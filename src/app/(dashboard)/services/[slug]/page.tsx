@@ -30,7 +30,6 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
 
     const serviceName = currentService?.name || slug.toUpperCase();
 
-    // Set drag-drop pre-selection when on service page
     useEffect(() => {
         if (currentService) {
             setPreSelection({
@@ -39,7 +38,6 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
             });
         }
 
-        // Cleanup: reset pre-selection when leaving the page
         return () => {
             setPreSelection(null);
         };
@@ -85,7 +83,6 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
                 </div>
             </div>
 
-            {/* Detail Sidebar */}
             {selectedActivity && (
                 <ActivityDetailSidebar
                     activity={selectedActivity}
