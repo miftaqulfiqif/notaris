@@ -5,7 +5,6 @@ export default function OtpLayout({
 }) {
     return (
         <main className="min-h-screen w-full bg-gray-50 flex flex-col">
-            {/* Header */}
             <header className="bg-white border-b border-gray-100 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[#2A3F6D]">
@@ -37,12 +36,10 @@ export default function OtpLayout({
                 </div>
             </header>
 
-            {/* Content */}
             <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
                 {children}
             </div>
 
-            {/* Footer */}
             <footer className="pb-8 px-4">
                 <p className="text-sm text-gray-400 text-center max-w-md mx-auto leading-relaxed">
                     Kelola arsip dokumen notaris secara terstruktur dan terpercaya,

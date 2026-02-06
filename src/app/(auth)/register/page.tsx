@@ -8,7 +8,6 @@ export default function RegisterPage() {
     return (
         <PublicOnlyRoute>
             <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white">
-                {/* Header */}
                 <header className="w-full px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[#2A3F6D]">
                         <svg
@@ -41,13 +40,11 @@ export default function RegisterPage() {
                     </div>
                 </header>
 
-                {/* Main Content */}
                 <main className="flex flex-col items-center justify-center px-4 py-8">
                     <div className="w-full max-w-xl bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
                         <RegisterForm />
                     </div>
 
-                    {/* Footer Text */}
                     <div className="mt-8 text-center">
                         <p className="text-sm text-gray-400 max-w-sm mx-auto leading-relaxed">
                             Kelola arsip dokumen notaris secara terstruktur dan terpercaya,

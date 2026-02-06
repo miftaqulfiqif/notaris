@@ -14,6 +14,8 @@ export const ENDPOINTS = {
         FOLDERS: `${API_BASE_URL}/folders`,
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
+        ITEM_FAVORITE: `${API_BASE_URL}/item-favorite`,
+        REMOVE_ITEM_FAVORITE: `${API_BASE_URL}/remove-item-favorite`,
         OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
         OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,
     },

@@ -39,8 +39,8 @@ export function Pagination({
                             key={page}
                             onClick={() => onPageChange(page)}
                             className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                    ? 'bg-[#B39B7D] text-white'
-                                    : 'text-gray-600 hover:bg-gray-100'
+                                ? 'bg-[#B39B7D] text-white'
+                                : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
                             {page}

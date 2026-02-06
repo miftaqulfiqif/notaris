@@ -18,19 +18,14 @@ export function GlobalUploadModal() {
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Form state
     const [formData, setFormData] = useState<UploadFormData>(EMPTY_UPLOAD_FORM);
 
-    // Tipe layanan for selected layanan
     const [tipeLayananList, setTipeLayananList] = useState<ServiceType[]>([]);
     const [isLoadingTipeLayanan, setIsLoadingTipeLayanan] = useState(false);
 
-    // Check if layanan is pre-selected (locked)
     const isLayananLocked = !!preSelection?.layananId;
-    // Check if tipe layanan is pre-selected (locked) - for future use
     const isTipeLayananLocked = !!preSelection?.tipeLayananId;
 
-    // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
             setFormData({
@@ -42,7 +37,6 @@ export function GlobalUploadModal() {
         }
     }, [isOpen, preSelection]);
 
-    // Fetch tipe layanan when layanan changes
     useEffect(() => {
         const fetchTipeLayanan = async () => {
             if (!formData.layanan_id) {
@@ -66,7 +60,6 @@ export function GlobalUploadModal() {
         fetchTipeLayanan();
     }, [formData.layanan_id]);
 
-    // Sync file_name with selected files
     useEffect(() => {
         if (files && files.length > 0) {
             setFormData(prev => ({
@@ -104,14 +97,12 @@ export function GlobalUploadModal() {
 
     const handleInputChange = (field: keyof UploadFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Reset tipe_layanan when layanan changes
         if (field === 'layanan_id') {
             setFormData(prev => ({ ...prev, tipe_layanan_id: '' }));
         }
     };
 
     const handleSubmit = async () => {
-        // Validation
         if (!formData.layanan_id) {
             setError('Layanan harus dipilih');
             return;
@@ -120,24 +111,21 @@ export function GlobalUploadModal() {
             setError('Tipe Layanan harus dipilih');
             return;
         }
-        if (!formData.nama_penghadap) {
-            setError('Nama Penghadap harus diisi');
-            return;
-        }
-        if (!formData.nik_penghadap) {
-            setError('NIK Penghadap harus diisi');
-            return;
-        }
-        if (!files || files.length === 0) {
-            setError('File harus dipilih');
-            return;
-        }
 
         setIsSubmitting(true);
         setError(null);
 
         try {
-            await apiPost(ENDPOINTS.USER.UPLOAD_FILE, formData);
+            const payload = {
+                layanan_id: formData.layanan_id,
+                tipe_layanan_id: formData.tipe_layanan_id,
+                folder_name: formData.folder_name,
+                kedudukan: formData.kedudukan,
+                nomor_akta: formData.nomor_akta,
+                ...(formData.file_name ? { file_name: formData.file_name } : {}),
+            };
+
+            await apiPost(ENDPOINTS.USER.UPLOAD_FILE, payload);
             if (preSelection?.onSuccess) {
                 preSelection.onSuccess();
             }
@@ -149,7 +137,6 @@ export function GlobalUploadModal() {
         }
     };
 
-    // Get display name for locked layanan
     const getLayananDisplayName = () => {
         if (preSelection?.layananName) return preSelection.layananName;
         const service = services.find(s => s.id === formData.layanan_id);
@@ -157,32 +144,31 @@ export function GlobalUploadModal() {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white shadow-2xl rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in duration-200 fade-in zoom-in-95">
+                <div className="flex justify-between items-center p-4 border-gray-100 border-b">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">Upload data baru</h2>
-                        <p className="text-sm text-gray-500 mt-1">Silahkan unggah data baru sesuai tipe layanan</p>
+                        <h2 className="font-bold text-gray-900 text-xl">Upload data baru</h2>
+                        <p className="mt-1 text-gray-500 text-sm">Silahkan unggah data baru sesuai tipe layanan</p>
                     </div>
                     <button
                         onClick={closeModal}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        className="hover:bg-gray-100 p-2 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-[14px]">
+                <div className="space-y-[14px] p-6">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                        <div className="bg-red-50 p-3 border border-red-200 rounded-xl text-red-600 text-sm">
                             {error}
                         </div>
                     )}
 
                     <div className="space-y-4">
-                        {/* Layanan Select */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="font-medium text-gray-700 text-sm">
                                 Layanan <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
@@ -191,14 +177,14 @@ export function GlobalUploadModal() {
                                         type="text"
                                         value={getLayananDisplayName()}
                                         disabled
-                                        className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 cursor-not-allowed"
+                                        className="bg-gray-100 px-3 py-2 border border-gray-200 rounded-xl w-full text-gray-700 cursor-not-allowed"
                                     />
                                 ) : (
                                     <>
                                         <select
                                             value={formData.layanan_id}
                                             onChange={(e) => handleInputChange('layanan_id', e.target.value)}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none"
+                                            className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 appearance-none"
                                         >
                                             <option value="">Pilih Layanan</option>
                                             {services.map((service) => (
@@ -207,7 +193,7 @@ export function GlobalUploadModal() {
                                                 </option>
                                             ))}
                                         </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <div className="top-1/2 right-4 absolute text-gray-400 -translate-y-1/2 pointer-events-none">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -217,9 +203,8 @@ export function GlobalUploadModal() {
                             </div>
                         </div>
 
-                        {/* Tipe Layanan Select */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
+                            <label className="font-medium text-gray-700 text-sm">
                                 Tipe Layanan <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
@@ -228,7 +213,7 @@ export function GlobalUploadModal() {
                                         type="text"
                                         value={preSelection?.tipeLayananName || ''}
                                         disabled
-                                        className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 cursor-not-allowed"
+                                        className="bg-gray-100 px-3 py-2 border border-gray-200 rounded-xl w-full text-gray-700 cursor-not-allowed"
                                     />
                                 ) : (
                                     <>
@@ -236,7 +221,7 @@ export function GlobalUploadModal() {
                                             value={formData.tipe_layanan_id}
                                             onChange={(e) => handleInputChange('tipe_layanan_id', e.target.value)}
                                             disabled={!formData.layanan_id || isLoadingTipeLayanan}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355] appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                            className="bg-white disabled:bg-gray-100 px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 appearance-none disabled:cursor-not-allowed"
                                         >
                                             <option value="">
                                                 {isLoadingTipeLayanan ? 'Memuat...' : 'Pilih Tipe Layanan'}
@@ -247,7 +232,7 @@ export function GlobalUploadModal() {
                                                 </option>
                                             ))}
                                         </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <div className="top-1/2 right-4 absolute text-gray-400 -translate-y-1/2 pointer-events-none">
                                             {isLoadingTipeLayanan ? (
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
@@ -261,88 +246,43 @@ export function GlobalUploadModal() {
                             </div>
                         </div>
 
-                        {/* Folder Name */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Nama Folder</label>
+                            <label className="font-medium text-gray-700 text-sm">Nama Folder</label>
                             <DebouncedInput
                                 type="text"
                                 value={formData.folder_name}
                                 onChange={(value) => handleInputChange('folder_name', value as string)}
-                                placeholder="Contoh: PT MasPek Jaya"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                placeholder="Contoh: PT ABC"
+                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
                             />
                         </div>
 
-                        {/* Kedudukan */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Kedudukan</label>
+                            <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
                             <DebouncedInput
                                 type="text"
                                 value={formData.kedudukan}
                                 onChange={(value) => handleInputChange('kedudukan', value as string)}
                                 placeholder="Kedudukan"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
                             />
                         </div>
 
-                        {/* Nomor Akta */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Nomor Akta</label>
+                            <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
                             <DebouncedInput
                                 type="text"
                                 value={formData.nomor_akta}
                                 onChange={(value) => handleInputChange('nomor_akta', value as string)}
                                 placeholder="Nomor Akta"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
+                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
                             />
                         </div>
 
-                        {/* Nomor PT */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Nomor PT</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.nomor_pt}
-                                onChange={(value) => handleInputChange('nomor_pt', value as string)}
-                                placeholder="Nomor PT"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
-                            />
-                        </div>
-
-                        {/* Nama Penghadap */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
-                                Nama Penghadap <span className="text-red-500">*</span>
-                            </label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.nama_penghadap}
-                                onChange={(value) => handleInputChange('nama_penghadap', value as string)}
-                                placeholder="Nama Penghadap"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
-                            />
-                        </div>
-
-                        {/* NIK Penghadap */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
-                                NIK Penghadap <span className="text-red-500">*</span>
-                            </label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.nik_penghadap}
-                                onChange={(value) => handleInputChange('nik_penghadap', value as string)}
-                                placeholder="NIK Penghadap"
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#8B7355]/20 focus:border-[#8B7355]"
-                            />
-                        </div>
                     </div>
 
-                    {/* File Upload */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">
-                            Upload File <span className="text-red-500">*</span>
-                        </label>
+                        <label className="font-medium text-gray-700 text-sm">Upload File</label>
                         <div
                             className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all bg-gray-50 cursor-pointer
                                 ${isDragging ? 'border-[#8B7355] bg-[#8B7355]/5' : 'border-gray-300 hover:border-gray-400'}
@@ -362,19 +302,19 @@ export function GlobalUploadModal() {
 
                             {files && files.length > 0 ? (
                                 <div className="text-center">
-                                    <div className="bg-[#8B7355]/10 p-3 rounded-lg mb-4 inline-block">
-                                        <Folder className="w-8 h-8 stroke-[#8B7355] fill-[#8B7355]/20" />
+                                    <div className="inline-block bg-[#8B7355]/10 mb-4 p-3 rounded-lg">
+                                        <Folder className="fill-[#8B7355]/20 stroke-[#8B7355] w-8 h-8" />
                                     </div>
-                                    <p className="text-gray-900 font-medium">{files.length} file(s) selected</p>
-                                    <p className="text-gray-500 text-sm mt-1">
+                                    <p className="font-medium text-gray-900">{files.length} file(s) selected</p>
+                                    <p className="mt-1 text-gray-500 text-sm">
                                         {Array.from(files).map(f => f.name).join(', ')}
                                     </p>
-                                    <p className="text-[#8B7355] text-sm mt-2 hover:underline">Click or drag to change</p>
+                                    <p className="mt-2 text-[#8B7355] text-sm hover:underline">Click or drag to change</p>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="bg-[#FFCC00] p-3 rounded-lg mb-4 text-white">
-                                        <Folder className="w-8 h-8 fill-white stroke-white" />
+                                    <div className="bg-[#FFCC00] mb-4 p-3 rounded-lg text-white">
+                                        <Folder className="fill-white stroke-white w-8 h-8" />
                                     </div>
                                     <p className="text-gray-500">Seret atau tekan File disini</p>
                                 </>
@@ -383,19 +323,18 @@ export function GlobalUploadModal() {
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-center gap-3 p-6 border-t border-gray-100">
+                <div className="flex justify-center items-center gap-3 p-6 border-gray-100 border-t">
                     <button
                         onClick={closeModal}
                         disabled={isSubmitting}
-                        className="px-6 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        className="hover:bg-gray-50 disabled:opacity-50 px-6 py-2.5 border border-gray-200 rounded-xl font-medium text-gray-700 transition-colors"
                     >
                         Batal
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-[#8B7355] text-white font-medium rounded-xl hover:bg-[#7A6548] transition-colors shadow-sm disabled:opacity-50"
+                        className="flex items-center gap-2 bg-[#8B7355] hover:bg-[#7A6548] disabled:opacity-50 shadow-sm px-6 py-2.5 rounded-xl font-medium text-white transition-colors"
                     >
                         {isSubmitting ? (
                             <Loader2 className="w-5 h-5 animate-spin" />

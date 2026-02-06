@@ -1,34 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Search, Bell, Menu, LogOut } from 'lucide-react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { useClickOutside } from '@/shared/hooks/useClickOutside';
+import { getInitials } from '@/shared/utils/initials';
 
 export function DashboardHeader() {
     const { toggle } = useSidebar();
     const { user, logout } = useAuthContext();
-    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
-    const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown when clicking outside
-    React.useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-    // Get initials from user name
-    const getInitials = (name?: string) => {
-        if (!name) return 'U';
-        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    };
+    useClickOutside(dropdownRef, () => setIsDropdownOpen(false), isDropdownOpen);
 
     return (
         <header className="flex items-center gap-4">
@@ -66,7 +51,6 @@ export function DashboardHeader() {
                         </div>
                     </button>
 
-                    {/* Dropdown Menu */}
                     {isDropdownOpen && (
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                             <div className="px-4 py-3 border-b border-gray-100">

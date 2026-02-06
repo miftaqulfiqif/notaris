@@ -4,11 +4,21 @@
 export interface FolderItem {
     id: string;
     folder_name: string;
-    nama_penghadap: string;
     tipe_layanan: string;
     user: string;
+    is_favorite: boolean;
     updated_at: string;
     status: 'selesai' | 'proses' | 'terutunda' | string;
+}
+
+/**
+ * Optional paginated payload for folders
+ */
+export interface FolderListPagination {
+    current_page?: number;
+    total_items?: number;
+    total_pages?: number;
+    data: FolderItem[];
 }
 
 /**
@@ -16,7 +26,7 @@ export interface FolderItem {
  */
 export interface FoldersResponse {
     message: string;
-    data: FolderItem[];
+    data: FolderItem[] | FolderListPagination;
 }
 
 export interface FolderDetail {
@@ -25,7 +35,6 @@ export interface FolderDetail {
     kedudukan: string;
     nomor_akta: string;
     nomor_pt: string;
-    nama_penghadap: string;
     nik_penghadap: string;
     status: string;
 }

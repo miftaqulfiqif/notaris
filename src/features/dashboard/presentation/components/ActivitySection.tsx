@@ -18,10 +18,18 @@ import { Pagination } from '@/shared/components/Pagination';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
+    activities?: Activity[];
+    clientHeaderLabel?: string;
 }
 
-export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
+export function ActivitySection({
+    onSelectActivity,
+    activities,
+    clientHeaderLabel = 'Nama Klien'
+}: ActivitySectionProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
+
+    const activityData = activities ?? mockActivities;
 
     const {
         selectedItems,
@@ -29,7 +37,7 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
         toggleSelectItem,
         isSelected,
         isAllSelected
-    } = useSelection({ items: mockActivities, itemIdKey: 'id' });
+    } = useSelection({ items: activityData, itemIdKey: 'id' });
 
     const {
         currentPage,
@@ -39,13 +47,12 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
         startIndex,
         endIndex,
         totalItems
-    } = usePagination({ items: mockActivities, itemsPerPage: 5 });
+    } = usePagination({ items: activityData, itemsPerPage: 5 });
 
     return (
         <div className="mt-8">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Aktivitas</h3>
 
-            {/* Filter Tabs */}
             <FilterTabs
                 tabs={[
                     { id: 'recent', label: 'Baru di tambahkan', icon: Clock },
@@ -55,7 +62,6 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
                 onChange={(id) => setActiveTab(id as any)}
             />
 
-            {/* Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -75,7 +81,7 @@ export function ActivitySection({ onSelectActivity }: ActivitySectionProps) {
                                     <SortableHeader label="Nama Perusahaan" />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Nama Klien" />
+                                    <SortableHeader label={clientHeaderLabel} />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                                     <SortableHeader label="Layanan" />

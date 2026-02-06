@@ -38,7 +38,6 @@ export const RegisterForm = () => {
         e.preventDefault();
         setError(null);
 
-        // Validation
         if (formData.password !== formData.confirmPassword) {
             setError('Password dan konfirmasi password tidak cocok.');
             return;
@@ -80,7 +79,6 @@ export const RegisterForm = () => {
                 throw new Error(data.message || 'Registrasi gagal');
             }
 
-            // Redirect to login or verify-email page
             router.push('/login');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registrasi gagal');
@@ -99,7 +97,6 @@ export const RegisterForm = () => {
 
     return (
         <div className="w-full">
-            {/* Error Alert */}
             {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600">
                     <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -107,7 +104,6 @@ export const RegisterForm = () => {
                 </div>
             )}
 
-            {/* Form Title */}
             <div className="mb-8">
                 <h1 className="text-[28px] font-bold text-gray-900 mb-2">Buat akun</h1>
                 <p className="text-gray-500 text-base">
@@ -116,7 +112,6 @@ export const RegisterForm = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Nama Instansi */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-900">
                         Nama Instansi
@@ -135,7 +130,6 @@ export const RegisterForm = () => {
                     </p>
                 </div>
 
-                {/* Nama Lengkap + Username */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-900">
@@ -167,7 +161,6 @@ export const RegisterForm = () => {
                     </div>
                 </div>
 
-                {/* Email */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-900">
                         Email
@@ -183,7 +176,6 @@ export const RegisterForm = () => {
                     />
                 </div>
 
-                {/* No Telp */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-900">
                         No Telp
@@ -199,7 +191,6 @@ export const RegisterForm = () => {
                     />
                 </div>
 
-                {/* Buat Password + Konfirmasi Password */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-900">
@@ -257,7 +248,6 @@ export const RegisterForm = () => {
                     </div>
                 </div>
 
-                {/* Terms Checkbox */}
                 <div className="flex items-start gap-3">
                     <div className="relative flex items-center">
                         <input
@@ -290,7 +280,6 @@ export const RegisterForm = () => {
                     </label>
                 </div>
 
-                {/* Submit Button */}
                 <button
                     type="submit"
                     disabled={isLoading}
