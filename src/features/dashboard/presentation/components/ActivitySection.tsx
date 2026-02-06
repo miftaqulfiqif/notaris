@@ -32,7 +32,6 @@ export function ActivitySection({
     const activityData = activities ?? mockActivities;
 
     const {
-        selectedItems,
         toggleSelectAll,
         toggleSelectItem,
         isSelected,
@@ -51,7 +50,7 @@ export function ActivitySection({
 
     return (
         <div className="mt-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Aktivitas</h3>
+            <h3 className="mb-4 font-bold text-gray-800 text-lg">Aktivitas</h3>
 
             <FilterTabs
                 tabs={[
@@ -59,43 +58,43 @@ export function ActivitySection({
                     { id: 'favorite', label: 'Favorite', icon: Star },
                 ]}
                 activeTab={activeTab}
-                onChange={(id) => setActiveTab(id as any)}
+                onChange={(id) => setActiveTab(id as 'recent' | 'favorite')}
             />
 
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-gray-100 bg-gray-50/50">
+                            <tr className="bg-gray-50/50 border-gray-100 border-b">
                                 <th className="p-4 w-4">
                                     <div className="flex items-center">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
+                                            className="bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2 w-4 h-4 text-[#8B7355]"
                                             checked={isAllSelected}
                                             onChange={toggleSelectAll}
                                         />
                                     </div>
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label="Nama Perusahaan" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label={clientHeaderLabel} />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label="Layanan" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label="Author" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label="Dimodifikasi" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     <SortableHeader label="Status" />
                                 </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
+                                <th className="px-6 py-4 font-medium text-gray-500 text-sm text-left">
                                     Aksi
                                 </th>
                             </tr>
@@ -107,7 +106,7 @@ export function ActivitySection({
                                         <div className="flex items-center">
                                             <input
                                                 type="checkbox"
-                                                className="w-4 h-4 text-[#8B7355] bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2"
+                                                className="bg-gray-100 border-gray-300 rounded focus:ring-[#8B7355] focus:ring-2 w-4 h-4 text-[#8B7355]"
                                                 checked={isSelected(activity.id)}
                                                 onChange={() => toggleSelectItem(activity.id)}
                                             />
@@ -118,7 +117,7 @@ export function ActivitySection({
                                             onClick={() => onSelectActivity?.(activity)}
                                             className="flex items-center gap-3 hover:opacity-70 transition-opacity"
                                         >
-                                            <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
+                                            <div className="bg-gray-100 p-2 rounded-lg text-gray-600">
                                                 <Folder className="w-5 h-5" />
                                             </div>
                                             <span className="font-medium text-gray-900">{activity.companyName}</span>
@@ -140,7 +139,7 @@ export function ActivitySection({
                                         <StatusBadge status={activity.status} />
                                     </td>
                                     <td className="px-6 py-4 min-w-[200px] text-gray-600">
-                                        <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                        <button className="hover:bg-gray-100 p-1 rounded-lg transition-colors">
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
                                     </td>

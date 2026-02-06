@@ -27,8 +27,8 @@ export interface User {
     updated_at: string;
     role: Role;
     notaris: Notaris;
-    favorites: any[]; // Type as needed
-    folder: any[]; // Type as needed
+    favorites: unknown[];
+    folder: unknown[];
 }
 
 export interface UserResponse {

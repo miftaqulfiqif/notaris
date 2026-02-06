@@ -8,7 +8,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { currentUser } from '@/layout/data/sidebar.data';
 import { navigationItems } from '@/layout/data/navigation.data';
@@ -16,17 +16,12 @@ import { getInitials } from '@/shared/utils/initials';
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [isServicesOpen, setIsServicesOpen] = useState(false);
     const { isOpen, close, services } = useSidebar();
 
     const isActive = (path: string) => pathname === path;
     const isServiceActive = pathname.startsWith('/services/');
 
-    useEffect(() => {
-        if (isServiceActive && !isServicesOpen) {
-            setIsServicesOpen(true);
-        }
-    }, [isServiceActive, isServicesOpen]);
+    const [isServicesOpen, setIsServicesOpen] = useState(isServiceActive);
 
     const getNavItemClasses = (path: string, hasSubmenu?: boolean) => {
         const active = hasSubmenu ? (isServicesOpen || isServiceActive) : isActive(path);
@@ -122,7 +117,7 @@ export function Sidebar() {
                                                                 : 'text-gray-600 hover:bg-(--sidebar-hover) hover:text-gray-900'
                                                                 }`}
                                                         >
-                                                            <Folder className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                                            <Folder className="fill-yellow-400 w-5 h-5 text-yellow-400" />
                                                             <span className="font-medium">{service.name}</span>
                                                         </Link>
                                                     );
