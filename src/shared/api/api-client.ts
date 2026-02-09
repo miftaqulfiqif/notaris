@@ -46,3 +46,17 @@ export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
         body: body ? JSON.stringify(body) : undefined,
     });
 }
+
+export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
+    return apiClient<T>(url, {
+        method: 'PATCH',
+        body: body ? JSON.stringify(body) : undefined,
+    });
+}
+
+export async function apiDelete<T>(url: string, body?: unknown): Promise<T> {
+    return apiClient<T>(url, {
+        method: 'DELETE',
+        body: body ? JSON.stringify(body) : undefined,
+    });
+}

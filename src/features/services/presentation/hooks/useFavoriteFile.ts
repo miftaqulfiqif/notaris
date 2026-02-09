@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 
-const FAVORITE_ITEM_TYPE = 'FILE' as const;
+const FAVORITE_ITEM_TYPE = 'DOCUMENT' as const;
 
 interface FavoritePayload {
     item_id: string;
@@ -28,5 +28,16 @@ export function useFavoriteFile() {
         }
     }, []);
 
-    return { addToFavorite, isLoading };
+    const removeFromFavorite = useCallback(async (itemId: string) => {
+        setIsLoading(true);
+        try {
+            await apiPost<unknown>(
+                `${ENDPOINTS.USER.REMOVE_ITEM_FAVORITE}/${FAVORITE_ITEM_TYPE}/${itemId}`,
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    return { addToFavorite, removeFromFavorite, isLoading };
 }
