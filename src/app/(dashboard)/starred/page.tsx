@@ -2,10 +2,21 @@
 
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { StarredTable } from '@/features/dashboard/presentation/components/StarredTable';
-import { starredItems } from '@/features/dashboard/data/starred.data';
+import { useStarredItems } from '@/features/dashboard/hooks/useStarredItems';
 import { LayoutGrid, Rows } from 'lucide-react';
 
 export default function StarredPage() {
+    const {
+        items,
+        isLoading,
+        error,
+        currentPage,
+        totalPages,
+        totalItems,
+        startIndex,
+        endIndex,
+        setPage,
+    } = useStarredItems({ limit: 10 });
 
     return (
         <div className="flex flex-col h-screen overflow-hidden">
@@ -35,9 +46,24 @@ export default function StarredPage() {
                         </div>
                     </div>
 
-                    <div className="shadow-sm border border-gray-100 rounded-xl overflow-hidden">
-                        <StarredTable items={starredItems} />
-                    </div>
+                    {error ? (
+                        <div className="shadow-sm border border-red-100 rounded-xl overflow-hidden p-4 bg-red-50 text-red-600 text-center">
+                            {error}
+                        </div>
+                    ) : (
+                        <div className="shadow-sm border border-gray-100 rounded-xl overflow-hidden">
+                            <StarredTable
+                                items={items}
+                                isLoading={isLoading}
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                startIndex={startIndex}
+                                endIndex={endIndex}
+                                onPageChange={setPage}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

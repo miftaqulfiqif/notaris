@@ -9,6 +9,7 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 import { StatusBadge } from '@/shared/components';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
+import { useEditFolderModal } from '@/features/dashboard/context/EditFolderModalContext';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { FolderDetail, FolderDetailResponse } from '@/features/services/types';
 import { FileItem, FilesResponse } from '@/features/services/types/file.types';
@@ -23,6 +24,7 @@ export default function FolderDetailPage({
 }) {
     const { slug, typeSlug, folderId } = use(params);
     const { openModal } = useUploadModal();
+    const { openModal: openEditFolderModal } = useEditFolderModal();
     const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
     const { serviceTypes } = useServiceTypes();
@@ -110,6 +112,20 @@ export default function FolderDetailPage({
         });
     };
 
+    const handleEditFolder = () => {
+        if (!folder) return;
+
+        openEditFolderModal({
+            folderId,
+            initialData: {
+                folder_name: folder.folder_name || '',
+                kedudukan: folder.kedudukan || '',
+                nomor_akta: folder.nomor_akta || '',
+            },
+            onSuccess: () => setRefreshKey(prev => prev + 1)
+        });
+    };
+
     if (!folder && isLoading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -150,7 +166,11 @@ export default function FolderDetailPage({
                                 <div className="space-y-6 max-w-2xl">
                                     <div className="flex items-center gap-3">
                                         <h1 className="font-bold text-gray-900 text-3xl">{folder?.folder_name}</h1>
-                                        <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                                        <button
+                                            onClick={handleEditFolder}
+                                            disabled={!folder}
+                                            className="text-gray-400 hover:text-gray-600 disabled:opacity-50 transition-colors"
+                                        >
                                             <Pencil className="w-5 h-5" />
                                         </button>
                                     </div>
@@ -206,9 +226,9 @@ export default function FolderDetailPage({
                             </div>
 
                             {viewMode === 'grid' ? (
-                                <FileGrid items={files} />
+                                <FileGrid items={files} onRefresh={() => setRefreshKey(prev => prev + 1)} />
                             ) : (
-                                <FileTable items={files} />
+                                <FileTable items={files} onRefresh={() => setRefreshKey(prev => prev + 1)} />
                             )}
                         </div>
                     </div>

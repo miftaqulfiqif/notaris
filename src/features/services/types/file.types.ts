@@ -3,6 +3,7 @@ export interface FileItem {
     file_name: string;
     user: string;
     updated_at: string;
+    is_favorite?: boolean;
 }
 
 export interface FilesResponse {
