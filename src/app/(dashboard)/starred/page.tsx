@@ -16,6 +16,7 @@ export default function StarredPage() {
         startIndex,
         endIndex,
         setPage,
+        refresh,
     } = useStarredItems({ limit: 10 });
 
     return (
@@ -61,6 +62,7 @@ export default function StarredPage() {
                                 startIndex={startIndex}
                                 endIndex={endIndex}
                                 onPageChange={setPage}
+                                onRefresh={refresh}
                             />
                         </div>
                     )}

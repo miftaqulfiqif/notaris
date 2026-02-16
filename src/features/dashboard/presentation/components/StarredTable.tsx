@@ -1,11 +1,18 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, type MouseEvent } from 'react';
 import Image from 'next/image';
-import { MoreVertical, Star, ArrowUpDown, ArrowUp, ArrowDown, Folder } from 'lucide-react';
+import { MoreVertical, Star, StarOff, ArrowUpDown, ArrowUp, ArrowDown, Folder } from 'lucide-react';
 import { StarredItem, ItemType } from '@/features/dashboard/hooks/useStarredItems';
 import { useSelection } from '@/shared/hooks/useSelection';
 import { Pagination } from '@/shared/components/Pagination';
+import { DropdownMenu } from '@/shared/components/DropdownMenu';
+import { Toast } from '@/shared/components/Toast';
+import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
+import { useDropdown } from '@/shared/hooks/useDropdown';
+import { useToast } from '@/shared/hooks/useToast';
+import { apiPost } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
 import PDFIcon from '@/assets/icons/PDF.svg';
 import FolderIcon from '@/assets/icons/folder.png';
 import ServiceIcon from '@/assets/icons/service.png';
@@ -22,6 +29,7 @@ interface StarredTableProps {
     startIndex: number;
     endIndex: number;
     onPageChange: (page: number) => void;
+    onRefresh?: () => void | Promise<void>;
 }
 
 export function StarredTable({
@@ -33,9 +41,18 @@ export function StarredTable({
     startIndex,
     endIndex,
     onPageChange,
+    onRefresh,
 }: StarredTableProps) {
     const [sortField, setSortField] = useState<SortField>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+    const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [pendingFavoriteId, setPendingFavoriteId] = useState<string | null>(null);
+    const { toast, showToast, hideToast } = useToast();
+    const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
+        useDropdown<string>({
+            triggerClass: 'starred-table-dropdown-trigger',
+            menuClass: 'starred-table-dropdown-menu',
+        });
 
     const sortedItems = useMemo(() => {
         if (!sortField) return items;
@@ -63,6 +80,85 @@ export function StarredTable({
         items: sortedItems,
         itemIdKey: 'id',
     });
+
+    const activeItem = useMemo(() => {
+        if (!activeDropdown) return null;
+        return sortedItems.find((item) => item.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, sortedItems]);
+
+    const resolveIsFavorite = useCallback(
+        (item: { id: string }) => favoriteOverrides[item.id] ?? true,
+        [favoriteOverrides],
+    );
+
+    const activeItemIsFavorite = useMemo(() => {
+        if (!activeItem) return false;
+        return resolveIsFavorite(activeItem);
+    }, [activeItem, resolveIsFavorite]);
+
+    const handleToggleFavorite = useCallback(
+        async (targetItem?: StarredItem | null) => {
+            const item = targetItem ?? activeItem;
+            if (!item) return;
+
+            const isFavorite = resolveIsFavorite(item);
+            setPendingFavoriteId(item.id);
+
+            try {
+                if (isFavorite) {
+                    await apiPost<unknown>(
+                        `${ENDPOINTS.USER.REMOVE_ITEM_FAVORITE}/${item.item_type}/${item.item_id}`,
+                    );
+                    setFavoriteOverrides((prev) => ({ ...prev, [item.id]: false }));
+                    showToast({ message: 'Berhasil dihapus dari Berbintang', variant: 'success' });
+                    await onRefresh?.();
+                } else {
+                    await apiPost<unknown>(ENDPOINTS.USER.ITEM_FAVORITE, {
+                        item_id: item.item_id,
+                        item_type: item.item_type,
+                    });
+                    setFavoriteOverrides((prev) => ({ ...prev, [item.id]: true }));
+                    showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
+                }
+            } catch {
+                const message = isFavorite
+                    ? 'Gagal menghapus dari Berbintang'
+                    : 'Gagal menambahkan ke Berbintang';
+                showToast({ message, variant: 'error' });
+            } finally {
+                setPendingFavoriteId(null);
+            }
+        },
+        [activeItem, onRefresh, resolveIsFavorite, showToast],
+    );
+
+    const handleFavoriteIconClick = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, item: StarredItem) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (pendingFavoriteId === item.id) return;
+            void handleToggleFavorite(item);
+        },
+        [handleToggleFavorite, pendingFavoriteId],
+    );
+
+    const moreActions = useMemo<DropdownMenuItem[]>(
+        () => [
+            {
+                label: activeItemIsFavorite ? 'Hapus dari Berbintang' : 'Tambahkan ke Berbintang',
+                icon: activeItemIsFavorite ? (
+                    <StarOff className="w-4 h-4" />
+                ) : (
+                    <Star className="w-4 h-4" />
+                ),
+                onClick: () => {
+                    void handleToggleFavorite();
+                },
+                className: pendingFavoriteId ? 'pointer-events-none opacity-60' : '',
+            },
+        ],
+        [activeItemIsFavorite, handleToggleFavorite, pendingFavoriteId],
+    );
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -197,7 +293,10 @@ export function StarredTable({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                    {sortedItems.map((item) => (
+                    {sortedItems.map((item) => {
+                        const isFavorite = resolveIsFavorite(item);
+
+                        return (
                         <tr key={item.id} className="hover:bg-gray-50 group">
                             <td className="p-4 w-4">
                                 <div className="flex items-center">
@@ -212,7 +311,29 @@ export function StarredTable({
                             <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap flex items-center gap-3">
                                 {getIcon(item.item_type)}
                                 <span>{item.detail.item_name}</span>
-                                <Star className="w-3.5 h-3.5 fill-gray-900 text-gray-900 ml-1" />
+                                <button
+                                    type="button"
+                                    onClick={(event) => handleFavoriteIconClick(event, item)}
+                                    disabled={pendingFavoriteId === item.id}
+                                    title={
+                                        isFavorite
+                                            ? 'Hapus dari Berbintang'
+                                            : 'Tambahkan ke Berbintang'
+                                    }
+                                    className={`ml-1 p-1 rounded-full transition-colors ${
+                                        pendingFavoriteId === item.id
+                                            ? 'cursor-not-allowed opacity-60'
+                                            : 'cursor-pointer hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <Star
+                                        className={`w-3.5 h-3.5 ${
+                                            isFavorite
+                                                ? 'fill-gray-900 text-gray-900'
+                                                : 'fill-transparent text-gray-400'
+                                        }`}
+                                    />
+                                </button>
                             </td>
                             <td className="px-6 py-4 text-gray-500">
                                 {item.detail.author}
@@ -227,14 +348,30 @@ export function StarredTable({
                                 </div>
                             </td>
                             <td className="px-4 py-4 text-right">
-                                <button className="p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+                                <button
+                                    onClick={(event) => openDropdown(event, item.id)}
+                                    className={`p-1 rounded-full transition-colors ${triggerClass} ${
+                                        isOpen(item.id)
+                                            ? 'bg-gray-100 text-gray-600'
+                                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                             </td>
                         </tr>
-                    ))}
+                        );
+                    })}
                 </tbody>
             </table>
+            <DropdownMenu
+                dropdown={activeDropdown}
+                menuClass={menuClass}
+                items={moreActions}
+                onClose={closeDropdown}
+                widthClass="w-60"
+            />
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
             <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

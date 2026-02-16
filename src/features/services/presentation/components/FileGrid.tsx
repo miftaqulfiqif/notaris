@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, type MouseEvent } from 'react';
 import { MoreVertical, FileText, Download, Pencil, Info, Star, StarOff, Trash2 } from 'lucide-react';
 import { FileItem } from '@/features/services/types';
 import Image from 'next/image';
@@ -23,22 +23,37 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
     const { activeDropdown, openDropdown, closeDropdown, triggerClass, menuClass } = useDropdown<string>();
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFile();
     const { toast, showToast, hideToast } = useToast();
+    const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
 
     const activeFile = useMemo(() => {
         if (!activeDropdown) return null;
         return items.find((item) => item.id === activeDropdown.id) ?? null;
     }, [activeDropdown, items]);
 
-    const handleToggleFavorite = useCallback(async () => {
-        if (!activeFile) return;
+    const resolveIsFavorite = useCallback(
+        (file: { id: string; is_favorite?: boolean }) =>
+            favoriteOverrides[file.id] ?? Boolean(file.is_favorite),
+        [favoriteOverrides],
+    );
 
-        const isFavorite = activeFile.is_favorite;
+    const activeFileIsFavorite = useMemo(() => {
+        if (!activeFile) return false;
+        return resolveIsFavorite(activeFile);
+    }, [activeFile, resolveIsFavorite]);
+
+    const handleToggleFavorite = useCallback(async (targetFile?: { id: string; is_favorite?: boolean } | null) => {
+        const file = targetFile ?? activeFile;
+        if (!file) return;
+
+        const isFavorite = resolveIsFavorite(file);
         try {
             if (isFavorite) {
-                await removeFromFavorite(activeFile.id);
+                await removeFromFavorite(file.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [file.id]: false }));
                 showToast({ message: 'Berhasil dihapus dari Berbintang', variant: 'success' });
             } else {
-                await addToFavorite(activeFile.id);
+                await addToFavorite(file.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [file.id]: true }));
                 showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
             }
             setTimeout(() => onRefresh?.(), 500);
@@ -48,7 +63,17 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
                 : 'Gagal menambahkan ke Berbintang';
             showToast({ message, variant: 'error' });
         }
-    }, [activeFile, addToFavorite, removeFromFavorite, showToast, onRefresh]);
+    }, [activeFile, addToFavorite, removeFromFavorite, showToast, onRefresh, resolveIsFavorite]);
+
+    const handleFavoriteIconClick = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, file: { id: string; is_favorite?: boolean }) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!resolveIsFavorite(file) || isFavoriteLoading) return;
+            void handleToggleFavorite(file);
+        },
+        [handleToggleFavorite, isFavoriteLoading, resolveIsFavorite],
+    );
 
     const handleMoveToTrash = useCallback(async () => {
         if (!activeFile) return;
@@ -71,9 +96,11 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
             { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true },
             { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
             {
-                label: activeFile?.is_favorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
-                icon: activeFile?.is_favorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
-                onClick: handleToggleFavorite,
+                label: activeFileIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
+                icon: activeFileIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
+                onClick: () => {
+                    void handleToggleFavorite();
+                },
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
             {
@@ -82,7 +109,7 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
                 onClick: handleMoveToTrash,
             },
         ],
-        [handleToggleFavorite, handleMoveToTrash, isFavoriteLoading, activeFile],
+        [activeFileIsFavorite, handleToggleFavorite, handleMoveToTrash, isFavoriteLoading],
     );
 
     if (items.length === 0) {
@@ -100,51 +127,67 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
     return (
         <>
             <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {items.map((item) => (
-                    <div key={item.id} className="group bg-white hover:shadow-md border border-gray-200 rounded-xl overflow-hidden transition-shadow">
-                        <div className="relative flex justify-center items-center bg-gray-50 p-4 border-gray-100 border-b aspect-4/3">
-                            <div className="relative flex justify-center items-center bg-white shadow-sm border border-gray-200 w-full h-full overflow-hidden">
-                                <div className="absolute inset-2 border-2 border-gray-200 border-double" />
-                                <div className="flex justify-center items-center bg-gray-100 rounded-full w-12 h-12">
-                                    <FileText className="w-6 h-6 text-gray-300" />
-                                </div>
-                            </div>
-                        </div>
+                {items.map((item) => {
+                    const isFavorite = resolveIsFavorite(item);
 
-                        <div className="flex items-center gap-3 p-4">
-                            <div className="w-6 h-6">
-                                <Image src={pdfIcon} alt="PDF" width={24} height={24} className="w-6 h-6" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <h3 className="font-semibold text-gray-900 truncate" title={item.file_name}>
-                                        {item.file_name}
-                                    </h3>
-                                    {item.is_favorite && (
-                                        <Star className="w-3.5 h-3.5 fill-gray-900 text-gray-900 shrink-0" />
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1 text-gray-500 text-xs">
-                                    <span className="max-w-20 truncate">{item.user}</span>
-                                    <span className="bg-gray-300 rounded-full w-1 h-1 shrink-0" />
-                                    <span className="truncate">
-                                        {new Date(item.updated_at).toLocaleDateString('id-ID', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                        })}
-                                    </span>
+                    return (
+                        <div key={item.id} className="group bg-white hover:shadow-md border border-gray-200 rounded-xl overflow-hidden transition-shadow">
+                            <div className="relative flex justify-center items-center bg-gray-50 p-4 border-gray-100 border-b aspect-4/3">
+                                <div className="relative flex justify-center items-center bg-white shadow-sm border border-gray-200 w-full h-full overflow-hidden">
+                                    <div className="absolute inset-2 border-2 border-gray-200 border-double" />
+                                    <div className="flex justify-center items-center bg-gray-100 rounded-full w-12 h-12">
+                                        <FileText className="w-6 h-6 text-gray-300" />
+                                    </div>
                                 </div>
                             </div>
-                            <button
-                                className={`${triggerClass} hover:bg-gray-100 p-1 rounded-full text-gray-400 hover:text-gray-600 transition-all shrink-0`}
-                                onClick={(e) => openDropdown(e, item.id)}
-                            >
-                                <MoreVertical className="w-4 h-4" />
-                            </button>
+
+                            <div className="flex items-center gap-3 p-4">
+                                <div className="w-6 h-6">
+                                    <Image src={pdfIcon} alt="PDF" width={24} height={24} className="w-6 h-6" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <h3 className="font-semibold text-gray-900 truncate" title={item.file_name}>
+                                            {item.file_name}
+                                        </h3>
+                                        {isFavorite && (
+                                            <button
+                                                type="button"
+                                                onClick={(event) => handleFavoriteIconClick(event, item)}
+                                                disabled={isFavoriteLoading}
+                                                title="Hapus dari Berbintang"
+                                                className={`p-1 rounded-full transition-colors shrink-0 ${
+                                                    isFavoriteLoading
+                                                        ? 'cursor-not-allowed opacity-60'
+                                                        : 'cursor-pointer hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                <Star className="w-3.5 h-3.5 fill-gray-900 text-gray-900 shrink-0" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1 text-gray-500 text-xs">
+                                        <span className="max-w-20 truncate">{item.user}</span>
+                                        <span className="bg-gray-300 rounded-full w-1 h-1 shrink-0" />
+                                        <span className="truncate">
+                                            {new Date(item.updated_at).toLocaleDateString('id-ID', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    className={`${triggerClass} hover:bg-gray-100 p-1 rounded-full text-gray-400 hover:text-gray-600 transition-all shrink-0`}
+                                    onClick={(e) => openDropdown(e, item.id)}
+                                >
+                                    <MoreVertical className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <DropdownMenu
                 dropdown={activeDropdown}

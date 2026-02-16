@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, type MouseEvent } from 'react';
 import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
@@ -25,6 +25,7 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const { slug, typeSlug } = params as { slug: string; typeSlug: string };
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
     const { toast, showToast, hideToast } = useToast();
+    const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
             triggerClass: 'folder-table-dropdown-trigger',
@@ -36,16 +37,30 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         return items.find((item) => item.id === activeDropdown.id) ?? null;
     }, [activeDropdown, items]);
 
-    const handleToggleFavorite = useCallback(async () => {
-        if (!activeFolder) return;
+    const resolveIsFavorite = useCallback(
+        (folder: { id: string; is_favorite?: boolean }) =>
+            favoriteOverrides[folder.id] ?? Boolean(folder.is_favorite),
+        [favoriteOverrides],
+    );
 
-        const isFavorite = activeFolder.is_favorite;
+    const activeFolderIsFavorite = useMemo(() => {
+        if (!activeFolder) return false;
+        return resolveIsFavorite(activeFolder);
+    }, [activeFolder, resolveIsFavorite]);
+
+    const handleToggleFavorite = useCallback(async (targetFolder?: { id: string; is_favorite?: boolean } | null) => {
+        const folder = targetFolder ?? activeFolder;
+        if (!folder) return;
+
+        const isFavorite = resolveIsFavorite(folder);
         try {
             if (isFavorite) {
-                await removeFromFavorite(activeFolder.id);
+                await removeFromFavorite(folder.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [folder.id]: false }));
                 showToast({ message: 'Berhasil dihapus dari Berbintang', variant: 'success' });
             } else {
-                await addToFavorite(activeFolder.id);
+                await addToFavorite(folder.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [folder.id]: true }));
                 showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
             }
             setTimeout(() => onRefresh?.(), 500);
@@ -58,7 +73,17 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                         : 'Gagal menambahkan ke Berbintang';
             showToast({ message, variant: 'error' });
         }
-    }, [activeFolder, addToFavorite, removeFromFavorite, showToast, onRefresh]);
+    }, [activeFolder, addToFavorite, removeFromFavorite, showToast, onRefresh, resolveIsFavorite]);
+
+    const handleFavoriteIconClick = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, folder: { id: string; is_favorite?: boolean }) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!resolveIsFavorite(folder) || isFavoriteLoading) return;
+            void handleToggleFavorite(folder);
+        },
+        [handleToggleFavorite, isFavoriteLoading, resolveIsFavorite],
+    );
 
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
@@ -66,15 +91,17 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
             { label: 'Ganti nama', icon: <Edit3 className="w-4 h-4" />, hasDivider: true },
             { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
             {
-                label: activeFolder?.is_favorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
-                icon: activeFolder?.is_favorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
-                onClick: handleToggleFavorite,
+                label: activeFolderIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
+                icon: activeFolderIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
+                onClick: () => {
+                    void handleToggleFavorite();
+                },
                 hasDivider: true,
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
             { label: 'Tambahkan ke sampah', icon: <Trash2 className="w-4 h-4" /> },
         ],
-        [handleToggleFavorite, isFavoriteLoading, activeFolder],
+        [activeFolderIsFavorite, handleToggleFavorite, isFavoriteLoading],
     );
 
     const handleRowClick = (folderId: string) => {
@@ -111,51 +138,67 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className="group hover:bg-gray-50/80 transition-colors cursor-pointer"
-                                    onClick={() => handleRowClick(item.id)}
-                                >
-                                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                        <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="">
-                                                <Image src={folderIcon} alt="Folder" width={20} height={20} className="w-5 h-5" />
+                            items.map((item) => {
+                                const isFavorite = resolveIsFavorite(item);
+
+                                return (
+                                    <tr
+                                        key={item.id}
+                                        className="group hover:bg-gray-50/80 transition-colors cursor-pointer"
+                                        onClick={() => handleRowClick(item.id)}
+                                    >
+                                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                            <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="">
+                                                    <Image src={folderIcon} alt="Folder" width={20} height={20} className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-gray-900 group-hover:text-[#8B7355] transition-colors">
+                                                        {item.folder_name}
+                                                    </span>
+                                                    {isFavorite && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => handleFavoriteIconClick(event, item)}
+                                                            disabled={isFavoriteLoading}
+                                                            title="Hapus dari Berbintang"
+                                                            className={`p-1 rounded-full transition-colors ${
+                                                                isFavoriteLoading
+                                                                    ? 'cursor-not-allowed opacity-60'
+                                                                    : 'cursor-pointer hover:bg-gray-200'
+                                                            }`}
+                                                        >
+                                                            <Star className="fill-gray-900 w-4 h-4 text-gray-900" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-gray-900 group-hover:text-[#8B7355] transition-colors">
-                                                    {item.folder_name}
-                                                </span>
-                                                {item.is_favorite && (
-                                                    <Star className="fill-gray-900 w-4 h-4 text-gray-900" />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600 text-sm">{item.user}</td>
-                                    <td className="px-6 py-4 text-gray-600 text-sm text-nowrap">
-                                        {new Date(item.updated_at).toLocaleDateString('id-ID', {
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric'
-                                        })}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <StatusBadge status={item.status} />
-                                    </td>
-                                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            onClick={(e) => openDropdown(e, item.id)}
-                                            className={`p-1 rounded-full cursor-pointer transition-all ${triggerClass} ${isOpen(item.id) ? 'bg-gray-200 text-gray-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-                                        >
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600 text-sm">{item.user}</td>
+                                        <td className="px-6 py-4 text-gray-600 text-sm text-nowrap">
+                                            {new Date(item.updated_at).toLocaleDateString('id-ID', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric'
+                                            })}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <StatusBadge status={item.status} />
+                                        </td>
+                                        <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={(e) => openDropdown(e, item.id)}
+                                                className={`p-1 rounded-full cursor-pointer transition-all ${triggerClass} ${isOpen(item.id) ? 'bg-gray-200 text-gray-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                            >
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

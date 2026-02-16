@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, type MouseEvent } from 'react';
 import { MoreVertical, Search, FileText, Star, Download, Pencil, Info, Trash2, StarOff } from 'lucide-react';
 import { FileItem } from '@/features/services/types';
 import { useDropdown } from '@/shared/hooks/useDropdown';
@@ -21,22 +21,37 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
     const { activeDropdown, openDropdown, closeDropdown, triggerClass, menuClass } = useDropdown<string>();
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFile();
     const { toast, showToast, hideToast } = useToast();
+    const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
 
     const activeFile = useMemo(() => {
         if (!activeDropdown) return null;
         return items.find((item) => item.id === activeDropdown.id) ?? null;
     }, [activeDropdown, items]);
 
-    const handleToggleFavorite = useCallback(async () => {
-        if (!activeFile) return;
+    const resolveIsFavorite = useCallback(
+        (file: { id: string; is_favorite?: boolean }) =>
+            favoriteOverrides[file.id] ?? Boolean(file.is_favorite),
+        [favoriteOverrides],
+    );
 
-        const isFavorite = activeFile.is_favorite;
+    const activeFileIsFavorite = useMemo(() => {
+        if (!activeFile) return false;
+        return resolveIsFavorite(activeFile);
+    }, [activeFile, resolveIsFavorite]);
+
+    const handleToggleFavorite = useCallback(async (targetFile?: { id: string; is_favorite?: boolean } | null) => {
+        const file = targetFile ?? activeFile;
+        if (!file) return;
+
+        const isFavorite = resolveIsFavorite(file);
         try {
             if (isFavorite) {
-                await removeFromFavorite(activeFile.id);
+                await removeFromFavorite(file.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [file.id]: false }));
                 showToast({ message: 'Berhasil dihapus dari Berbintang', variant: 'success' });
             } else {
-                await addToFavorite(activeFile.id);
+                await addToFavorite(file.id);
+                setFavoriteOverrides((prev) => ({ ...prev, [file.id]: true }));
                 showToast({ message: 'Berhasil ditambahkan ke Berbintang', variant: 'success' });
             }
             setTimeout(() => onRefresh?.(), 500);
@@ -46,7 +61,17 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                 : 'Gagal menambahkan ke Berbintang';
             showToast({ message, variant: 'error' });
         }
-    }, [activeFile, addToFavorite, removeFromFavorite, showToast, onRefresh]);
+    }, [activeFile, addToFavorite, removeFromFavorite, showToast, onRefresh, resolveIsFavorite]);
+
+    const handleFavoriteIconClick = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, file: { id: string; is_favorite?: boolean }) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!resolveIsFavorite(file) || isFavoriteLoading) return;
+            void handleToggleFavorite(file);
+        },
+        [handleToggleFavorite, isFavoriteLoading, resolveIsFavorite],
+    );
 
     const handleMoveToTrash = useCallback(async () => {
         if (!activeFile) return;
@@ -69,9 +94,11 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
             { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true },
             { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
             {
-                label: activeFile?.is_favorite ? 'Hapus dari Berbintang' : 'Tambahkan ke berbintang',
-                icon: activeFile?.is_favorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
-                onClick: handleToggleFavorite,
+                label: activeFileIsFavorite ? 'Hapus dari Berbintang' : 'Tambahkan ke berbintang',
+                icon: activeFileIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
+                onClick: () => {
+                    void handleToggleFavorite();
+                },
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
             {
@@ -81,7 +108,7 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                 className: 'text-red-600 hover:bg-red-50',
             },
         ],
-        [handleToggleFavorite, handleMoveToTrash, isFavoriteLoading, activeFile],
+        [activeFileIsFavorite, handleToggleFavorite, handleMoveToTrash, isFavoriteLoading],
     );
 
     return (
@@ -113,44 +140,60 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item) => (
-                                <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-red-50 group-hover:bg-red-100 p-2 border border-transparent group-hover:border-red-200 rounded-lg transition-all">
-                                                <FileText className="w-5 h-5 text-red-500" />
+                            items.map((item) => {
+                                const isFavorite = resolveIsFavorite(item);
+
+                                return (
+                                    <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-red-50 group-hover:bg-red-100 p-2 border border-transparent group-hover:border-red-200 rounded-lg transition-all">
+                                                    <FileText className="w-5 h-5 text-red-500" />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-gray-900 transition-colors">
+                                                        {item.file_name}
+                                                    </span>
+                                                    {isFavorite && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => handleFavoriteIconClick(event, item)}
+                                                            disabled={isFavoriteLoading}
+                                                            title="Hapus dari Berbintang"
+                                                            className={`p-1 rounded-full transition-colors ${
+                                                                isFavoriteLoading
+                                                                    ? 'cursor-not-allowed opacity-60'
+                                                                    : 'cursor-pointer hover:bg-gray-200'
+                                                            }`}
+                                                        >
+                                                            <Star className="fill-gray-900 w-4 h-4 text-gray-900" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-gray-900 transition-colors">
-                                                    {item.file_name}
-                                                </span>
-                                                {item.is_favorite && (
-                                                    <Star className="fill-gray-900 w-4 h-4 text-gray-900" />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600 text-sm">{item.user}</td>
-                                    <td className="px-6 py-4 text-gray-600 text-sm text-nowrap">
-                                        {new Date(item.updated_at).toLocaleDateString('id-ID', {
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric'
-                                        })}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            className={`${triggerClass} hover:bg-gray-100 p-1 rounded-full text-gray-400 hover:text-gray-600 transition-all`}
-                                            onClick={(e) => openDropdown(e, item.id)}
-                                        >
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600 text-sm">{item.user}</td>
+                                        <td className="px-6 py-4 text-gray-600 text-sm text-nowrap">
+                                            {new Date(item.updated_at).toLocaleDateString('id-ID', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric'
+                                            })}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                className={`${triggerClass} hover:bg-gray-100 p-1 rounded-full text-gray-400 hover:text-gray-600 transition-all`}
+                                                onClick={(e) => openDropdown(e, item.id)}
+                                            >
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
