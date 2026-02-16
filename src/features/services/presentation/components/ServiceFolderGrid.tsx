@@ -83,6 +83,14 @@ export function ServiceFolderGrid() {
         [handleToggleFavorite, resolveIsFavorite],
     );
 
+    const handleMoveToTrash = useCallback(async () => {
+        if (!activeFolder) return;
+        showToast({
+            message: 'Tipe layanan belum mendukung aksi pindah ke sampah',
+            variant: 'error',
+        });
+    }, [activeFolder, showToast]);
+
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
             { label: 'Download Folder', icon: <Download className="w-4 h-4" />, hasDivider: true },
@@ -102,9 +110,13 @@ export function ServiceFolderGrid() {
                 },
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
-            { label: 'Tambahkan ke Sampah', icon: <Trash2 className="w-4 h-4" /> },
+            {
+                label: 'Tambahkan ke Sampah',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: handleMoveToTrash,
+            },
         ],
-        [activeFolderIsFavorite, handleToggleFavorite, isFavoriteLoading],
+        [activeFolderIsFavorite, handleMoveToTrash, handleToggleFavorite, isFavoriteLoading],
     );
 
     if (isLoading) {

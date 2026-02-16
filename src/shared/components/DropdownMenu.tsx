@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { DropdownState } from '@/shared/hooks/useDropdown';
 
@@ -27,10 +27,55 @@ export function DropdownMenu({
     onClose,
     widthClass = 'w-65',
 }: DropdownMenuProps) {
+    const menuRef = useRef<HTMLDivElement | null>(null);
+
+    const repositionMenu = useCallback(() => {
+        if (!dropdown) return;
+
+        const menuElement = menuRef.current;
+        if (!menuElement) return;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const menuWidth = menuElement.offsetWidth;
+        const menuHeight = menuElement.offsetHeight;
+        const viewportPadding = 8;
+
+        // right is stored as distance from viewport right. Convert to left for clamping.
+        const initialLeft = viewportWidth - dropdown.right - menuWidth;
+        const minLeft = viewportPadding;
+        const maxLeft = Math.max(viewportPadding, viewportWidth - menuWidth - viewportPadding);
+        const clampedLeft = Math.min(Math.max(initialLeft, minLeft), maxLeft);
+        const clampedRight = viewportWidth - clampedLeft - menuWidth;
+
+        const minTop = viewportPadding;
+        const maxTop = Math.max(viewportPadding, viewportHeight - menuHeight - viewportPadding);
+        const clampedTop = Math.min(Math.max(dropdown.top, minTop), maxTop);
+
+        menuElement.style.top = `${clampedTop}px`;
+        menuElement.style.right = `${clampedRight}px`;
+    }, [dropdown]);
+
+    useLayoutEffect(() => {
+        repositionMenu();
+    }, [repositionMenu, items, widthClass, dropdown]);
+
+    useEffect(() => {
+        function handleResize() {
+            repositionMenu();
+        }
+
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [repositionMenu]);
+
     if (!dropdown || typeof document === 'undefined') return null;
 
     return createPortal(
         <div
+            ref={menuRef}
             className={`fixed z-50 px-2 bg-white rounded shadow-lg border border-gray-400 py-1 ${widthClass} ${menuClass} animate-in fade-in zoom-in-95 duration-100`}
             style={{
                 top: dropdown.top,

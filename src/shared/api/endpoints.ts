@@ -18,6 +18,7 @@ export const ENDPOINTS = {
         ITEM_FAVORITE: `${API_BASE_URL}/item-favorite`,
         REMOVE_ITEM_FAVORITE: `${API_BASE_URL}/remove-item-favorite`,
         ITEM_DELETE: `${API_BASE_URL}/item-delete`,
+        MULTIPLE_ITEM_DELETE: `${API_BASE_URL}/multiple-item-delete`,
         RESTORE_ITEM_DELETED: `${API_BASE_URL}/restore-item-deleted`,
         OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
         OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,

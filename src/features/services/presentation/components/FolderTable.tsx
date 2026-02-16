@@ -12,6 +12,8 @@ import { useDropdown } from '@/shared/hooks/useDropdown';
 import { useToast } from '@/shared/hooks/useToast';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import { Toast } from '@/shared/components/Toast';
+import { apiPost } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 
 interface FolderTableProps {
@@ -26,6 +28,7 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [isTrashLoading, setIsTrashLoading] = useState(false);
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
             triggerClass: 'folder-table-dropdown-trigger',
@@ -85,6 +88,23 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         [handleToggleFavorite, isFavoriteLoading, resolveIsFavorite],
     );
 
+    const handleMoveToTrash = useCallback(async () => {
+        if (!activeFolder) return;
+
+        setIsTrashLoading(true);
+        try {
+            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_DELETE, {
+                items: [{ item_id: activeFolder.id, item_type: 'FOLDER' }],
+            });
+            showToast({ message: 'Berhasil dipindahkan ke sampah', variant: 'success' });
+            setTimeout(() => onRefresh?.(), 500);
+        } catch {
+            showToast({ message: 'Gagal memindahkan ke sampah', variant: 'error' });
+        } finally {
+            setIsTrashLoading(false);
+        }
+    }, [activeFolder, onRefresh, showToast]);
+
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
             { label: 'Download file', icon: <Download className="w-4 h-4" /> },
@@ -99,9 +119,14 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                 hasDivider: true,
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
-            { label: 'Tambahkan ke sampah', icon: <Trash2 className="w-4 h-4" /> },
+            {
+                label: 'Tambahkan ke sampah',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: handleMoveToTrash,
+                className: isTrashLoading ? 'pointer-events-none opacity-60' : '',
+            },
         ],
-        [activeFolderIsFavorite, handleToggleFavorite, isFavoriteLoading],
+        [activeFolderIsFavorite, handleMoveToTrash, handleToggleFavorite, isFavoriteLoading, isTrashLoading],
     );
 
     const handleRowClick = (folderId: string) => {
