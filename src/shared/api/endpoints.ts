@@ -21,6 +21,7 @@ export const ENDPOINTS = {
         MULTIPLE_ITEM_DELETE: `${API_BASE_URL}/multiple-item-delete`,
         RESTORE_ITEM_DELETED: `${API_BASE_URL}/restore-item-deleted`,
         MULTIPLE_ITEM_RESTORE: `${API_BASE_URL}/multiple-item-restore`,
+        NOTIFICATIONS: `${API_BASE_URL}/notifikasi`,
         OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
         OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,
     },

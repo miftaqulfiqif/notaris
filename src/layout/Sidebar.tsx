@@ -68,7 +68,10 @@ export function Sidebar() {
                 </div>
 
                 <div className="p-4 border-gray-100 border-b">
-                    <div className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
+                    <Link
+                        href="/instansi"
+                        className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer"
+                    >
                         <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
                             <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
                                 {getInitials(currentUser.name)}
@@ -79,7 +82,7 @@ export function Sidebar() {
                             <p className="text-gray-500 text-xs truncate">{currentUser.email}</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                    </div>
+                    </Link>
                 </div>
 
                 <nav className="flex-1 space-y-1 px-4 py-6">
