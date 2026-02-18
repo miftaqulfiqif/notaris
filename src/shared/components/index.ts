@@ -1,4 +1,5 @@
 export * from './DebouncedInput';
+export * from './BulkActionToast';
 export * from './DropdownMenu';
 export * from './FilterTabs';
 export * from './FontSizeSlider';

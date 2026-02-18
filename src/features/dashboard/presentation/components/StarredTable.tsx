@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, type MouseEvent } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, type MouseEvent } from 'react';
 import Image from 'next/image';
 import { MoreVertical, Star, StarOff, ArrowUpDown, ArrowUp, ArrowDown, Folder } from 'lucide-react';
 import { StarredItem, ItemType } from '@/features/dashboard/hooks/useStarredItems';
@@ -8,6 +8,7 @@ import { useSelection } from '@/shared/hooks/useSelection';
 import { Pagination } from '@/shared/components/Pagination';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import { Toast } from '@/shared/components/Toast';
+import { BulkActionToast } from '@/shared/components/BulkActionToast';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { useToast } from '@/shared/hooks/useToast';
@@ -76,10 +77,23 @@ export function StarredTable({
         });
     }, [items, sortField, sortDirection]);
 
-    const { toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
+    const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
         items: sortedItems,
         itemIdKey: 'id',
     });
+
+    const selectedStarredItems = useMemo(
+        () => sortedItems.filter((item) => selectedItems.includes(item.id)),
+        [selectedItems, sortedItems],
+    );
+
+    const hasSelectedItems = selectedStarredItems.length > 0;
+
+    useEffect(() => {
+        setSelectedItems((prev) =>
+            prev.filter((selectedId) => sortedItems.some((item) => item.id === selectedId)),
+        );
+    }, [setSelectedItems, sortedItems]);
 
     const activeItem = useMemo(() => {
         if (!activeDropdown) return null;
@@ -141,6 +155,22 @@ export function StarredTable({
         },
         [handleToggleFavorite, pendingFavoriteId],
     );
+
+    const handleBulkRename = useCallback(() => {
+        showToast({ message: `Ganti nama massal untuk ${selectedStarredItems.length} item belum tersedia`, variant: 'info' });
+    }, [selectedStarredItems.length, showToast]);
+
+    const handleBulkFavorite = useCallback(() => {
+        showToast({ message: `Aksi berbintang massal untuk ${selectedStarredItems.length} item belum tersedia`, variant: 'info' });
+    }, [selectedStarredItems.length, showToast]);
+
+    const handleBulkDownload = useCallback(() => {
+        showToast({ message: `Download massal untuk ${selectedStarredItems.length} item belum tersedia`, variant: 'info' });
+    }, [selectedStarredItems.length, showToast]);
+
+    const handleBulkMoveToTrash = useCallback(() => {
+        showToast({ message: `Pindah ke sampah massal untuk ${selectedStarredItems.length} item belum tersedia`, variant: 'info' });
+    }, [selectedStarredItems.length, showToast]);
 
     const moreActions = useMemo<DropdownMenuItem[]>(
         () => [
@@ -372,6 +402,15 @@ export function StarredTable({
                 widthClass="w-60"
             />
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
+            {hasSelectedItems && (
+                <BulkActionToast
+                    onRename={handleBulkRename}
+                    onToggleFavorite={handleBulkFavorite}
+                    onDownload={handleBulkDownload}
+                    onMoveToTrash={handleBulkMoveToTrash}
+                    onCancel={() => setSelectedItems([])}
+                />
+            )}
             <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
@@ -11,9 +11,11 @@ import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFav
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { useToast } from '@/shared/hooks/useToast';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
+import { BulkActionToast } from '@/shared/components/BulkActionToast';
 import { Toast } from '@/shared/components/Toast';
 import { apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import { useSelection } from '@/shared/hooks/useSelection';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 
 interface FolderTableProps {
@@ -29,11 +31,26 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
     const [isTrashLoading, setIsTrashLoading] = useState(false);
+    const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
+        items,
+        itemIdKey: 'id',
+    });
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
             triggerClass: 'folder-table-dropdown-trigger',
             menuClass: 'folder-table-dropdown-menu',
         });
+
+    const selectedFolders = useMemo(
+        () => items.filter((item) => selectedItems.includes(item.id)),
+        [items, selectedItems],
+    );
+
+    const hasSelectedItems = selectedFolders.length > 0;
+
+    useEffect(() => {
+        setSelectedItems((prev) => prev.filter((selectedId) => items.some((item) => item.id === selectedId)));
+    }, [items, setSelectedItems]);
 
     const activeFolder = useMemo(() => {
         if (!activeDropdown) return null;
@@ -133,6 +150,22 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         router.push(`/services/${slug}/${typeSlug}/${folderId}`);
     };
 
+    const handleBulkRename = useCallback(() => {
+        showToast({ message: `Ganti nama massal untuk ${selectedFolders.length} folder belum tersedia`, variant: 'info' });
+    }, [selectedFolders.length, showToast]);
+
+    const handleBulkFavorite = useCallback(() => {
+        showToast({ message: `Aksi berbintang massal untuk ${selectedFolders.length} folder belum tersedia`, variant: 'info' });
+    }, [selectedFolders.length, showToast]);
+
+    const handleBulkDownload = useCallback(() => {
+        showToast({ message: `Download massal untuk ${selectedFolders.length} folder belum tersedia`, variant: 'info' });
+    }, [selectedFolders.length, showToast]);
+
+    const handleBulkMoveToTrash = useCallback(() => {
+        showToast({ message: `Pindah ke sampah massal untuk ${selectedFolders.length} folder belum tersedia`, variant: 'info' });
+    }, [selectedFolders.length, showToast]);
+
     return (
         <div className="bg-white shadow-sm hover:shadow-md border border-gray-200 rounded-xl overflow-hidden transition-shadow">
             <div className="overflow-x-auto">
@@ -140,7 +173,12 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                     <thead>
                         <tr className="bg-gray-50/50 border-gray-100 border-b">
                             <th className="px-6 py-4 w-12">
-                                <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
+                                <input
+                                    type="checkbox"
+                                    className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]"
+                                    checked={isAllSelected}
+                                    onChange={toggleSelectAll}
+                                />
                             </th>
                             <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Nama</th>
                             <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Author</th>
@@ -173,7 +211,12 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                                         onClick={() => handleRowClick(item.id)}
                                     >
                                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]" />
+                                            <input
+                                                type="checkbox"
+                                                className="border-gray-300 rounded focus:ring-[#8B7355] text-[#8B7355]"
+                                                checked={isSelected(item.id)}
+                                                onChange={() => toggleSelectItem(item.id)}
+                                            />
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -237,6 +280,15 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
             />
 
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
+            {hasSelectedItems && (
+                <BulkActionToast
+                    onRename={handleBulkRename}
+                    onToggleFavorite={handleBulkFavorite}
+                    onDownload={handleBulkDownload}
+                    onMoveToTrash={handleBulkMoveToTrash}
+                    onCancel={() => setSelectedItems([])}
+                />
+            )}
         </div>
     );
 }

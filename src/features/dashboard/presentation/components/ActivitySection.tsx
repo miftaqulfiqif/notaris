@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useMemo } from 'react';
 import {
     Star,
     Folder,
@@ -15,6 +16,9 @@ import { useActivityTabs } from '@/features/dashboard/presentation/hooks/useActi
 import { useSelection } from '@/shared/hooks/useSelection';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { Pagination } from '@/shared/components/Pagination';
+import { BulkActionToast } from '@/shared/components/BulkActionToast';
+import { useToast } from '@/shared/hooks/useToast';
+import { Toast } from '@/shared/components/Toast';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
@@ -28,15 +32,31 @@ export function ActivitySection({
     clientHeaderLabel = 'Nama Klien'
 }: ActivitySectionProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
+    const { toast, showToast, hideToast } = useToast();
 
     const activityData = activities ?? mockActivities;
 
     const {
+        selectedItems,
+        setSelectedItems,
         toggleSelectAll,
         toggleSelectItem,
         isSelected,
         isAllSelected
     } = useSelection({ items: activityData, itemIdKey: 'id' });
+
+    const selectedActivities = useMemo(
+        () => activityData.filter((activity) => selectedItems.includes(activity.id)),
+        [activityData, selectedItems],
+    );
+
+    const hasSelectedItems = selectedActivities.length > 0;
+
+    useEffect(() => {
+        setSelectedItems((prev) =>
+            prev.filter((selectedId) => activityData.some((activity) => activity.id === selectedId)),
+        );
+    }, [activityData, setSelectedItems]);
 
     const {
         currentPage,
@@ -47,6 +67,22 @@ export function ActivitySection({
         endIndex,
         totalItems
     } = usePagination({ items: activityData, itemsPerPage: 5 });
+
+    const handleBulkRename = useCallback(() => {
+        showToast({ message: `Ganti nama massal untuk ${selectedActivities.length} item belum tersedia`, variant: 'info' });
+    }, [selectedActivities.length, showToast]);
+
+    const handleBulkFavorite = useCallback(() => {
+        showToast({ message: `Aksi berbintang massal untuk ${selectedActivities.length} item belum tersedia`, variant: 'info' });
+    }, [selectedActivities.length, showToast]);
+
+    const handleBulkDownload = useCallback(() => {
+        showToast({ message: `Download massal untuk ${selectedActivities.length} item belum tersedia`, variant: 'info' });
+    }, [selectedActivities.length, showToast]);
+
+    const handleBulkMoveToTrash = useCallback(() => {
+        showToast({ message: `Pindah ke sampah massal untuk ${selectedActivities.length} item belum tersedia`, variant: 'info' });
+    }, [selectedActivities.length, showToast]);
 
     return (
         <div className="mt-8">
@@ -157,6 +193,16 @@ export function ActivitySection({
                 endIndex={endIndex}
                 totalItems={totalItems}
             />
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
+            {hasSelectedItems && (
+                <BulkActionToast
+                    onRename={handleBulkRename}
+                    onToggleFavorite={handleBulkFavorite}
+                    onDownload={handleBulkDownload}
+                    onMoveToTrash={handleBulkMoveToTrash}
+                    onCancel={() => setSelectedItems([])}
+                />
+            )}
         </div>
     );
 }
