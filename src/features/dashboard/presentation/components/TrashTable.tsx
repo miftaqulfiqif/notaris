@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
-import { MoreVertical, RotateCcw, Trash2, Search } from 'lucide-react';
+import { ArrowUpDown, MoreVertical, RotateCcw, Trash2, Search } from 'lucide-react';
 import { TrashItem } from '@/features/dashboard/hooks/useTrashItems';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/DropdownMenu';
+import { useSelection } from '@/shared/hooks/useSelection';
 import pdfIcon from '@/assets/icons/PDF.svg';
 import folderIcon from '@/assets/icons/folder.png';
 import FolderIcon from '@/assets/icons/folder.png';
@@ -16,12 +17,26 @@ interface TrashTableProps {
     items: TrashItem[];
     onRestore: (item: TrashItem) => Promise<void>;
     onDeleteForever: (item: TrashItem) => Promise<void>;
+    onRestoreMultiple?: (items: TrashItem[]) => Promise<void>;
+    onDeleteForeverMultiple?: (items: TrashItem[]) => Promise<void>;
 }
 
-export function TrashTable({ items, onRestore, onDeleteForever }: TrashTableProps) {
+export function TrashTable({
+    items,
+    onRestore,
+    onDeleteForever,
+    onRestoreMultiple,
+    onDeleteForeverMultiple
+}: TrashTableProps) {
     const { activeDropdown, openDropdown, closeDropdown, triggerClass, menuClass } = useDropdown<string>();
     const [isRestoring, setIsRestoring] = useState<string | null>(null);
+    const [isBulkRestoring, setIsBulkRestoring] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [activeTooltip, setActiveTooltip] = useState<{ id: string; top: number; left: number } | null>(null);
+    const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
+        items,
+        itemIdKey: 'id',
+    });
 
     const getIcon = (type: string) => {
         if (type === 'DOCUMENT') return pdfIcon;
@@ -33,8 +48,49 @@ export function TrashTable({ items, onRestore, onDeleteForever }: TrashTableProp
         try {
             setIsRestoring(item.id);
             await onRestore(item);
+            setSelectedItems((prev) => prev.filter((selectedItemId) => selectedItemId !== item.id));
         } finally {
             setIsRestoring(null);
+        }
+    };
+
+    const selectedTrashItems = useMemo(
+        () => items.filter((item) => selectedItems.includes(item.id)),
+        [items, selectedItems],
+    );
+
+    const hasSelectedItems = selectedTrashItems.length > 0;
+    const isBulkActionLoading = isBulkDeleting || isBulkRestoring;
+
+    useEffect(() => {
+        setSelectedItems((prev) => prev.filter((selectedItemId) => items.some((item) => item.id === selectedItemId)));
+    }, [items, setSelectedItems]);
+
+    const handleBulkRestore = async () => {
+        if (!onRestoreMultiple || !hasSelectedItems || isBulkActionLoading) return;
+
+        try {
+            setIsBulkRestoring(true);
+            await onRestoreMultiple(selectedTrashItems);
+            setSelectedItems([]);
+        } finally {
+            setIsBulkRestoring(false);
+        }
+    };
+
+    const handleBulkDeleteForever = async () => {
+        if (!hasSelectedItems || isBulkActionLoading) return;
+
+        try {
+            setIsBulkDeleting(true);
+            if (onDeleteForeverMultiple) {
+                await onDeleteForeverMultiple(selectedTrashItems);
+            } else {
+                await Promise.all(selectedTrashItems.map((item) => onDeleteForever(item)));
+            }
+            setSelectedItems([]);
+        } finally {
+            setIsBulkDeleting(false);
         }
     };
 
@@ -73,11 +129,48 @@ export function TrashTable({ items, onRestore, onDeleteForever }: TrashTableProp
         }, 100);
     };
 
+    const activeDropdownItem = activeDropdown
+        ? items.find((item) => item.id === activeDropdown.id) ?? null
+        : null;
+
     return (
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+        <div className="relative bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full">
-                    {/* ... (existing code) ... */}
+                    <thead>
+                        <tr className="bg-gray-50/50 border-gray-100 border-b">
+                            <th className="px-6 py-4 w-12">
+                                <input
+                                    type="checkbox"
+                                    className="border-gray-300 rounded focus:ring-[#B39B7D] text-[#B39B7D]"
+                                    checked={isAllSelected}
+                                    onChange={toggleSelectAll}
+                                />
+                            </th>
+                            <th className="px-6 py-4">
+                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                    Nama File
+                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                </button>
+                            </th>
+                            <th className="px-6 py-4">
+                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                    Author
+                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                </button>
+                            </th>
+                            <th className="px-6 py-4">
+                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                    Tanggal dihapus
+                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-800 text-left">Lokasi awal</th>
+                            <th className="px-6 py-4 text-right">
+                                <span className="sr-only">Aksi</span>
+                            </th>
+                        </tr>
+                    </thead>
                     <tbody className="divide-y divide-gray-100">
                         {items.length === 0 ? (
                             <tr>
@@ -95,7 +188,12 @@ export function TrashTable({ items, onRestore, onDeleteForever }: TrashTableProp
                             items.map((item) => (
                                 <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
                                     <td className="px-6 py-4">
-                                        <input type="checkbox" className="border-gray-300 rounded focus:ring-[#B39B7D] text-[#B39B7D]" />
+                                        <input
+                                            type="checkbox"
+                                            className="border-gray-300 rounded focus:ring-[#B39B7D] text-[#B39B7D]"
+                                            checked={isSelected(item.id)}
+                                            onChange={() => toggleSelectItem(item.id)}
+                                        />
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -154,9 +252,46 @@ export function TrashTable({ items, onRestore, onDeleteForever }: TrashTableProp
             <DropdownMenu
                 dropdown={activeDropdown}
                 menuClass={menuClass}
-                items={activeDropdown ? getMenuItems(items.find((i) => i.id === activeDropdown.id)!) : []}
+                items={activeDropdownItem ? getMenuItems(activeDropdownItem) : []}
                 onClose={closeDropdown}
             />
+
+            {hasSelectedItems && (
+                <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+                    <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-3 shadow-xl">
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void handleBulkDeleteForever();
+                                }}
+                                disabled={isBulkActionLoading}
+                                className="flex-1 rounded-xl border border-red-500 px-5 py-3 font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Hapus selamanya
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void handleBulkRestore();
+                                }}
+                                disabled={isBulkActionLoading || !onRestoreMultiple}
+                                className="flex-1 rounded-xl bg-[#8A7A62] px-5 py-3 font-medium text-white transition-colors hover:bg-[#766750] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Pulihkan
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedItems([])}
+                                disabled={isBulkActionLoading}
+                                className="min-w-[120px] rounded-xl border border-gray-200 px-5 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {activeTooltip && typeof document !== 'undefined' && createPortal(
                 (() => {

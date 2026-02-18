@@ -30,6 +30,13 @@ interface TrashResponse {
     };
 }
 
+interface MultipleRestorePayload {
+    items: Array<{
+        item_id: string;
+        item_type: TrashItemType;
+    }>;
+}
+
 export function useTrashItems() {
     const [items, setItems] = useState<TrashItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +102,26 @@ export function useTrashItems() {
         }
     };
 
+    const restoreItems = async (selectedItems: TrashItem[]) => {
+        if (selectedItems.length === 0) return true;
+
+        try {
+            const payload: MultipleRestorePayload = {
+                items: selectedItems.map((item) => ({
+                    item_id: item.item_id,
+                    item_type: item.item_type,
+                })),
+            };
+
+            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_RESTORE, payload);
+            refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to restore selected items:', err);
+            throw err;
+        }
+    };
+
     return {
         items,
         isLoading,
@@ -106,6 +133,7 @@ export function useTrashItems() {
         handlePageChange,
         handleSearch,
         refresh,
-        restoreItem
+        restoreItem,
+        restoreItems,
     };
 }

@@ -19,7 +19,8 @@ export default function TrashPage() {
         totalPages,
         handlePageChange,
         itemsPerPage,
-        restoreItem
+        restoreItem,
+        restoreItems,
     } = useTrashItems();
 
     const { toast, showToast, hideToast } = useToast();
@@ -37,6 +38,21 @@ export default function TrashPage() {
         // TODO: Implement hard delete endpoint integration
         showToast({ message: 'Fitur hapus selamanya belum tersedia', variant: 'info' });
         console.log('Delete forever:', item);
+    };
+
+    const handleRestoreBulk = async (selectedItems: TrashItem[]) => {
+        try {
+            await restoreItems(selectedItems);
+            showToast({ message: `${selectedItems.length} item berhasil dipulihkan`, variant: 'success' });
+        } catch {
+            showToast({ message: 'Gagal memulihkan item terpilih', variant: 'error' });
+        }
+    };
+
+    const handleDeleteForeverBulk = async (selectedItems: TrashItem[]) => {
+        // TODO: Implement hard delete endpoint integration
+        showToast({ message: `${selectedItems.length} item belum bisa dihapus selamanya`, variant: 'info' });
+        console.log('Bulk delete forever:', selectedItems);
     };
 
     return (
@@ -92,6 +108,8 @@ export default function TrashPage() {
                                     items={items}
                                     onRestore={handleRestore}
                                     onDeleteForever={handleDeleteForever}
+                                    onRestoreMultiple={handleRestoreBulk}
+                                    onDeleteForeverMultiple={handleDeleteForeverBulk}
                                 />
                                 <div className="mt-4">
                                     <Pagination
