@@ -35,3 +35,39 @@ export interface UserResponse {
     message: string;
     data: User;
 }
+
+export interface UserDetailInfoUser {
+    profile_picture: string | null;
+    name: string | null;
+    gender: string | null;
+    phone: string | null;
+    jabatan: string | null;
+}
+
+export interface UserDetailAkun {
+    username: string | null;
+    email: string | null;
+    password: string | null;
+    role: string | null;
+    created_at: string | null;
+    last_login: string | null;
+    last_updated_password: string | null;
+}
+
+export interface UserDetailInstansi {
+    notaris_name: string | null;
+    email: string | null;
+    phone: string | null;
+    paket: string | null;
+}
+
+export interface UserDetailData {
+    informasi_user: UserDetailInfoUser;
+    detail_akun: UserDetailAkun;
+    informasi_instansi: UserDetailInstansi;
+}
+
+export interface UserDetailResponse {
+    message: string;
+    data: UserDetailData;
+}

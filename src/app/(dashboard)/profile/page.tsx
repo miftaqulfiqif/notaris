@@ -1,9 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, EyeOff, Pencil, LogOut } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import type { UserDetailData, UserDetailResponse } from '@/features/auth/types';
+import { apiGet } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
 import { getInitials } from '@/shared/utils/initials';
 
 interface InfoRow {
@@ -69,32 +73,80 @@ function formatDate(date?: string | null) {
     });
 }
 
+function getDisplayValue(value?: string | null, fallback = '-'): string {
+    if (!value) return fallback;
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return fallback;
+
+    return trimmedValue;
+}
+
 export default function ProfilePage() {
     const { user, logout } = useAuthContext();
+    const [profileDetail, setProfileDetail] = useState<UserDetailData | null>(null);
+    const [profileError, setProfileError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchProfileDetail = async () => {
+            setProfileError(null);
+            try {
+                const response = await apiGet<UserDetailResponse>(ENDPOINTS.USER.DETAIL);
+                if (!isMounted) return;
+                setProfileDetail(response.data);
+            } catch {
+                if (!isMounted) return;
+                setProfileError('Gagal memuat detail profil');
+            }
+        };
+
+        void fetchProfileDetail();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const profileName = getDisplayValue(profileDetail?.informasi_user.name ?? user?.name, 'Pengguna');
+    const profileEmail = getDisplayValue(profileDetail?.detail_akun.email ?? user?.email);
+
+    const gender = getDisplayValue(profileDetail?.informasi_user.gender);
+    const phone = getDisplayValue(profileDetail?.informasi_user.phone);
+    const jabatan = getDisplayValue(profileDetail?.informasi_user.jabatan);
+    const instansiEmail = getDisplayValue(profileDetail?.informasi_instansi.email);
+    const instansiPhone = getDisplayValue(profileDetail?.informasi_instansi.phone);
+    const instansiPaket = getDisplayValue(profileDetail?.informasi_instansi.paket);
+    const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? user?.role?.role_name);
+    const lastLogin = formatDate(profileDetail?.detail_akun.last_login);
+    const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
 
     const userInfoRows: InfoRow[] = [
-        { label: 'Nama lengkap', value: user?.name || 'Muhammad Dummy' },
-        { label: 'Gender', value: 'Laki-laki' },
-        { label: 'Nomor Handphone', value: '+62 821 5089 5374' },
-        { label: 'Jabatan', value: user?.role?.role_name || 'Staff', isMuted: !user?.role?.role_name },
+        { label: 'Nama lengkap', value: profileName, isMuted: profileName === '-' },
+        { label: 'Gender', value: gender, isMuted: gender === '-' },
+        { label: 'Nomor Handphone', value: phone, isMuted: phone === '-' },
+        { label: 'Jabatan', value: jabatan, isMuted: jabatan === '-' },
     ];
 
     const institutionInfoRows: InfoRow[] = [
-        { label: 'Nama Instansi', value: user?.notaris_name || 'PPAT Dummy' },
-        { label: 'Email', value: user?.email || 'Dummy@Example.com' },
-        { label: 'No.Telp', value: '+62 821 5089 5374' },
-        { label: 'Paket langganan', value: 'Basic (Expired : 12 Juni 2026)' },
+        {
+            label: 'Nama Instansi',
+            value: getDisplayValue(profileDetail?.informasi_instansi.notaris_name ?? user?.notaris_name),
+        },
+        { label: 'Email', value: instansiEmail, isMuted: instansiEmail === '-' },
+        { label: 'No.Telp', value: instansiPhone, isMuted: instansiPhone === '-' },
+        { label: 'Paket langganan', value: instansiPaket, isMuted: instansiPaket === '-' },
     ];
 
     const accountDetailRows: InfoRow[] = [
-        { label: 'Nama pengguna', value: user?.username || user?.name || 'Dummy name' },
-        { label: 'Email', value: user?.email || 'Dummy@Example.com' },
+        { label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name) },
+        { label: 'Email', value: profileEmail, isMuted: profileEmail === '-' },
         { label: 'Password', value: '********', isMasked: true },
-        { label: 'Konfirmasi password', value: '********', isMasked: true },
-        { label: 'Role', value: user?.role?.role_name || 'Admin', isMuted: !user?.role?.role_name },
-        { label: 'Akun dibuat', value: formatDate(user?.created_at) },
-        { label: 'Terakhir login', value: '30 Maret 2026', isMuted: true },
-        { label: 'Perubahan kata sandi terakhir', value: '30 Maret 2026', isMuted: true },
+        { label: 'Role', value: accountRole, isMuted: accountRole === '-' },
+        { label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at) },
+        { label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-' },
+        { label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
     ];
 
     return (
@@ -113,16 +165,21 @@ export default function ProfilePage() {
                             <ChevronRight className="w-4 h-4" />
                             <span className="font-semibold text-gray-800">Profile</span>
                         </div>
+                        {profileError && (
+                            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                {profileError}
+                            </div>
+                        )}
 
                         <section className="mt-8 flex flex-col items-center text-center">
                             <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-white flex items-center justify-center text-3xl font-semibold">
-                                {getInitials(user?.name || 'Dummy Name')}
+                                {getInitials(profileName)}
                                 <span className="absolute bottom-0 right-0 rounded-full border border-gray-200 bg-white p-1 text-gray-500">
                                     <Pencil className="h-3.5 w-3.5" />
                                 </span>
                             </div>
-                            <h1 className="mt-3 text-2xl font-semibold text-gray-900">{user?.name || 'Dummy Name'}</h1>
-                            <p className="mt-1 text-lg text-gray-500">{user?.email || 'Dummy@Example.com'}</p>
+                            <h1 className="mt-3 text-2xl font-semibold text-gray-900">{profileName}</h1>
+                            <p className="mt-1 text-lg text-gray-500">{profileEmail}</p>
                         </section>
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">

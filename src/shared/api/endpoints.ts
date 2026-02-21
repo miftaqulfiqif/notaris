@@ -30,5 +30,9 @@ export const ENDPOINTS = {
         NOTIFICATIONS: `${API_BASE_URL}/notifikasi`,
         OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
         OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,
+        DETAIL: `${API_BASE_URL}/user/detail`,
+    },
+    NOTARIS: {
+        SETTING: `${API_BASE_URL}/notaris/setting`,
     },
 } as const;

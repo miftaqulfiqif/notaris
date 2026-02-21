@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { getInitials } from '@/shared/utils/initials';
-
-const teamMembers = [
-    { id: '1', name: 'Johny Marteen', role: 'Akses penuh' },
-    { id: '2', name: 'Admin name', role: 'Akses penuh' },
-];
+import { apiGet } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
+import type { NotarisMember, NotarisSettingResponse, SettingViewMode } from '@/features/dashboard/types';
 
 const packageFeatures = [
     '15GB storage untuk meyimpan file',
@@ -18,10 +16,69 @@ const packageFeatures = [
     'Keamanan & Backup',
 ];
 
+const normalizeViewMode = (value?: string | null): SettingViewMode => (
+    value === 'grid' ? 'grid' : 'list'
+);
+
+const formatLabel = (value?: string | null, fallback = '-') => {
+    if (!value) return fallback;
+    return value
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
 export default function SettingsPage() {
-    const [defaultView, setDefaultView] = useState<'grid' | 'list'>('list');
-    const [generalView, setGeneralView] = useState<'grid' | 'list'>('grid');
+    const [defaultView, setDefaultView] = useState<SettingViewMode>('list');
+    const [generalView, setGeneralView] = useState<SettingViewMode>('grid');
+    const [halamanAwal, setHalamanAwal] = useState('dashboard');
+    const [ukuranFont, setUkuranFont] = useState('sedang');
+    const [activePackage, setActivePackage] = useState<string | null>(null);
+    const [teamMembers, setTeamMembers] = useState<NotarisMember[]>([]);
+    const [emailNotificationEnabled, setEmailNotificationEnabled] = useState(false);
     const [inAppNotificationEnabled, setInAppNotificationEnabled] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchSetting = async () => {
+            setError(null);
+            try {
+                const response = await apiGet<NotarisSettingResponse>(ENDPOINTS.NOTARIS.SETTING);
+                if (!mounted) return;
+
+                const payload = response.data;
+                setDefaultView(normalizeViewMode(payload.setting.default_view));
+                setGeneralView(normalizeViewMode(payload.setting.umum));
+                setHalamanAwal(payload.setting.halaman_awal || 'dashboard');
+                setUkuranFont(payload.setting.ukuran_font || 'sedang');
+                setActivePackage(payload.paket.paket);
+                setTeamMembers(payload.member || []);
+                setInAppNotificationEnabled(Boolean(payload.notifikasi.notifikasi_dalam_aplikasi));
+                setEmailNotificationEnabled(Boolean(payload.notifikasi.notifikasi_email));
+            } catch {
+                if (!mounted) return;
+                setError('Gagal memuat data setting');
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        void fetchSetting();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const packageLabel = useMemo(
+        () => (activePackage ? formatLabel(activePackage) : 'Belum ada paket aktif'),
+        [activePackage],
+    );
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -32,6 +89,12 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="flex-1 px-4 sm:px-8 pb-8">
+                        {error && (
+                            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="mt-6 mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Setting</h1>
                             <div className="flex flex-wrap items-center gap-3">
@@ -120,7 +183,7 @@ export default function SettingsPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Halaman awal</p>
                                             <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-full sm:w-36">
-                                                Dashboard
+                                                {formatLabel(halamanAwal)}
                                                 <ChevronDown className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -128,7 +191,7 @@ export default function SettingsPage() {
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Ukuran Font</p>
                                             <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-full sm:w-36">
-                                                Kecil
+                                                {formatLabel(ukuranFont)}
                                                 <ChevronDown className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -140,20 +203,26 @@ export default function SettingsPage() {
                                         <h2 className="text-2xl font-semibold text-gray-900">Member setting</h2>
                                     </header>
                                     <div>
-                                        {teamMembers.map((member) => (
-                                            <div key={member.id} className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 last:border-b-0">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-white flex items-center justify-center text-sm font-semibold shrink-0">
-                                                        {getInitials(member.name)}
+                                        {isLoading ? (
+                                            <div className="px-5 py-4 text-sm text-gray-500">Memuat member...</div>
+                                        ) : teamMembers.length === 0 ? (
+                                            <div className="px-5 py-4 text-sm text-gray-500">Belum ada member.</div>
+                                        ) : (
+                                            teamMembers.map((member) => (
+                                                <div key={member.id} className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 last:border-b-0">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-white flex items-center justify-center text-sm font-semibold shrink-0">
+                                                            {getInitials(member.name)}
+                                                        </div>
+                                                        <p className="truncate text-lg font-medium text-gray-900">{member.name}</p>
                                                     </div>
-                                                    <p className="truncate text-lg font-medium text-gray-900">{member.name}</p>
+                                                    <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-36">
+                                                        {formatLabel(member.access, 'Tanpa akses')}
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    </button>
                                                 </div>
-                                                <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-36">
-                                                    {member.role}
-                                                    <ChevronDown className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        ))}
+                                            ))
+                                        )}
                                     </div>
                                 </section>
                             </div>
@@ -164,7 +233,10 @@ export default function SettingsPage() {
                                         <h2 className="text-2xl font-semibold text-gray-900">Paket saat ini</h2>
                                     </header>
                                     <div className="px-5 py-4 space-y-3">
-                                        {packageFeatures.map((feature) => (
+                                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                            {packageLabel}
+                                        </div>
+                                        {activePackage && packageFeatures.map((feature) => (
                                             <div key={feature} className="flex items-start gap-3 text-gray-800">
                                                 <Check className="mt-0.5 h-4 w-4 text-[#6E5F49]" />
                                                 <span className="text-lg">{feature}</span>
@@ -208,14 +280,20 @@ export default function SettingsPage() {
                                         <div className="flex items-start justify-between gap-4">
                                             <div>
                                                 <p className="text-lg font-medium text-gray-900">Notifikasi Email</p>
-                                                <p className="mt-1 text-sm text-gray-500">Belum tersedia.</p>
+                                                <p className="mt-1 text-sm text-gray-500">Kirim pemberitahuan melalui email.</p>
                                             </div>
                                             <button
                                                 type="button"
-                                                disabled
-                                                className="relative inline-flex h-7 w-12 rounded-full bg-gray-200 opacity-70 cursor-not-allowed"
+                                                onClick={() => setEmailNotificationEnabled((prev) => !prev)}
+                                                className={`relative inline-flex h-7 w-12 rounded-full transition-colors ${
+                                                    emailNotificationEnabled ? 'bg-[#7A6A53]' : 'bg-gray-200'
+                                                }`}
                                             >
-                                                <span className="inline-block h-5 w-5 translate-x-1 mt-1 rounded-full bg-white" />
+                                                <span
+                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                                        emailNotificationEnabled ? 'translate-x-6 mt-1' : 'translate-x-1 mt-1'
+                                                    }`}
+                                                />
                                             </button>
                                         </div>
                                     </div>
