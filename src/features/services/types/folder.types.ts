@@ -43,3 +43,35 @@ export interface FolderDetailResponse {
     message: string;
     data: FolderDetail;
 }
+
+export interface FolderSidebarAccessUser {
+    profile_picture: string | null;
+    name: string;
+}
+
+export interface FolderSidebarStatusDetail {
+    status: string;
+    last_modified: string | null;
+    modification_by: string | null;
+}
+
+export interface FolderSidebarDetailFolder {
+    modified_at: string | null;
+    modified_by: string | null;
+    opened_at: string | null;
+    opened_by: string | null;
+    created_at: string | null;
+    created_by: string | null;
+}
+
+export interface FolderSidebarData {
+    folder_name: string;
+    have_access: FolderSidebarAccessUser[];
+    detail_status: FolderSidebarStatusDetail;
+    detail_folder: FolderSidebarDetailFolder;
+}
+
+export interface FolderSidebarResponse {
+    message: string;
+    data: FolderSidebarData;
+}

@@ -11,6 +11,7 @@ import { useToast } from '@/shared/hooks/useToast';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import { Toast } from '@/shared/components/Toast';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
+import { ServiceTypeDetailOffcanvas } from '@/features/services/presentation/components/ServiceTypeDetailOffcanvas';
 
 export function ServiceFolderGrid() {
     const { serviceTypes, isLoading } = useServiceTypes();
@@ -20,6 +21,10 @@ export function ServiceFolderGrid() {
         useFavoriteServiceType();
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [detailSidebarServiceType, setDetailSidebarServiceType] = useState<{
+        id: string;
+        name: string;
+    } | null>(null);
 
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
@@ -91,10 +96,22 @@ export function ServiceFolderGrid() {
         });
     }, [activeFolder, showToast]);
 
+    const handleOpenDetailSidebar = useCallback(() => {
+        if (!activeFolder) return;
+        setDetailSidebarServiceType({
+            id: activeFolder.id,
+            name: activeFolder.name,
+        });
+    }, [activeFolder]);
+
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
             { label: 'Download Folder', icon: <Download className="w-4 h-4" />, hasDivider: true },
-            { label: 'Lihat Detail Folder', icon: <Info className="w-4 h-4" /> },
+            {
+                label: 'Lihat Detail Folder',
+                icon: <Info className="w-4 h-4" />,
+                onClick: handleOpenDetailSidebar,
+            },
             {
                 label: activeFolderIsFavorite
                     ? 'Hapus dari Berbintang'
@@ -116,7 +133,13 @@ export function ServiceFolderGrid() {
                 onClick: handleMoveToTrash,
             },
         ],
-        [activeFolderIsFavorite, handleMoveToTrash, handleToggleFavorite, isFavoriteLoading],
+        [
+            activeFolderIsFavorite,
+            handleMoveToTrash,
+            handleOpenDetailSidebar,
+            handleToggleFavorite,
+            isFavoriteLoading,
+        ],
     );
 
     if (isLoading) {
@@ -180,6 +203,11 @@ export function ServiceFolderGrid() {
                 menuClass={menuClass}
                 items={folderMenuItems}
                 onClose={closeDropdown}
+            />
+            <ServiceTypeDetailOffcanvas
+                serviceTypeId={detailSidebarServiceType?.id ?? null}
+                serviceTypeName={detailSidebarServiceType?.name}
+                onClose={() => setDetailSidebarServiceType(null)}
             />
 
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />

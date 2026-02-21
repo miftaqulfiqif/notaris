@@ -17,6 +17,7 @@ import folderIcon from '@/assets/icons/folder.png';
 import { FolderItem } from '@/features/services/types';
 import { StatusBadge } from '@/shared/components';
 import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFavoriteFolder';
+import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { useToast } from '@/shared/hooks/useToast';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
@@ -214,6 +215,10 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
     const [updatingStatusFolderId, setUpdatingStatusFolderId] = useState<string | null>(null);
     const [isTrashLoading, setIsTrashLoading] = useState(false);
+    const [detailSidebarFolder, setDetailSidebarFolder] = useState<{
+        id: string;
+        name: string;
+    } | null>(null);
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
         items,
         itemIdKey: 'id',
@@ -345,6 +350,14 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         }
     }, [activeFolder, onRefresh, showToast]);
 
+    const handleOpenDetailSidebar = useCallback(() => {
+        if (!activeFolder) return;
+        setDetailSidebarFolder({
+            id: activeFolder.id,
+            name: activeFolder.folder_name,
+        });
+    }, [activeFolder]);
+
     const handleOpenStatusDropdown = useCallback(
         (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
             closeDropdown();
@@ -391,7 +404,7 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         () => [
             { label: 'Download file', icon: <Download className="w-4 h-4" /> },
             { label: 'Ganti nama', icon: <Edit3 className="w-4 h-4" />, hasDivider: true },
-            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
+            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" />, onClick: handleOpenDetailSidebar },
             {
                 label: activeFolderIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
                 icon: activeFolderIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
@@ -408,7 +421,14 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                 className: isTrashLoading ? 'pointer-events-none opacity-60' : '',
             },
         ],
-        [activeFolderIsFavorite, handleMoveToTrash, handleToggleFavorite, isFavoriteLoading, isTrashLoading],
+        [
+            activeFolderIsFavorite,
+            handleMoveToTrash,
+            handleOpenDetailSidebar,
+            handleToggleFavorite,
+            isFavoriteLoading,
+            isTrashLoading,
+        ],
     );
 
     const handleRowClick = (folderId: string) => {
@@ -569,6 +589,11 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                     void handleUpdateFolderStatus(status);
                 }}
                 onClose={closeStatusDropdown}
+            />
+            <FolderDetailOffcanvas
+                folderId={detailSidebarFolder?.id ?? null}
+                folderName={detailSidebarFolder?.name}
+                onClose={() => setDetailSidebarFolder(null)}
             />
 
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />

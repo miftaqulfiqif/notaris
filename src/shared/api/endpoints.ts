@@ -15,9 +15,11 @@ export const ENDPOINTS = {
     USER: {
         SERVICES: `${API_BASE_URL}/user/layanan`,
         SERVICE_TYPES: `${API_BASE_URL}/user/layanan/:serviceId/tipe-layanan`,
+        DETAIL_SERVICE_TYPE: `${API_BASE_URL}/detail-tipe-layanan/:tipe_layanan_id`,
         UPLOAD_FILE: `${API_BASE_URL}/upload-file`,
         FOLDERS: `${API_BASE_URL}/folders`,
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
+        DETAIL_FOLDER_SIDEBAR: `${API_BASE_URL}/detail-folder-sidebar/:folder_id`,
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
         EDIT_FOLDER: `${API_BASE_URL}/edit-folder/:folder_id`,
         UPDATE_STATUS_FOLDER: `${API_BASE_URL_WITH_API_PREFIX}/update-status-folder`,
