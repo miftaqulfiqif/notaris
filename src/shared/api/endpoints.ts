@@ -20,6 +20,7 @@ export const ENDPOINTS = {
         FOLDERS: `${API_BASE_URL}/folders`,
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
         DETAIL_FOLDER_SIDEBAR: `${API_BASE_URL}/detail-folder-sidebar/:folder_id`,
+        FOLDER_ACTIVITIES: `${API_BASE_URL}/aktifitas/folder/:folder_id`,
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
         EDIT_FOLDER: `${API_BASE_URL}/edit-folder/:folder_id`,
         UPDATE_STATUS_FOLDER: `${API_BASE_URL_WITH_API_PREFIX}/update-status-folder`,

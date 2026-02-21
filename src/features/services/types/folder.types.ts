@@ -75,3 +75,17 @@ export interface FolderSidebarResponse {
     message: string;
     data: FolderSidebarData;
 }
+
+export interface FolderActivityItem {
+    id: string;
+    description: string;
+    folder_name: string;
+    object: string;
+    object_status: string | null;
+    created_at: string;
+}
+
+export interface FolderActivitiesResponse {
+    message: string;
+    data: FolderActivityItem[];
+}

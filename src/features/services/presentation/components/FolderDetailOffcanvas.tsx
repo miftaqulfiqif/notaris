@@ -4,10 +4,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { FileText, FolderArchive, FolderClosed, X } from 'lucide-react';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
-import type { FolderSidebarData, FolderSidebarResponse } from '@/features/services/types';
+import type {
+    FolderActivityItem,
+    FolderActivitiesResponse,
+    FolderSidebarData,
+    FolderSidebarResponse,
+} from '@/features/services/types';
 import { getInitials } from '@/shared/utils/initials';
 
 type DetailTab = 'detail' | 'aktivitas';
+type ActivityGroup = 'Hari ini' | 'Kemarin' | 'Sebelumnya';
 
 interface FolderDetailOffcanvasProps {
     folderId: string | null;
@@ -15,13 +21,17 @@ interface FolderDetailOffcanvasProps {
     onClose: () => void;
 }
 
-interface ActivityTimelineItem {
-    id: string;
-    group: 'Hari ini' | 'Kemarin';
-    action: string;
-    time: string;
-    itemType: 'folder' | 'file';
-    itemName: string;
+interface ActivitySectionProps {
+    title: ActivityGroup;
+    items: FolderActivityItem[];
+    avatarInitials: string;
+    fallbackFolderLabel: string;
+    withBottomBorder?: boolean;
+}
+
+interface ActivityNode {
+    kind: 'folder' | 'file';
+    label: string;
 }
 
 const formatDisplayValue = (value?: string | null, fallback = '-'): string => {
@@ -77,18 +87,181 @@ const resolveStatusMeta = (status?: string | null): { label: string; className: 
     };
 };
 
+const resolveActivityGroup = (createdAt: string): ActivityGroup => {
+    const normalized = createdAt.toLowerCase().trim();
+
+    if (!normalized) return 'Hari ini';
+    if (normalized.includes('kemarin')) return 'Kemarin';
+
+    const parsedDate = new Date(createdAt);
+    if (!Number.isNaN(parsedDate.getTime())) {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const activityStart = new Date(
+            parsedDate.getFullYear(),
+            parsedDate.getMonth(),
+            parsedDate.getDate(),
+        );
+        const dayDiff = Math.floor((todayStart.getTime() - activityStart.getTime()) / 86_400_000);
+
+        if (dayDiff <= 0) return 'Hari ini';
+        if (dayDiff === 1) return 'Kemarin';
+        return 'Sebelumnya';
+    }
+
+    const dayMatch = normalized.match(/(\d+)\s+hari/);
+    if (dayMatch) {
+        const days = Number(dayMatch[1]);
+        if (Number.isFinite(days)) {
+            if (days <= 0) return 'Hari ini';
+            if (days === 1) return 'Kemarin';
+            return 'Sebelumnya';
+        }
+    }
+
+    if (
+        normalized.includes('menit') ||
+        normalized.includes('jam') ||
+        normalized.includes('detik') ||
+        normalized.includes('baru')
+    ) {
+        return 'Hari ini';
+    }
+
+    return 'Sebelumnya';
+};
+
+const resolveIsFileActivity = (activity: FolderActivityItem): boolean => {
+    const combinedText = `${activity.description} ${activity.object}`.toLowerCase();
+    if (combinedText.includes('file')) return true;
+
+    return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|zip|rar)$/i.test(activity.object);
+};
+
+const resolveActivityTitle = (description: string): string => {
+    const normalized = description.toLowerCase();
+
+    if (normalized.includes('menghapus')) return 'Anda Menghapus Item di';
+    if (normalized.includes('mengupload')) return 'Anda mengupload Item di';
+    if (normalized.includes('membuat')) return 'Anda Membuat Item di';
+    if (normalized.includes('mengedit') || normalized.includes('merubah')) return 'Anda Mengedit Detail di';
+    if (normalized.includes('membuka')) return 'Anda Membuka Item di';
+
+    return formatDisplayValue(description)
+        .replace(/^kamu/i, 'Anda')
+        .trim();
+};
+
+const resolveActivityNodes = (
+    activity: FolderActivityItem,
+    fallbackFolderLabel: string,
+): ActivityNode[] => {
+    const nodes: ActivityNode[] = [];
+    const folderNodeLabel = formatDisplayValue(activity.folder_name, fallbackFolderLabel);
+    const objectValue = formatDisplayValue(activity.object, '');
+    const isItemsCount = /^\d+\s+items?$/i.test(objectValue);
+    const hasSecondNode =
+        Boolean(objectValue) &&
+        objectValue !== '-' &&
+        !isItemsCount &&
+        objectValue.toLowerCase() !== folderNodeLabel.toLowerCase();
+
+    nodes.push({
+        kind: 'folder',
+        label: folderNodeLabel,
+    });
+
+    if (hasSecondNode) {
+        nodes.push({
+            kind: resolveIsFileActivity(activity) ? 'file' : 'folder',
+            label: objectValue,
+        });
+    }
+
+    return nodes;
+};
+
+function ActivitySection({
+    title,
+    items,
+    avatarInitials,
+    fallbackFolderLabel,
+    withBottomBorder = false,
+}: ActivitySectionProps) {
+    if (items.length === 0) return null;
+
+    return (
+        <section className={`space-y-5 ${withBottomBorder ? 'border-b border-gray-200 pb-8' : ''}`}>
+            <h3 className="text-[18px] font-semibold text-gray-900">{title}</h3>
+            {items.map((item) => {
+                const nodes = resolveActivityNodes(item, fallbackFolderLabel);
+                const activityStatus = item.object_status ? resolveStatusMeta(item.object_status) : null;
+
+                return (
+                    <div key={item.id} className="flex items-start gap-4">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gray-300 to-gray-500 text-sm font-semibold text-white">
+                            {avatarInitials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[17px] font-medium text-gray-800">
+                                {resolveActivityTitle(item.description)}
+                            </p>
+                            <p className="text-sm text-gray-500">{formatDisplayValue(item.created_at)}</p>
+
+                            <div className="mt-3 space-y-3">
+                                {nodes.map((node, index) => (
+                                    <div
+                                        key={`${item.id}-node-${index}`}
+                                        className="flex items-start"
+                                        style={index > 0 ? { marginLeft: `${index * 22}px` } : undefined}
+                                    >
+                                        {index > 0 && (
+                                            <span className="mt-0.5 mr-3 h-7 w-8 shrink-0 rounded-bl-[12px] border-gray-500/70 border-b-2 border-l-2" />
+                                        )}
+                                        <div className="inline-flex max-w-full items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-[17px] text-gray-700">
+                                            {node.kind === 'file' ? (
+                                                <FileText className="h-5 w-5 shrink-0 text-red-500" />
+                                            ) : (
+                                                <FolderClosed className="h-5 w-5 shrink-0" />
+                                            )}
+                                            <span className="truncate">{node.label}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {activityStatus && (
+                                <div className="mt-2">
+                                    <span
+                                        className={`inline-flex rounded-lg px-3 py-1 text-sm font-medium ${activityStatus.className}`}
+                                    >
+                                        {activityStatus.label}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
+        </section>
+    );
+}
+
 export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderDetailOffcanvasProps) {
     const [activeTab, setActiveTab] = useState<DetailTab>('detail');
     const [detail, setDetail] = useState<FolderSidebarData | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [activities, setActivities] = useState<FolderActivityItem[]>([]);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState<string | null>(null);
+    const [isActivitiesLoading, setIsActivitiesLoading] = useState(false);
+    const [activitiesError, setActivitiesError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!folderId) return;
 
         let isMounted = true;
-        setIsLoading(true);
-        setError(null);
+        setIsDetailLoading(true);
+        setDetailError(null);
 
         const fetchFolderDetail = async () => {
             try {
@@ -98,16 +271,47 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                 setDetail(response.data);
             } catch {
                 if (!isMounted) return;
-                setError('Gagal memuat detail folder');
+                setDetailError('Gagal memuat detail folder');
                 setDetail(null);
             } finally {
                 if (isMounted) {
-                    setIsLoading(false);
+                    setIsDetailLoading(false);
                 }
             }
         };
 
         void fetchFolderDetail();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [folderId]);
+
+    useEffect(() => {
+        if (!folderId) return;
+
+        let isMounted = true;
+        setIsActivitiesLoading(true);
+        setActivitiesError(null);
+
+        const fetchFolderActivities = async () => {
+            try {
+                const url = ENDPOINTS.USER.FOLDER_ACTIVITIES.replace(':folder_id', folderId);
+                const response = await apiGet<FolderActivitiesResponse>(url);
+                if (!isMounted) return;
+                setActivities(Array.isArray(response.data) ? response.data : []);
+            } catch {
+                if (!isMounted) return;
+                setActivitiesError('Gagal memuat aktivitas folder');
+                setActivities([]);
+            } finally {
+                if (isMounted) {
+                    setIsActivitiesLoading(false);
+                }
+            }
+        };
+
+        void fetchFolderActivities();
 
         return () => {
             isMounted = false;
@@ -121,44 +325,140 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
     const folderLabel = detail?.folder_name || folderName || 'Detail Folder';
     const accessUsers = detail?.have_access ?? [];
     const statusMeta = resolveStatusMeta(detail?.detail_status.status);
+    const avatarInitials = getInitials(accessUsers[0]?.name || 'Saya');
 
-    const activityItems = useMemo<ActivityTimelineItem[]>(
-        () => [
-            {
-                id: 'today-upload',
-                group: 'Hari ini',
-                action: 'Anda mengupload Item',
-                time: '08.00 26 Jan',
-                itemType: 'file',
-                itemName: 'Akta.pdf',
-            },
-            {
-                id: 'today-edit',
-                group: 'Hari ini',
-                action: 'Anda Mengedit Detail di',
-                time: '08.00 26 Jan',
-                itemType: 'folder',
-                itemName: folderLabel,
-            },
-            {
-                id: 'yesterday-upload',
-                group: 'Kemarin',
-                action: 'Anda mengupload Item',
-                time: '08.00 26 Jan',
-                itemType: 'file',
-                itemName: 'Legalitas.pdf',
-            },
-        ],
-        [folderLabel],
-    );
-
-    const actorForAvatar = accessUsers[0]?.name || 'Saya';
     const groupedActivities = useMemo(
         () => ({
-            today: activityItems.filter((item) => item.group === 'Hari ini'),
-            yesterday: activityItems.filter((item) => item.group === 'Kemarin'),
+            today: activities.filter((item) => resolveActivityGroup(item.created_at) === 'Hari ini'),
+            yesterday: activities.filter((item) => resolveActivityGroup(item.created_at) === 'Kemarin'),
+            previous: activities.filter((item) => resolveActivityGroup(item.created_at) === 'Sebelumnya'),
         }),
-        [activityItems],
+        [activities],
+    );
+
+    const detailTabContent = isDetailLoading ? (
+        <div className="text-sm text-gray-500">Memuat detail...</div>
+    ) : detailError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {detailError}
+        </div>
+    ) : (
+        <div className="space-y-8">
+            <section className="space-y-6 border-b border-gray-200 pb-8">
+                <div className="flex flex-col items-center justify-center gap-3">
+                    <FolderArchive className="h-24 w-24 text-gray-700" />
+                    <p className="text-[18px] font-medium text-gray-900 text-center">{folderLabel}</p>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[18px] font-semibold text-gray-900">Yang memiliki akses</h3>
+                    {accessUsers.length === 0 ? (
+                        <p className="text-base text-gray-500">Belum ada user yang memiliki akses.</p>
+                    ) : (
+                        <>
+                            <div className="flex -space-x-2">
+                                {accessUsers.slice(0, 4).map((item, index) => (
+                                    <div
+                                        key={`${item.name}-${index}`}
+                                        className="flex h-14 w-14 items-center justify-center rounded-full border border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-sm font-semibold text-white"
+                                    >
+                                        {getInitials(item.name)}
+                                    </div>
+                                ))}
+                            </div>
+                            <ul className="list-disc space-y-1 pl-6 text-base text-gray-700">
+                                {accessUsers.map((item, index) => (
+                                    <li key={`${item.name}-${index}`}>{item.name}</li>
+                                ))}
+                            </ul>
+                        </>
+                    )}
+                </div>
+            </section>
+
+            <section className="space-y-6 border-b border-gray-200 pb-8">
+                <div className="space-y-3">
+                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Status</h3>
+                    <span
+                        className={`inline-flex rounded-xl px-6 py-2 text-lg font-medium ${statusMeta.className}`}
+                    >
+                        {statusMeta.label}
+                    </span>
+                    <p className="text-base text-gray-700">
+                        {formatValueWithActor(
+                            detail?.detail_status.last_modified,
+                            detail?.detail_status.modification_by,
+                        )}
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Folder</h3>
+
+                    <div>
+                        <p className="text-[17px] font-medium text-gray-800">Dimodifikasi</p>
+                        <p className="mt-1 text-base text-gray-700">
+                            {formatValueWithActor(
+                                detail?.detail_folder.modified_at,
+                                detail?.detail_folder.modified_by,
+                            )}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="text-[17px] font-medium text-gray-800">Dibuka</p>
+                        <p className="mt-1 text-base text-gray-700">
+                            {formatValueWithActor(
+                                detail?.detail_folder.opened_at,
+                                detail?.detail_folder.opened_by,
+                            )}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="text-[17px] font-medium text-gray-800">Dibuat</p>
+                        <p className="mt-1 text-base text-gray-700">
+                            {formatValueWithActor(
+                                detail?.detail_folder.created_at,
+                                detail?.detail_folder.created_by,
+                            )}
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    );
+
+    const activityTabContent = isActivitiesLoading ? (
+        <div className="text-sm text-gray-500">Memuat aktivitas...</div>
+    ) : activitiesError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {activitiesError}
+        </div>
+    ) : activities.length === 0 ? (
+        <p className="text-sm text-gray-500">Belum ada aktivitas pada folder ini.</p>
+    ) : (
+        <div className="space-y-8">
+            <ActivitySection
+                title="Hari ini"
+                items={groupedActivities.today}
+                avatarInitials={avatarInitials}
+                fallbackFolderLabel={folderLabel}
+            />
+            <ActivitySection
+                title="Kemarin"
+                items={groupedActivities.yesterday}
+                avatarInitials={avatarInitials}
+                fallbackFolderLabel={folderLabel}
+            />
+            <ActivitySection
+                title="Sebelumnya"
+                items={groupedActivities.previous}
+                avatarInitials={avatarInitials}
+                fallbackFolderLabel={folderLabel}
+                withBottomBorder
+            />
+        </div>
     );
 
     if (!folderId) return null;
@@ -211,148 +511,7 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 py-6">
-                    {isLoading ? (
-                        <div className="text-sm text-gray-500">Memuat detail...</div>
-                    ) : error ? (
-                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                            {error}
-                        </div>
-                    ) : activeTab === 'detail' ? (
-                        <div className="space-y-8">
-                            <section className="space-y-6 border-b border-gray-200 pb-8">
-                                <div className="flex flex-col items-center justify-center gap-3">
-                                    <FolderArchive className="h-24 w-24 text-gray-700" />
-                                    <p className="text-[18px] font-medium text-gray-900 text-center">{folderLabel}</p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-[18px] font-semibold text-gray-900">Yang memiliki akses</h3>
-                                    {accessUsers.length === 0 ? (
-                                        <p className="text-base text-gray-500">
-                                            Belum ada user yang memiliki akses.
-                                        </p>
-                                    ) : (
-                                        <>
-                                            <div className="flex -space-x-2">
-                                                {accessUsers.slice(0, 4).map((item, index) => (
-                                                    <div
-                                                        key={`${item.name}-${index}`}
-                                                        className="flex h-14 w-14 items-center justify-center rounded-full border border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-sm font-semibold text-white"
-                                                    >
-                                                        {getInitials(item.name)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <ul className="list-disc space-y-1 pl-6 text-base text-gray-700">
-                                                {accessUsers.map((item, index) => (
-                                                    <li key={`${item.name}-${index}`}>{item.name}</li>
-                                                ))}
-                                            </ul>
-                                        </>
-                                    )}
-                                </div>
-                            </section>
-
-                            <section className="space-y-6 border-b border-gray-200 pb-8">
-                                <div className="space-y-3">
-                                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Status</h3>
-                                    <span
-                                        className={`inline-flex rounded-xl px-6 py-2 text-lg font-medium ${statusMeta.className}`}
-                                    >
-                                        {statusMeta.label}
-                                    </span>
-                                    <p className="text-base text-gray-700">
-                                        {formatValueWithActor(
-                                            detail?.detail_status.last_modified,
-                                            detail?.detail_status.modification_by,
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Folder</h3>
-
-                                    <div>
-                                        <p className="text-[17px] font-medium text-gray-800">Dimodifikasi</p>
-                                        <p className="mt-1 text-base text-gray-700">
-                                            {formatValueWithActor(
-                                                detail?.detail_folder.modified_at,
-                                                detail?.detail_folder.modified_by,
-                                            )}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[17px] font-medium text-gray-800">Dibuka</p>
-                                        <p className="mt-1 text-base text-gray-700">
-                                            {formatValueWithActor(
-                                                detail?.detail_folder.opened_at,
-                                                detail?.detail_folder.opened_by,
-                                            )}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[17px] font-medium text-gray-800">Dibuat</p>
-                                        <p className="mt-1 text-base text-gray-700">
-                                            {formatValueWithActor(
-                                                detail?.detail_folder.created_at,
-                                                detail?.detail_folder.created_by,
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
-                            <section className="space-y-4">
-                                <h3 className="text-[18px] font-semibold text-gray-900">Hari ini</h3>
-                                {groupedActivities.today.map((item) => (
-                                    <div key={item.id} className="flex items-start gap-4">
-                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-sm font-semibold text-white">
-                                            {getInitials(actorForAvatar)}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[18px] font-medium text-gray-800">{item.action}</p>
-                                            <p className="text-sm text-gray-500">{item.time}</p>
-                                            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-[17px] text-gray-700">
-                                                {item.itemType === 'folder' ? (
-                                                    <FolderClosed className="h-5 w-5 shrink-0" />
-                                                ) : (
-                                                    <FileText className="h-5 w-5 shrink-0 text-red-500" />
-                                                )}
-                                                <span className="truncate">{item.itemName}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </section>
-
-                            <section className="space-y-4 border-b border-gray-200 pb-8">
-                                <h3 className="text-[18px] font-semibold text-gray-900">Kemarin</h3>
-                                {groupedActivities.yesterday.map((item) => (
-                                    <div key={item.id} className="flex items-start gap-4">
-                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-sm font-semibold text-white">
-                                            {getInitials(actorForAvatar)}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[18px] font-medium text-gray-800">{item.action}</p>
-                                            <p className="text-sm text-gray-500">{item.time}</p>
-                                            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-[17px] text-gray-700">
-                                                {item.itemType === 'folder' ? (
-                                                    <FolderClosed className="h-5 w-5 shrink-0" />
-                                                ) : (
-                                                    <FileText className="h-5 w-5 shrink-0 text-red-500" />
-                                                )}
-                                                <span className="truncate">{item.itemName}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </section>
-                        </div>
-                    )}
+                    {activeTab === 'detail' ? detailTabContent : activityTabContent}
                 </div>
             </div>
         </>
