@@ -36,6 +36,7 @@ describe('NotificationsPage', () => {
             object_name: 'PT ABC',
             object_updated: 'terjeda',
             has_read: false,
+            file_path: null,
             created_at: 'Sekarang',
           },
         ],

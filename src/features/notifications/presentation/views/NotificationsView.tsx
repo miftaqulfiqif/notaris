@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, FileText } from 'lucide-react';
+import { ChevronRight, FileText, Folder } from 'lucide-react';
 import { getInitials } from '@/shared/utils/initials';
+import { Pagination } from '@/shared/components/Pagination';
 import type { NotificationItem } from '@/features/notifications/types/notification.types';
 
 interface NotificationsViewProps {
@@ -10,17 +11,32 @@ interface NotificationsViewProps {
     isLoading: boolean;
     error: string | null;
     totalNotRead: number;
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    startIndex: number;
+    endIndex: number;
     onMarkAllRead: () => void;
     onRetry: () => void;
+    onPageChange: (page: number) => void;
 }
+
+const formatStatusLabel = (value: string) =>
+    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 
 export function NotificationsView({
     notifications,
     isLoading,
     error,
     totalNotRead,
+    currentPage,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
     onMarkAllRead,
     onRetry,
+    onPageChange,
 }: NotificationsViewProps) {
     return (
         <div className="flex-1 px-8 pb-8">
@@ -33,7 +49,12 @@ export function NotificationsView({
             </div>
 
             <div className="mb-5 flex items-end justify-between">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifikasi</h1>
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifikasi</h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        Total <span className="font-semibold text-gray-700">{totalItems}</span> notifikasi
+                    </p>
+                </div>
                 <button
                     onClick={onMarkAllRead}
                     disabled={totalNotRead === 0}
@@ -87,31 +108,51 @@ export function NotificationsView({
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-base sm:text-lg font-semibold text-[#2F343B]">
-                                        {notification.title}
+                                        {notification.description}
                                     </p>
                                     <p className="mt-1 text-sm sm:text-base text-gray-500">
-                                        {notification.action}
+                                        {notification.actionLabel}
                                     </p>
-                                    {notification.attachment && (
-                                        <div className="mt-2 inline-flex items-center gap-2 text-sm sm:text-base text-[#2F343B]">
-                                            <FileText className="h-5 w-5 text-red-500" />
-                                            <span>{notification.attachment}</span>
-                                        </div>
+                                    <div className="mt-2 inline-flex max-w-full items-center gap-2 text-sm sm:text-base text-[#2F343B]">
+                                        {notification.objectType === 'DOCUMENT' ? (
+                                            <FileText className="h-5 w-5 shrink-0 text-red-500" />
+                                        ) : (
+                                            <Folder className="h-5 w-5 shrink-0 text-[#7A6A53]" />
+                                        )}
+                                        <span className="truncate">{notification.objectName}</span>
+                                    </div>
+                                    {notification.filePath && (
+                                        <p className="mt-2 truncate text-sm text-gray-500">
+                                            {notification.filePath}
+                                        </p>
                                     )}
                                 </div>
                                 <div className="flex shrink-0 items-center gap-4">
-                                    {notification.statusLabel && (
+                                    {notification.actionKey === 'update_status' && notification.objectUpdated && (
                                         <span className="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
-                                            {notification.statusLabel}
+                                            {formatStatusLabel(notification.objectUpdated)}
                                         </span>
                                     )}
                                     <span className="text-sm sm:text-base text-gray-500 whitespace-nowrap">
-                                        {notification.time}
+                                        {notification.createdAt}
                                     </span>
                                 </div>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {!isLoading && !error && totalItems > 0 && (
+                <div className="mt-6 overflow-hidden rounded-xl border border-gray-100">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={onPageChange}
+                        startIndex={startIndex}
+                        endIndex={endIndex}
+                        totalItems={totalItems}
+                    />
                 </div>
             )}
         </div>

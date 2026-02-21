@@ -1,4 +1,9 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL_WITH_API_PREFIX = API_BASE_URL
+    ? API_BASE_URL.replace(/\/$/, '').endsWith('/api')
+        ? API_BASE_URL.replace(/\/$/, '')
+        : `${API_BASE_URL.replace(/\/$/, '')}/api`
+    : '';
 
 export const ENDPOINTS = {
     AUTH: {
@@ -15,6 +20,7 @@ export const ENDPOINTS = {
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
         EDIT_FOLDER: `${API_BASE_URL}/edit-folder/:folder_id`,
+        UPDATE_STATUS_FOLDER: `${API_BASE_URL_WITH_API_PREFIX}/update-status-folder`,
         ITEM_FAVORITE: `${API_BASE_URL}/item-favorite`,
         REMOVE_ITEM_FAVORITE: `${API_BASE_URL}/remove-item-favorite`,
         ITEM_DELETE: `${API_BASE_URL}/item-delete`,

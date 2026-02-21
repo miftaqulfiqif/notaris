@@ -8,7 +8,7 @@ export interface FolderItem {
     user: string;
     is_favorite: boolean;
     updated_at: string;
-    status: 'selesai' | 'proses' | 'terutunda' | string;
+    status: 'selesai' | 'proses' | 'terjeda' | 'tertunda' | string;
 }
 
 /**

@@ -3,32 +3,14 @@
 import { RegisterForm } from "@/features/auth/presentation/components/RegisterForm";
 import Link from "next/link";
 import { PublicOnlyRoute } from "@/features/auth/presentation/components/PublicOnlyRoute";
+import { BrandLogo } from '@/shared/components';
 
 export default function RegisterPage() {
     return (
         <PublicOnlyRoute>
             <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white">
                 <header className="w-full px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[#2A3F6D]">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="w-8 h-8"
-                        >
-                            <path d="M2 6h4" />
-                            <path d="M2 10h4" />
-                            <path d="M2 14h4" />
-                            <path d="M2 18h4" />
-                            <rect width="16" height="20" x="4" y="2" rx="2" />
-                            <path d="M16 2v20" />
-                        </svg>
-                        <span className="text-xl font-bold">Notarix</span>
-                    </div>
+                    <BrandLogo width={122} height={45} priority />
                     <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500">Sudah punya akun ?</span>
                         <Link

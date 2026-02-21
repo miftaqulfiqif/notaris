@@ -1,7 +1,16 @@
 'use client';
 
-import { useCallback, useMemo, useState, useEffect, type MouseEvent } from 'react';
-import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import {
+    useCallback,
+    useMemo,
+    useState,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    type MouseEvent,
+} from 'react';
+import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2, Check } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import folderIcon from '@/assets/icons/folder.png';
@@ -13,10 +22,182 @@ import { useToast } from '@/shared/hooks/useToast';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import { BulkActionToast } from '@/shared/components/BulkActionToast';
 import { Toast } from '@/shared/components/Toast';
-import { apiPost } from '@/shared/api/api-client';
+import { apiPatch, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { useSelection } from '@/shared/hooks/useSelection';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
+import type { DropdownState } from '@/shared/hooks/useDropdown';
+
+type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+
+interface StatusOption {
+    value: FolderStatusValue;
+    label: string;
+    activeClass: string;
+    textClass: string;
+    dotBorderClass: string;
+    dotFillClass: string;
+}
+
+const STATUS_OPTIONS: StatusOption[] = [
+    {
+        value: 'selesai',
+        label: 'Selesai',
+        activeClass: 'bg-green-100',
+        textClass: 'text-green-700',
+        dotBorderClass: 'border-green-300',
+        dotFillClass: 'bg-green-400',
+    },
+    {
+        value: 'tertunda',
+        label: 'Tertunda',
+        activeClass: 'bg-red-100',
+        textClass: 'text-red-700',
+        dotBorderClass: 'border-red-300',
+        dotFillClass: 'bg-red-500',
+    },
+    {
+        value: 'proses',
+        label: 'Proses',
+        activeClass: 'bg-yellow-100',
+        textClass: 'text-yellow-700',
+        dotBorderClass: 'border-yellow-300',
+        dotFillClass: 'bg-yellow-400',
+    },
+];
+
+const normalizeFolderStatus = (status: string): string => {
+    const normalizedStatus = status.toLowerCase().trim();
+
+    if (normalizedStatus === 'terutunda' || normalizedStatus === 'terjeda') {
+        return 'tertunda';
+    }
+
+    return normalizedStatus;
+};
+
+const toFolderStatusValue = (status: string): FolderStatusValue | null => {
+    const normalizedStatus = normalizeFolderStatus(status);
+
+    if (STATUS_OPTIONS.some((option) => option.value === normalizedStatus)) {
+        return normalizedStatus as FolderStatusValue;
+    }
+
+    return null;
+};
+
+interface FolderStatusPopoverProps {
+    dropdown: DropdownState<string> | null;
+    menuClass: string;
+    activeStatus: FolderStatusValue | null;
+    isLoading: boolean;
+    onSelect: (status: FolderStatusValue) => void;
+    onClose: () => void;
+}
+
+function FolderStatusPopover({
+    dropdown,
+    menuClass,
+    activeStatus,
+    isLoading,
+    onSelect,
+    onClose,
+}: FolderStatusPopoverProps) {
+    const menuRef = useRef<HTMLDivElement | null>(null);
+
+    const repositionMenu = useCallback(() => {
+        if (!dropdown) return;
+
+        const menuElement = menuRef.current;
+        if (!menuElement) return;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const menuWidth = menuElement.offsetWidth;
+        const menuHeight = menuElement.offsetHeight;
+        const viewportPadding = 8;
+
+        const initialLeft = viewportWidth - dropdown.right - menuWidth;
+        const minLeft = viewportPadding;
+        const maxLeft = Math.max(viewportPadding, viewportWidth - menuWidth - viewportPadding);
+        const clampedLeft = Math.min(Math.max(initialLeft, minLeft), maxLeft);
+        const clampedRight = viewportWidth - clampedLeft - menuWidth;
+
+        const minTop = viewportPadding;
+        const maxTop = Math.max(viewportPadding, viewportHeight - menuHeight - viewportPadding);
+        const clampedTop = Math.min(Math.max(dropdown.top, minTop), maxTop);
+
+        menuElement.style.top = `${clampedTop}px`;
+        menuElement.style.right = `${clampedRight}px`;
+    }, [dropdown]);
+
+    useLayoutEffect(() => {
+        repositionMenu();
+    }, [repositionMenu, activeStatus]);
+
+    useEffect(() => {
+        function handleResize() {
+            repositionMenu();
+        }
+
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [repositionMenu]);
+
+    if (!dropdown || typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div
+            ref={menuRef}
+            className={`fixed z-50 w-64 rounded-xl border border-gray-200 bg-white p-2 shadow-xl ${menuClass} animate-in fade-in zoom-in-95 duration-100`}
+            style={{
+                top: dropdown.top,
+                right: dropdown.right,
+            }}
+            onClick={(event) => event.stopPropagation()}
+        >
+            <div className="space-y-1">
+                {STATUS_OPTIONS.map((option) => {
+                    const isActive = option.value === activeStatus;
+
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => {
+                                onClose();
+                                onSelect(option.value);
+                            }}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                                isLoading
+                                    ? 'cursor-not-allowed opacity-60'
+                                    : isActive
+                                        ? `${option.activeClass} ${option.textClass} cursor-pointer`
+                                        : 'cursor-pointer text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            <span
+                                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${option.dotBorderClass}`}
+                            >
+                                <span
+                                    className={`h-3 w-3 rounded-full ${
+                                        isActive ? option.dotFillClass : 'bg-transparent'
+                                    }`}
+                                />
+                            </span>
+                            <span className="flex-1 font-medium text-base">{option.label}</span>
+                            {isActive && <Check className={`h-4 w-4 ${option.textClass}`} />}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>,
+        document.body,
+    );
+}
 
 interface FolderTableProps {
     items: FolderItem[];
@@ -30,6 +211,8 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+    const [updatingStatusFolderId, setUpdatingStatusFolderId] = useState<string | null>(null);
     const [isTrashLoading, setIsTrashLoading] = useState(false);
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
         items,
@@ -40,6 +223,17 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
             triggerClass: 'folder-table-dropdown-trigger',
             menuClass: 'folder-table-dropdown-menu',
         });
+    const {
+        activeDropdown: activeStatusDropdown,
+        openDropdown: openStatusDropdown,
+        closeDropdown: closeStatusDropdown,
+        isOpen: isStatusOpen,
+        triggerClass: statusTriggerClass,
+        menuClass: statusMenuClass,
+    } = useDropdown<string>({
+        triggerClass: 'folder-table-status-trigger',
+        menuClass: 'folder-table-status-menu',
+    });
 
     const selectedFolders = useMemo(
         () => items.filter((item) => selectedItems.includes(item.id)),
@@ -52,10 +246,28 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         setSelectedItems((prev) => prev.filter((selectedId) => items.some((item) => item.id === selectedId)));
     }, [items, setSelectedItems]);
 
+    useEffect(() => {
+        const existingIds = new Set(items.map((item) => item.id));
+        setStatusOverrides((prev) => {
+            const filteredEntries = Object.entries(prev).filter(([folderId]) => existingIds.has(folderId));
+
+            if (filteredEntries.length === Object.keys(prev).length) {
+                return prev;
+            }
+
+            return Object.fromEntries(filteredEntries);
+        });
+    }, [items]);
+
     const activeFolder = useMemo(() => {
         if (!activeDropdown) return null;
         return items.find((item) => item.id === activeDropdown.id) ?? null;
     }, [activeDropdown, items]);
+
+    const activeStatusFolder = useMemo(() => {
+        if (!activeStatusDropdown) return null;
+        return items.find((item) => item.id === activeStatusDropdown.id) ?? null;
+    }, [activeStatusDropdown, items]);
 
     const resolveIsFavorite = useCallback(
         (folder: { id: string; is_favorite?: boolean }) =>
@@ -67,6 +279,17 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         if (!activeFolder) return false;
         return resolveIsFavorite(activeFolder);
     }, [activeFolder, resolveIsFavorite]);
+
+    const resolveFolderStatus = useCallback(
+        (folder: { id: string; status: string }) =>
+            statusOverrides[folder.id] ?? normalizeFolderStatus(folder.status),
+        [statusOverrides],
+    );
+
+    const activeFolderStatus = useMemo(() => {
+        if (!activeStatusFolder) return null;
+        return toFolderStatusValue(resolveFolderStatus(activeStatusFolder));
+    }, [activeStatusFolder, resolveFolderStatus]);
 
     const handleToggleFavorite = useCallback(async (targetFolder?: { id: string; is_favorite?: boolean } | null) => {
         const folder = targetFolder ?? activeFolder;
@@ -121,6 +344,48 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
             setIsTrashLoading(false);
         }
     }, [activeFolder, onRefresh, showToast]);
+
+    const handleOpenStatusDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
+            closeDropdown();
+            openStatusDropdown(event, folderId);
+        },
+        [closeDropdown, openStatusDropdown],
+    );
+
+    const handleOpenActionDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
+            closeStatusDropdown();
+            openDropdown(event, folderId);
+        },
+        [closeStatusDropdown, openDropdown],
+    );
+
+    const handleUpdateFolderStatus = useCallback(async (nextStatus: FolderStatusValue) => {
+        if (!activeStatusFolder) return;
+
+        const folderId = activeStatusFolder.id;
+        const currentStatus = toFolderStatusValue(resolveFolderStatus(activeStatusFolder));
+
+        if (currentStatus === nextStatus) return;
+
+        setUpdatingStatusFolderId(folderId);
+
+        try {
+            await apiPatch(ENDPOINTS.USER.UPDATE_STATUS_FOLDER, {
+                folder_id: folderId,
+                status: nextStatus,
+            });
+
+            setStatusOverrides((prev) => ({ ...prev, [folderId]: nextStatus }));
+            showToast({ message: 'Status folder berhasil diperbarui', variant: 'success' });
+            setTimeout(() => onRefresh?.(), 500);
+        } catch {
+            showToast({ message: 'Gagal memperbarui status folder', variant: 'error' });
+        } finally {
+            setUpdatingStatusFolderId((prev) => (prev === folderId ? null : prev));
+        }
+    }, [activeStatusFolder, onRefresh, resolveFolderStatus, showToast]);
 
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
@@ -203,6 +468,8 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                         ) : (
                             items.map((item) => {
                                 const isFavorite = resolveIsFavorite(item);
+                                const resolvedStatus = resolveFolderStatus(item);
+                                const isUpdatingStatus = updatingStatusFolderId === item.id;
 
                                 return (
                                     <tr
@@ -254,11 +521,26 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                                             })}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <StatusBadge status={item.status} />
+                                            <button
+                                                type="button"
+                                                onClick={(event) => handleOpenStatusDropdown(event, item.id)}
+                                                disabled={isUpdatingStatus}
+                                                className={`inline-flex rounded-md transition-opacity ${statusTriggerClass} ${
+                                                    isStatusOpen(item.id)
+                                                        ? 'ring-2 ring-[#8B7355]/25 ring-offset-1'
+                                                        : ''
+                                                } ${
+                                                    isUpdatingStatus
+                                                        ? 'cursor-not-allowed opacity-60'
+                                                        : 'cursor-pointer hover:opacity-80'
+                                                }`}
+                                            >
+                                                <StatusBadge status={resolvedStatus} />
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             <button
-                                                onClick={(e) => openDropdown(e, item.id)}
+                                                onClick={(event) => handleOpenActionDropdown(event, item.id)}
                                                 className={`p-1 rounded-full cursor-pointer transition-all ${triggerClass} ${isOpen(item.id) ? 'bg-gray-200 text-gray-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                             >
                                                 <MoreVertical className="w-4 h-4" />
@@ -277,6 +559,16 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
                 menuClass={menuClass}
                 items={folderMenuItems}
                 onClose={closeDropdown}
+            />
+            <FolderStatusPopover
+                dropdown={activeStatusDropdown}
+                menuClass={statusMenuClass}
+                activeStatus={activeFolderStatus}
+                isLoading={Boolean(updatingStatusFolderId)}
+                onSelect={(status) => {
+                    void handleUpdateFolderStatus(status);
+                }}
+                onClose={closeStatusDropdown}
             />
 
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />

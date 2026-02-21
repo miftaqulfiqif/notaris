@@ -1,5 +1,6 @@
 export * from './DebouncedInput';
 export * from './BulkActionToast';
+export * from './BrandLogo';
 export * from './DropdownMenu';
 export * from './FilterTabs';
 export * from './FontSizeSlider';

@@ -8,6 +8,7 @@ export interface NotificationApiItem {
     object_name: string;
     object_updated: string | null;
     has_read: boolean;
+    file_path: string | null;
     created_at: string;
 }
 
@@ -24,13 +25,18 @@ export interface NotificationsResponse {
 
 export interface NotificationItem {
     id: string;
+    type: string;
     actor: string;
-    title: string;
-    action: string;
-    time: string;
-    attachment?: string;
+    description: string;
+    actionKey: string;
+    actionLabel: string;
+    objectType: string;
+    objectId: string;
+    objectName: string;
+    objectUpdated: string | null;
+    filePath: string | null;
+    createdAt: string;
     unread: boolean;
-    statusLabel?: string;
 }
 
 export interface UseNotificationsOptions {

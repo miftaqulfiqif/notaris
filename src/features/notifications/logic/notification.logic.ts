@@ -1,19 +1,24 @@
 import type { NotificationApiItem, NotificationItem } from '@/features/notifications/types/notification.types';
 
-const capitalizeFirst = (value: string) =>
-    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+const capitalizeWords = (value: string) =>
+    value.replace(/\b\w/g, (char) => char.toUpperCase());
 
 export function getNotificationActionLabel(item: NotificationApiItem): string {
     const actionMap: Record<string, string> = {
-        update_status: 'Status berubah',
+        update_status: 'Mengubah status',
+        add_document: 'Menambah dokumen',
+        delete_document: 'Menghapus dokumen',
+        add_folder: 'Menambah folder',
+        delete_folder: 'Menghapus folder',
+        edit_item: 'Mengedit item',
         update_item: 'Mengedit item',
-        delete_item: 'Hapus item',
+        delete_item: 'Menghapus item',
         upload_file: 'Upload file',
-        delete_file: 'Hapus file',
+        delete_file: 'Menghapus file',
     };
 
     if (actionMap[item.action]) return actionMap[item.action];
-    return item.action.replace(/_/g, ' ');
+    return capitalizeWords(item.action.replace(/_/g, ' '));
 }
 
 export function mapNotificationItem(
@@ -29,15 +34,17 @@ export function mapNotificationItem(
 
     return {
         id: item.id,
+        type: item.type,
         actor,
-        title: description,
-        action: getNotificationActionLabel(item),
-        time: item.created_at || '-',
-        attachment: item.object === 'DOCUMENT' ? item.object_name : undefined,
+        description,
+        actionKey: item.action,
+        actionLabel: getNotificationActionLabel(item),
+        objectType: item.object,
+        objectId: item.object_id,
+        objectName: item.object_name,
+        objectUpdated: item.object_updated,
+        filePath: item.file_path,
+        createdAt: item.created_at || '-',
         unread: !item.has_read,
-        statusLabel:
-            item.action === 'update_status' && item.object_updated
-                ? capitalizeFirst(item.object_updated)
-                : undefined,
     };
 }

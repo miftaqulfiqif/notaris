@@ -14,6 +14,6 @@ describe('RegisterPage', () => {
   it('renders register page', () => {
     render(<RegisterPage />);
     expect(screen.getByTestId('register-form')).toBeInTheDocument();
-    expect(screen.getByText('Notarix')).toBeInTheDocument();
+    expect(screen.getByAltText('Notarix')).toBeInTheDocument();
   });
 });

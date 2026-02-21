@@ -57,6 +57,9 @@ const globalSearchItems: GlobalSearchItem[] = [
     },
 ];
 
+const formatStatusLabel = (value: string) =>
+    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+
 export function DashboardHeader() {
     const router = useRouter();
     const { toggle } = useSidebar();
@@ -78,7 +81,7 @@ export function DashboardHeader() {
         limit: 10,
         search: '',
         fallbackActorName: user?.name,
-        autoFetch: false,
+        autoFetch: true,
     });
     const dropdownRef = useRef<HTMLDivElement>(null);
     const notificationRef = useRef<HTMLDivElement>(null);
@@ -339,15 +342,29 @@ export function DashboardHeader() {
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="truncate text-lg font-semibold text-[#2F343B]">
-                                                        {notification.title}
+                                                        {notification.description}
                                                     </p>
                                                     <p className="mt-2 text-base leading-none text-gray-500">
-                                                        {notification.time} <span className="mx-2">•</span> {notification.action}
+                                                        {notification.createdAt} <span className="mx-2">•</span> {notification.actionLabel}
                                                     </p>
-                                                    {notification.attachment && (
-                                                        <div className="mt-3 inline-flex items-center gap-2 text-base leading-none text-[#2F343B]">
-                                                            <FileText className="w-5 h-5 text-red-500" />
-                                                            <span>{notification.attachment}</span>
+                                                    <div className="mt-3 inline-flex max-w-full items-center gap-2 text-base leading-none text-[#2F343B]">
+                                                        {notification.objectType === 'DOCUMENT' ? (
+                                                            <FileText className="w-5 h-5 shrink-0 text-red-500" />
+                                                        ) : (
+                                                            <Folder className="w-5 h-5 shrink-0 text-[#7A6A53]" />
+                                                        )}
+                                                        <span className="truncate">{notification.objectName}</span>
+                                                    </div>
+                                                    {notification.filePath && (
+                                                        <p className="mt-2 truncate text-sm text-gray-500">
+                                                            {notification.filePath}
+                                                        </p>
+                                                    )}
+                                                    {notification.actionKey === 'update_status' && notification.objectUpdated && (
+                                                        <div className="mt-2">
+                                                            <span className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                                                                {formatStatusLabel(notification.objectUpdated)}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>
