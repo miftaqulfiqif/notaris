@@ -183,8 +183,8 @@ export function DashboardHeader() {
                                         type="button"
                                         onClick={() => setActiveSearchFilter('ALL')}
                                         className={`inline-flex items-center rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors ${activeSearchFilter === 'ALL'
-                                                ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                            ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                                             }`}
                                     >
                                         Semua
@@ -193,8 +193,8 @@ export function DashboardHeader() {
                                         type="button"
                                         onClick={() => setActiveSearchFilter('DOCUMENT')}
                                         className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors ${activeSearchFilter === 'DOCUMENT'
-                                                ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                            ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                                             }`}
                                     >
                                         <FileText className="h-4 w-4" />
@@ -204,8 +204,8 @@ export function DashboardHeader() {
                                         type="button"
                                         onClick={() => setActiveSearchFilter('FOLDER')}
                                         className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors ${activeSearchFilter === 'FOLDER'
-                                                ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                            ? 'border-[#7A6A53] bg-[#7A6A53] text-white'
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                                             }`}
                                     >
                                         <Folder className="h-4 w-4" />
@@ -415,7 +415,8 @@ export function DashboardHeader() {
                                 className="w-full px-4 py-3 border-b border-gray-100 text-left hover:bg-gray-50 transition-colors"
                             >
                                 <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'User'}</p>
-                                <p className="text-xs text-gray-500 truncate">{user?.email || 'email@example.com'}</p>
+                                <p className="text-xs text-gray-500 truncate">{user?.role?.role_name || 'User'}</p>
+                                <p className="text-xs text-gray-400 truncate">{user?.email || 'email@example.com'}</p>
                             </button>
                             <button
                                 onClick={() => {

@@ -348,30 +348,61 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                 <div className="flex flex-col items-center justify-center gap-3">
                     <FolderArchive className="h-24 w-24 text-gray-700" />
                     <p className="text-[18px] font-medium text-gray-900 text-center">{folderLabel}</p>
+                    <p className="text-sm text-gray-500">{detail?.detail_folder?.tipe_layanan || 'Detail Folder Layanan'}</p>
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[18px] font-semibold text-gray-900">Yang memiliki akses</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[18px] font-semibold text-gray-900">Yang memiliki akses</h3>
+                        <button
+                            type="button"
+                            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                        >
+                            Kelola Akses
+                        </button>
+                    </div>
                     {accessUsers.length === 0 ? (
                         <p className="text-base text-gray-500">Belum ada user yang memiliki akses.</p>
                     ) : (
-                        <>
+                        <div className="space-y-4">
                             <div className="flex -space-x-2">
                                 {accessUsers.slice(0, 4).map((item, index) => (
                                     <div
                                         key={`${item.name}-${index}`}
-                                        className="flex h-14 w-14 items-center justify-center rounded-full border border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-sm font-semibold text-white"
+                                        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-sm text-white"
+                                        title={item.name}
                                     >
-                                        {getInitials(item.name)}
+                                        {item.profile_picture ? (
+                                            <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            getInitials(item.name)
+                                        )}
                                     </div>
                                 ))}
+                                {accessUsers.length > 4 && (
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-gray-100 font-semibold text-sm text-gray-600">
+                                        +{accessUsers.length - 4}
+                                    </div>
+                                )}
                             </div>
-                            <ul className="list-disc space-y-1 pl-6 text-base text-gray-700">
+                            <ul className="space-y-3 pt-2">
                                 {accessUsers.map((item, index) => (
-                                    <li key={`${item.name}-${index}`}>{item.name}</li>
+                                    <li key={`${item.name}-${index}`} className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-xs text-white">
+                                            {item.profile_picture ? (
+                                                <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                getInitials(item.name)
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{item.name}</p>
+                                            {item.role && <p className="text-sm text-gray-500">{item.role}</p>}
+                                        </div>
+                                    </li>
                                 ))}
                             </ul>
-                        </>
+                        </div>
                     )}
                 </div>
             </section>
@@ -379,28 +410,30 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
             <section className="space-y-6 border-b border-gray-200 pb-8">
                 <div className="space-y-3">
                     <h3 className="text-[18px] font-semibold text-gray-900">Detail Status</h3>
-                    <span
-                        className={`inline-flex rounded-xl px-6 py-2 text-lg font-medium ${statusMeta.className}`}
-                    >
-                        {statusMeta.label}
-                    </span>
-                    <p className="text-base text-gray-700">
-                        {formatValueWithActor(
-                            detail?.detail_status.last_modified,
-                            detail?.detail_status.modification_by,
-                        )}
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <span
+                            className={`inline-flex rounded-xl px-6 py-2 text-lg font-medium ${statusMeta.className}`}
+                        >
+                            {statusMeta.label}
+                        </span>
+                        <p className="text-base text-gray-700">
+                            {formatValueWithActor(
+                                detail?.detail_status.last_modified,
+                                detail?.detail_status.modification_by,
+                            )}
+                        </p>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
-                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Folder</h3>
+                    <h3 className="text-[18px] font-semibold text-gray-900">Detail Folder Layanan</h3>
 
                     <div>
-                        <p className="text-[17px] font-medium text-gray-800">Dimodifikasi</p>
+                        <p className="text-[17px] font-medium text-gray-800">Dibuat</p>
                         <p className="mt-1 text-base text-gray-700">
                             {formatValueWithActor(
-                                detail?.detail_folder.modified_at,
-                                detail?.detail_folder.modified_by,
+                                detail?.detail_folder.created_at,
+                                detail?.detail_folder.created_by,
                             )}
                         </p>
                     </div>
@@ -416,11 +449,11 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                     </div>
 
                     <div>
-                        <p className="text-[17px] font-medium text-gray-800">Dibuat</p>
+                        <p className="text-[17px] font-medium text-gray-800">Dimodifikasi</p>
                         <p className="mt-1 text-base text-gray-700">
                             {formatValueWithActor(
-                                detail?.detail_folder.created_at,
-                                detail?.detail_folder.created_by,
+                                detail?.detail_folder.modified_at,
+                                detail?.detail_folder.modified_by,
                             )}
                         </p>
                     </div>
@@ -489,22 +522,20 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                     <button
                         type="button"
                         onClick={() => setActiveTab('detail')}
-                        className={`w-1/2 border-b-4 px-4 py-3 text-[18px] transition-colors ${
-                            activeTab === 'detail'
+                        className={`w-1/2 border-b-4 px-4 py-3 text-[18px] transition-colors ${activeTab === 'detail'
                                 ? 'border-[#7A6A53] text-[#7A6A53]'
                                 : 'border-transparent text-gray-400'
-                        }`}
+                            }`}
                     >
                         Detail
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('aktivitas')}
-                        className={`w-1/2 border-b-4 px-4 py-3 text-[18px] transition-colors ${
-                            activeTab === 'aktivitas'
+                        className={`w-1/2 border-b-4 px-4 py-3 text-[18px] transition-colors ${activeTab === 'aktivitas'
                                 ? 'border-[#7A6A53] text-[#7A6A53]'
                                 : 'border-transparent text-gray-400'
-                        }`}
+                            }`}
                     >
                         Aktivitas
                     </button>

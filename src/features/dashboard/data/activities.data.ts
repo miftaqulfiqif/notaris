@@ -9,7 +9,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 1',
         modifiedDate: 'April, 15 2025',
         status: 'Selesai',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '2',
@@ -19,7 +20,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
         status: 'Terjeda',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '3',
@@ -29,7 +31,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
         status: 'Proses',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '4',
@@ -39,7 +42,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 1',
         modifiedDate: 'April, 15 2025',
         status: 'Terjeda',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '5',
@@ -49,7 +53,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 1',
         modifiedDate: 'April, 15 2025',
         status: 'Selesai',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '6',
@@ -59,7 +64,8 @@ export const mockActivities: Activity[] = [
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
         status: 'Proses',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     },
     {
         id: '7',
@@ -69,6 +75,7 @@ export const mockActivities: Activity[] = [
         author: 'Admin 2',
         modifiedDate: 'April, 15 2025',
         status: 'Selesai',
-        isFavorite: false
+        isFavorite: false,
+        itemType: 'FOLDER'
     }
 ];

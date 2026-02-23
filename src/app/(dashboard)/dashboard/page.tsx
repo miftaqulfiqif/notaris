@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { FolderGrid } from '@/features/dashboard/presentation/components/FolderGrid';
+import { RecommendationSection } from '@/features/dashboard/presentation/components/RecommendationSection';
 import { ActivitySection } from '@/features/dashboard/presentation/components/ActivitySection';
+import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
 import { Activity } from '@/features/dashboard/types';
 import { ActivityDetailSidebar } from '@/features/dashboard/presentation/components/ActivityDetailSidebar';
 import { Plus } from 'lucide-react';
@@ -14,6 +16,7 @@ export default function DashboardPage() {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const { openModal } = useUploadModal();
     const { user } = useAuthContext();
+    const { activities, recommendations, isLoadingActivities, isLoadingRecommendations, error } = useDashboard();
     const [loginCount, setLoginCount] = useState<number>(0);
     const [isChecking, setIsChecking] = useState(true);
 
@@ -79,9 +82,23 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        <FolderGrid />
+                        <FolderGrid
+                            recommendations={recommendations}
+                            isLoading={isLoadingRecommendations}
+                        />
 
-                        <ActivitySection onSelectActivity={setSelectedActivity} />
+                        <RecommendationSection
+                            onSelectActivity={setSelectedActivity}
+                            dashboardActivities={activities}
+                            isLoading={isLoadingActivities}
+                        />
+
+                        <ActivitySection
+                            onSelectActivity={setSelectedActivity}
+                            dashboardActivities={activities}
+                            isLoading={isLoadingActivities}
+                            error={error}
+                        />
                     </div>
                 </div>
             </div>

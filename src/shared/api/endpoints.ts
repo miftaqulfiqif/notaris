@@ -25,7 +25,9 @@ export const ENDPOINTS = {
         EDIT_FOLDER: `${API_BASE_URL}/edit-folder/:folder_id`,
         UPDATE_STATUS_FOLDER: `${API_BASE_URL_WITH_API_PREFIX}/update-status-folder`,
         ITEM_FAVORITE: `${API_BASE_URL}/item-favorite`,
+        MULTIPLE_ITEM_FAVORITE: `${API_BASE_URL}/multiple-item-favorite`,
         REMOVE_ITEM_FAVORITE: `${API_BASE_URL}/remove-item-favorite`,
+        MULTIPLE_REMOVE_ITEM_FAVORITE: `${API_BASE_URL}/multiple-remove-item-favorite`,
         ITEM_DELETE: `${API_BASE_URL}/item-delete`,
         MULTIPLE_ITEM_DELETE: `${API_BASE_URL}/multiple-item-delete`,
         RESTORE_ITEM_DELETED: `${API_BASE_URL}/restore-item-deleted`,
@@ -38,4 +40,8 @@ export const ENDPOINTS = {
     NOTARIS: {
         SETTING: `${API_BASE_URL}/notaris/setting`,
     },
+    DASHBOARD: {
+        ACTIVITIES: `${API_BASE_URL}/aktifitas`,
+        RECOMMENDATIONS: `${API_BASE_URL}/aktifitas/recomendation`,
+    }
 } as const;

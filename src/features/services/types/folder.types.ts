@@ -47,6 +47,7 @@ export interface FolderDetailResponse {
 export interface FolderSidebarAccessUser {
     profile_picture: string | null;
     name: string;
+    role?: string;
 }
 
 export interface FolderSidebarStatusDetail {
@@ -56,6 +57,7 @@ export interface FolderSidebarStatusDetail {
 }
 
 export interface FolderSidebarDetailFolder {
+    tipe_layanan?: string;
     modified_at: string | null;
     modified_by: string | null;
     opened_at: string | null;

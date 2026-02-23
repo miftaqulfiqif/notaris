@@ -30,7 +30,7 @@ const statusItems = (detail: ServiceTypeDetailData | null) => [
     },
     {
         count: detail?.status_folder.terjeda ?? 0,
-        label: 'Terjeda',
+        label: 'Tertunda',
         className: 'bg-red-100 text-red-700',
     },
     {
@@ -131,22 +131,20 @@ export function ServiceTypeDetailOffcanvas({
                     <button
                         type="button"
                         onClick={() => setActiveTab('detail')}
-                        className={`w-1/2 border-b-4 px-4 py-3 text-xl transition-colors ${
-                            activeTab === 'detail'
+                        className={`w-1/2 border-b-4 px-4 py-3 text-xl transition-colors ${activeTab === 'detail'
                                 ? 'border-[#7A6A53] text-[#7A6A53]'
                                 : 'border-transparent text-gray-400'
-                        }`}
+                            }`}
                     >
                         Detail
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('aktivitas')}
-                        className={`w-1/2 border-b-4 px-4 py-3 text-xl transition-colors ${
-                            activeTab === 'aktivitas'
+                        className={`w-1/2 border-b-4 px-4 py-3 text-xl transition-colors ${activeTab === 'aktivitas'
                                 ? 'border-[#7A6A53] text-[#7A6A53]'
                                 : 'border-transparent text-gray-400'
-                        }`}
+                            }`}
                     >
                         Aktivitas
                     </button>
@@ -162,27 +160,57 @@ export function ServiceTypeDetailOffcanvas({
                     ) : activeTab === 'detail' ? (
                         <div className="space-y-8">
                             <section className="space-y-4 border-b border-gray-200 pb-8">
-                                <h3 className="text-2xl font-semibold text-gray-900">Yang memiliki akses</h3>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-2xl font-semibold text-gray-900">Yang memiliki akses</h3>
+                                    <button
+                                        type="button"
+                                        className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+                                    >
+                                        Kelola Akses
+                                    </button>
+                                </div>
                                 {accessUsers.length === 0 ? (
                                     <p className="text-base text-gray-500">Belum ada user yang memiliki akses.</p>
                                 ) : (
-                                    <>
+                                    <div className="space-y-4">
                                         <div className="flex -space-x-2">
-                                            {accessUsers.slice(0, 4).map((item) => (
+                                            {accessUsers.slice(0, 4).map((item, index) => (
                                                 <div
-                                                    key={item.name}
-                                                    className="flex h-14 w-14 items-center justify-center rounded-full border border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-sm text-white"
+                                                    key={`${item.name}-${index}`}
+                                                    className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-sm text-white"
+                                                    title={item.name}
                                                 >
-                                                    {getInitials(item.name)}
+                                                    {item.profile_picture ? (
+                                                        <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        getInitials(item.name)
+                                                    )}
                                                 </div>
                                             ))}
+                                            {accessUsers.length > 4 && (
+                                                <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-gray-100 font-semibold text-sm text-gray-600">
+                                                    +{accessUsers.length - 4}
+                                                </div>
+                                            )}
                                         </div>
-                                        <ul className="list-disc space-y-1 pl-6 text-lg text-gray-700">
-                                            {accessUsers.map((item) => (
-                                                <li key={item.name}>{item.name}</li>
+                                        <ul className="space-y-3 pt-2">
+                                            {accessUsers.map((item, index) => (
+                                                <li key={`${item.name}-${index}`} className="flex items-center gap-3">
+                                                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-xs text-white">
+                                                        {item.profile_picture ? (
+                                                            <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            getInitials(item.name)
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{item.name}</p>
+                                                        {item.role && <p className="text-sm text-gray-500">{item.role}</p>}
+                                                    </div>
+                                                </li>
                                             ))}
                                         </ul>
-                                    </>
+                                    </div>
                                 )}
                             </section>
 
@@ -194,16 +222,38 @@ export function ServiceTypeDetailOffcanvas({
                                         {formatDisplayValue(detail?.detail_folder_tipe_layanan.tipe_layanan)}
                                     </p>
                                 </div>
-                                <div>
-                                    <p className="text-base text-gray-700">Dibuka</p>
-                                    <p className="text-xl font-medium text-gray-900">
-                                        {formatDisplayValue(detail?.detail_folder_tipe_layanan.opened_at)}
-                                        {detail?.detail_folder_tipe_layanan.opened_by
-                                            ? ` oleh ${detail.detail_folder_tipe_layanan.opened_by}`
-                                            : ''}
-                                    </p>
+
+                                <div className="space-y-4 border-b border-gray-100 pb-6">
+                                    <div>
+                                        <p className="text-base text-gray-700">Dibuat</p>
+                                        <p className="text-xl font-medium text-gray-900">
+                                            {formatDisplayValue(detail?.detail_folder_tipe_layanan.created_at)}
+                                            {detail?.detail_folder_tipe_layanan.created_by
+                                                ? ` oleh ${detail.detail_folder_tipe_layanan.created_by}`
+                                                : ''}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-base text-gray-700">Dibuka</p>
+                                        <p className="text-xl font-medium text-gray-900">
+                                            {formatDisplayValue(detail?.detail_folder_tipe_layanan.opened_at)}
+                                            {detail?.detail_folder_tipe_layanan.opened_by
+                                                ? ` oleh ${detail.detail_folder_tipe_layanan.opened_by}`
+                                                : ''}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-base text-gray-700">Dimodifikasi</p>
+                                        <p className="text-xl font-medium text-gray-900">
+                                            {formatDisplayValue(detail?.detail_folder_tipe_layanan.modified_at)}
+                                            {detail?.detail_folder_tipe_layanan.modified_by
+                                                ? ` oleh ${detail.detail_folder_tipe_layanan.modified_by}`
+                                                : ''}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
+
+                                <div className="pt-2">
                                     <p className="mb-3 text-xl text-gray-800">
                                         Status Folder di dalam {serviceTypeLabel}
                                     </p>
@@ -212,7 +262,7 @@ export function ServiceTypeDetailOffcanvas({
                                             <div key={status.label} className="flex items-center gap-4">
                                                 <span className="w-8 text-lg text-gray-700">{index + 1}</span>
                                                 <span className="text-lg text-gray-700">:</span>
-                                                <span className={`rounded-xl px-6 py-2 text-xl font-medium ${status.className}`}>
+                                                <span className={`inline-flex min-w-[140px] items-center justify-center rounded-xl px-4 py-2 text-lg font-medium ${status.className}`}>
                                                     {status.label} ({status.count})
                                                 </span>
                                             </div>

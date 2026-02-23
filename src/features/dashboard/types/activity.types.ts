@@ -10,4 +10,5 @@ export interface Activity {
     status: ActivityStatus;
     isFavorite: boolean;
     isStarred?: boolean;
+    itemType?: 'FOLDER' | 'DOCUMENT';
 }
