@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { UploadPreSelection } from '@/features/dashboard/types';
 
 interface DragDropContextType {
@@ -11,7 +11,20 @@ interface DragDropContextType {
 const DragDropContext = createContext<DragDropContextType | undefined>(undefined);
 
 export function DragDropProvider({ children }: { children: ReactNode }) {
-    const [preSelection, setPreSelection] = useState<UploadPreSelection | null>(null);
+    const [preSelection, setPreSelectionState] = useState<UploadPreSelection | null>(null);
+
+    const setPreSelection = useCallback((selection: UploadPreSelection | null) => {
+        if (!selection) {
+            setPreSelectionState(null);
+            return;
+        }
+
+        const normalizedFolderName = selection.folderName?.trim();
+        setPreSelectionState({
+            ...selection,
+            folderName: normalizedFolderName || undefined,
+        });
+    }, []);
 
     return (
         <DragDropContext.Provider value={{ preSelection, setPreSelection }}>

@@ -9,10 +9,17 @@ export function GlobalDragDropListener() {
     const { preSelection } = useDragDropContext();
 
     useEffect(() => {
+        const normalizedSelection = preSelection
+            ? {
+                ...preSelection,
+                folderName: preSelection.folderName?.trim() || undefined,
+            }
+            : undefined;
+
         const handleDragEnter = (e: DragEvent) => {
             e.preventDefault();
             if (e.dataTransfer?.types.includes('Files')) {
-                openModal(preSelection || undefined);
+                openModal(normalizedSelection);
             }
         };
 
@@ -25,7 +32,7 @@ export function GlobalDragDropListener() {
 
             if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
                 setFiles(e.dataTransfer.files);
-                openModal(preSelection || undefined);
+                openModal(normalizedSelection);
             }
         };
 

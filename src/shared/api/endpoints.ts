@@ -39,6 +39,7 @@ export const ENDPOINTS = {
     },
     NOTARIS: {
         SETTING: `${API_BASE_URL}/notaris/setting`,
+        FILE_SEARCH: `${API_BASE_URL}/notaris/file`,
     },
     DASHBOARD: {
         ACTIVITIES: `${API_BASE_URL}/aktifitas`,

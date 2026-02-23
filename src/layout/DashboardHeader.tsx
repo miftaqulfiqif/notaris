@@ -2,14 +2,18 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Bell, Menu, LogOut, Settings, X, ChevronRight, FileText, Folder } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useClickOutside } from '@/shared/hooks/useClickOutside';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { getInitials } from '@/shared/utils/initials';
+import { apiGet, ApiResponse } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
+import { FolderSidebarResponse, ServiceType } from '@/features/services/types';
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
+const SEARCH_FILTER_ORDER: SearchFilter[] = ['ALL', 'DOCUMENT', 'FOLDER'];
 
 interface GlobalSearchItem {
     id: string;
@@ -17,58 +21,65 @@ interface GlobalSearchItem {
     service: string;
     lastUpdate: string;
     type: Exclude<SearchFilter, 'ALL'>;
+    folderId: string | null;
+    documentId: string | null;
+    parent: string;
 }
 
-const globalSearchItems: GlobalSearchItem[] = [
-    {
-        id: 'search-1',
-        title: 'PT. Dummy 4',
-        service: 'Pendirian',
-        lastUpdate: 'Last Update',
-        type: 'FOLDER',
-    },
-    {
-        id: 'search-2',
-        title: 'PT. Dummy 1',
-        service: 'Pendirian',
-        lastUpdate: '1 jam yang lalu',
-        type: 'FOLDER',
-    },
-    {
-        id: 'search-3',
-        title: 'PT. Dummy 2',
-        service: 'RUPS',
-        lastUpdate: '12 jam yang lalu',
-        type: 'FOLDER',
-    },
-    {
-        id: 'search-4',
-        title: 'PT. Dummy 3',
-        service: 'Pendirian',
-        lastUpdate: '1 hari yang lalu',
-        type: 'FOLDER',
-    },
-    {
-        id: 'search-5',
-        title: 'Akta Pendirian PT. Dummy',
-        service: 'Dokumen',
-        lastUpdate: '2 hari yang lalu',
-        type: 'DOCUMENT',
-    },
-];
+interface GlobalSearchApiItem {
+    folder_id: string | null;
+    document_id: string | null;
+    type: Exclude<SearchFilter, 'ALL'>;
+    name: string;
+    parent: string;
+    updated_at: string;
+}
+
+interface GlobalSearchResponse {
+    message: string;
+    data: GlobalSearchApiItem[];
+}
 
 const formatStatusLabel = (value: string) =>
     value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 
+const normalizeText = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const toSlug = (value: string) =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+const parseActiveServiceRoute = (pathname: string) => {
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length < 3 || segments[0] !== 'services') {
+        return null;
+    }
+
+    return {
+        serviceSlug: segments[1],
+        typeSlug: segments[2],
+    };
+};
+
 export function DashboardHeader() {
     const router = useRouter();
-    const { toggle } = useSidebar();
+    const pathname = usePathname();
+    const { toggle, services } = useSidebar();
     const { user, logout } = useAuthContext();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeSearchFilter, setActiveSearchFilter] = useState<SearchFilter>('ALL');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [searchResults, setSearchResults] = useState<GlobalSearchItem[]>([]);
+    const [isSearchLoading, setIsSearchLoading] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const [navigatingSearchItemId, setNavigatingSearchItemId] = useState<string | null>(null);
+    const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(-1);
     const {
         notifications,
         isLoading: isNotificationLoading,
@@ -86,21 +97,110 @@ export function DashboardHeader() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const notificationRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
+    const searchResultListRef = useRef<HTMLDivElement>(null);
+    const searchRequestIdRef = useRef(0);
+    const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
+    const folderRouteCacheRef = useRef<Record<string, string>>({});
     const unreadCount = totalNotRead;
     const trimmedSearchQuery = searchQuery.trim();
     const isSearchOverlayVisible = isSearchFocused && trimmedSearchQuery.length > 0;
 
-    const filteredSearchItems = useMemo(() => {
-        const normalizedQuery = trimmedSearchQuery.toLowerCase();
+    useEffect(() => {
+        if (!trimmedSearchQuery) {
+            setSearchResults([]);
+            setSearchError(null);
+            setIsSearchLoading(false);
+            return;
+        }
 
-        return globalSearchItems.filter((item) => {
-            const matchesQuery = `${item.title} ${item.service} ${item.lastUpdate}`
-                .toLowerCase()
-                .includes(normalizedQuery);
-            const matchesType = activeSearchFilter === 'ALL' || item.type === activeSearchFilter;
-            return matchesQuery && matchesType;
-        });
+        const requestId = searchRequestIdRef.current + 1;
+        searchRequestIdRef.current = requestId;
+        setIsSearchLoading(true);
+        setSearchError(null);
+
+        const timeoutId = window.setTimeout(() => {
+            void (async () => {
+                try {
+                    const params = new URLSearchParams({
+                        file_type: activeSearchFilter,
+                        search: trimmedSearchQuery,
+                    });
+
+                    const response = await apiGet<GlobalSearchResponse>(
+                        `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
+                    );
+
+                    if (searchRequestIdRef.current !== requestId) {
+                        return;
+                    }
+
+                    const mappedResults = (response.data || []).map((item, index) => {
+                        const itemType: Exclude<SearchFilter, 'ALL'> =
+                            item.type === 'DOCUMENT' ? 'DOCUMENT' : 'FOLDER';
+                        return {
+                            id: item.folder_id || item.document_id || `${itemType.toLowerCase()}-${index}`,
+                            title: item.name,
+                            service: item.parent || '-',
+                            lastUpdate: item.updated_at || '-',
+                            type: itemType,
+                            folderId: item.folder_id,
+                            documentId: item.document_id,
+                            parent: item.parent || '',
+                        };
+                    });
+
+                    setSearchResults(mappedResults);
+                } catch (error) {
+                    if (searchRequestIdRef.current !== requestId) {
+                        return;
+                    }
+
+                    setSearchResults([]);
+                    setSearchError(error instanceof Error ? error.message : 'Gagal memuat hasil pencarian');
+                } finally {
+                    if (searchRequestIdRef.current === requestId) {
+                        setIsSearchLoading(false);
+                    }
+                }
+            })();
+        }, 250);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
     }, [activeSearchFilter, trimmedSearchQuery]);
+
+    const filteredSearchItems = useMemo(() => {
+        return searchResults.filter((item) => {
+            const matchesType = activeSearchFilter === 'ALL' || item.type === activeSearchFilter;
+            return matchesType;
+        });
+    }, [activeSearchFilter, searchResults]);
+
+    useEffect(() => {
+        if (!isSearchOverlayVisible || isSearchLoading || searchError || filteredSearchItems.length === 0) {
+            setHighlightedSearchIndex(-1);
+            return;
+        }
+
+        setHighlightedSearchIndex((prev) => {
+            if (prev >= 0 && prev < filteredSearchItems.length) {
+                return prev;
+            }
+            return 0;
+        });
+    }, [filteredSearchItems, isSearchLoading, isSearchOverlayVisible, searchError]);
+
+    useEffect(() => {
+        if (highlightedSearchIndex < 0) {
+            return;
+        }
+
+        const activeItem = searchResultListRef.current?.querySelector<HTMLElement>(
+            `[data-search-index="${highlightedSearchIndex}"]`,
+        );
+        activeItem?.scrollIntoView({ block: 'nearest' });
+    }, [highlightedSearchIndex]);
 
     useClickOutside(dropdownRef, () => setIsDropdownOpen(false), isDropdownOpen);
     useClickOutside(notificationRef, () => setIsNotificationOpen(false), isNotificationOpen);
@@ -122,10 +222,226 @@ export function DashboardHeader() {
         };
     }, [isSearchOverlayVisible]);
 
+    const fetchServiceTypesByService = async (serviceId: string) => {
+        const cached = serviceTypesCacheRef.current[serviceId];
+        if (cached) {
+            return cached;
+        }
+
+        const url = ENDPOINTS.USER.SERVICE_TYPES.replace(':serviceId', serviceId);
+        const response = await apiGet<ApiResponse<ServiceType[]>>(url);
+        const serviceTypes = response.data || [];
+        serviceTypesCacheRef.current[serviceId] = serviceTypes;
+        return serviceTypes;
+    };
+
+    const isTypeNameMatch = (sourceTypeName: string, candidateTypeName: string) => {
+        const normalizedSource = normalizeText(sourceTypeName);
+        const normalizedCandidate = normalizeText(candidateTypeName);
+        const sourceSlug = toSlug(sourceTypeName);
+        const candidateSlug = toSlug(candidateTypeName);
+
+        return normalizedSource === normalizedCandidate
+            || normalizedSource.includes(normalizedCandidate)
+            || normalizedCandidate.includes(normalizedSource)
+            || sourceSlug === candidateSlug;
+    };
+
+    const resolveServiceAndTypeSlugs = async (typeNameCandidates: string[]) => {
+        const normalizedCandidates = typeNameCandidates
+            .map((name) => name.trim())
+            .filter(Boolean);
+
+        if (normalizedCandidates.length === 0) {
+            return null;
+        }
+
+        for (const service of services) {
+            const serviceTypes = await fetchServiceTypesByService(service.id);
+            const matchedType = serviceTypes.find((type) =>
+                normalizedCandidates.some((candidate) => isTypeNameMatch(type.name, candidate)),
+            );
+
+            if (matchedType) {
+                return {
+                    serviceSlug: toSlug(service.name),
+                    typeSlug: toSlug(matchedType.name),
+                };
+            }
+        }
+
+        return null;
+    };
+
+    const resolveFolderRoute = async (folderId: string, parentTypeName?: string) => {
+        const cachedRoute = folderRouteCacheRef.current[folderId];
+        if (cachedRoute) {
+            return cachedRoute;
+        }
+
+        const activeRoute = parseActiveServiceRoute(pathname);
+        if (activeRoute && parentTypeName && toSlug(parentTypeName) === activeRoute.typeSlug) {
+            const contextualRoute = `/services/${activeRoute.serviceSlug}/${activeRoute.typeSlug}/${folderId}`;
+            folderRouteCacheRef.current[folderId] = contextualRoute;
+            return contextualRoute;
+        }
+
+        try {
+            const url = ENDPOINTS.USER.DETAIL_FOLDER_SIDEBAR.replace(':folder_id', folderId);
+            const detail = await apiGet<FolderSidebarResponse & { data?: Record<string, unknown> }>(url);
+            const typedData = detail.data as {
+                detail_folder?: { tipe_layanan?: string; tipe_layanan_id?: string };
+                tipe_layanan?: string;
+            } | undefined;
+
+            const typeNameCandidates = [
+                typedData?.detail_folder?.tipe_layanan,
+                typedData?.tipe_layanan,
+                parentTypeName,
+            ]
+                .filter((value): value is string => Boolean(value && value.trim()))
+                .map((value) => value.trim());
+
+            const resolvedSlugs = await resolveServiceAndTypeSlugs(typeNameCandidates);
+            if (!resolvedSlugs) {
+                if (activeRoute) {
+                    const contextualRoute = `/services/${activeRoute.serviceSlug}/${activeRoute.typeSlug}/${folderId}`;
+                    folderRouteCacheRef.current[folderId] = contextualRoute;
+                    return contextualRoute;
+                }
+                return null;
+            }
+
+            const route = `/services/${resolvedSlugs.serviceSlug}/${resolvedSlugs.typeSlug}/${folderId}`;
+            folderRouteCacheRef.current[folderId] = route;
+            return route;
+        } catch {
+            if (activeRoute) {
+                const contextualRoute = `/services/${activeRoute.serviceSlug}/${activeRoute.typeSlug}/${folderId}`;
+                folderRouteCacheRef.current[folderId] = contextualRoute;
+                return contextualRoute;
+            }
+            return null;
+        }
+    };
+
+    const resolveFolderIdFromDocumentParent = async (folderName: string) => {
+        const normalizedFolderName = folderName.trim();
+        if (!normalizedFolderName) {
+            return null;
+        }
+
+        const params = new URLSearchParams({
+            file_type: 'FOLDER',
+            search: normalizedFolderName,
+        });
+        const response = await apiGet<GlobalSearchResponse>(
+            `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
+        );
+        const normalizedTarget = normalizeText(normalizedFolderName);
+        const exactMatch = (response.data || []).find(
+            (item) => item.type === 'FOLDER' && item.folder_id && normalizeText(item.name) === normalizedTarget,
+        );
+
+        if (exactMatch?.folder_id) {
+            return exactMatch.folder_id;
+        }
+
+        const fallbackMatch = (response.data || []).find((item) => item.type === 'FOLDER' && item.folder_id);
+        return fallbackMatch?.folder_id || null;
+    };
+
+    const handleSearchItemClick = async (item: GlobalSearchItem) => {
+        if (navigatingSearchItemId) {
+            return;
+        }
+
+        setNavigatingSearchItemId(item.id);
+        setSearchError(null);
+
+        try {
+            let folderId = item.folderId;
+
+            if (!folderId && item.type === 'DOCUMENT') {
+                folderId = await resolveFolderIdFromDocumentParent(item.parent);
+            }
+
+            if (!folderId) {
+                setSearchError('Folder untuk item ini tidak ditemukan');
+                return;
+            }
+
+            const route = await resolveFolderRoute(folderId, item.parent);
+            if (!route) {
+                setSearchError('Rute item ini belum bisa ditentukan');
+                return;
+            }
+
+            setIsSearchFocused(false);
+            setSearchQuery('');
+            setActiveSearchFilter('ALL');
+            router.push(route);
+        } catch {
+            setSearchError('Gagal membuka hasil pencarian');
+        } finally {
+            setNavigatingSearchItemId(null);
+        }
+    };
+
     const handleSearchClear = () => {
         setSearchQuery('');
         setIsSearchFocused(false);
         setActiveSearchFilter('ALL');
+        setHighlightedSearchIndex(-1);
+    };
+
+    const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isSearchOverlayVisible) {
+            return;
+        }
+
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            const activeIndex = SEARCH_FILTER_ORDER.indexOf(activeSearchFilter);
+            const delta = event.key === 'ArrowRight' ? 1 : -1;
+            const nextIndex = (activeIndex + delta + SEARCH_FILTER_ORDER.length) % SEARCH_FILTER_ORDER.length;
+            setActiveSearchFilter(SEARCH_FILTER_ORDER[nextIndex]);
+            return;
+        }
+
+        if (event.key === 'ArrowDown') {
+            if (!filteredSearchItems.length) {
+                return;
+            }
+
+            event.preventDefault();
+            setHighlightedSearchIndex((prev) => (prev + 1) % filteredSearchItems.length);
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            if (!filteredSearchItems.length) {
+                return;
+            }
+
+            event.preventDefault();
+            setHighlightedSearchIndex((prev) => {
+                if (prev <= 0) {
+                    return filteredSearchItems.length - 1;
+                }
+                return prev - 1;
+            });
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            if (!filteredSearchItems.length || highlightedSearchIndex < 0) {
+                return;
+            }
+
+            event.preventDefault();
+            void handleSearchItemClick(filteredSearchItems[highlightedSearchIndex]);
+        }
     };
 
     return (
@@ -145,6 +461,7 @@ export function DashboardHeader() {
                     type="text"
                     placeholder="Cari file, folder, nomor akta, nama klien"
                     value={searchQuery}
+                    onKeyDown={handleSearchKeyDown}
                     onFocus={() => {
                         setIsSearchFocused(true);
                         setIsDropdownOpen(false);
@@ -215,22 +532,38 @@ export function DashboardHeader() {
                             </div>
 
                             <div className="max-h-[58vh] overflow-y-auto p-4">
-                                {filteredSearchItems.length === 0 ? (
+                                {isSearchLoading ? (
+                                    <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-sm text-gray-500">
+                                        Memuat hasil pencarian...
+                                    </div>
+                                ) : searchError ? (
+                                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-600">
+                                        {searchError}
+                                    </div>
+                                ) : filteredSearchItems.length === 0 ? (
                                     <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-sm text-gray-500">
                                         Tidak ada hasil untuk <span className="font-semibold text-gray-700">{trimmedSearchQuery}</span>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-2" ref={searchResultListRef}>
                                         {filteredSearchItems.map((item, index) => (
                                             <button
                                                 key={item.id}
                                                 type="button"
-                                                onClick={() => setIsSearchFocused(false)}
-                                                className={`w-full rounded-2xl px-4 py-3 text-left transition-colors ${index === 0 ? 'bg-[#ECECEC]' : 'hover:bg-[#ECECEC]'
-                                                    }`}
+                                                data-search-index={index}
+                                                onClick={() => void handleSearchItemClick(item)}
+                                                onMouseEnter={() => setHighlightedSearchIndex(index)}
+                                                disabled={Boolean(navigatingSearchItemId)}
+                                                className={`w-full rounded-2xl px-4 py-3 text-left transition-colors ${
+                                                    navigatingSearchItemId
+                                                        ? 'cursor-not-allowed opacity-70'
+                                                        : highlightedSearchIndex === index
+                                                            ? 'bg-[#ECECEC]'
+                                                            : 'hover:bg-[#ECECEC] cursor-pointer'
+                                                }`}
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${index === 0 ? 'bg-transparent' : 'bg-[#ECECEC]'
+                                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${highlightedSearchIndex === index ? 'bg-transparent' : 'bg-[#ECECEC]'
                                                         }`}>
                                                         {item.type === 'DOCUMENT' ? (
                                                             <FileText className="h-7 w-7 text-gray-700" />
@@ -243,6 +576,9 @@ export function DashboardHeader() {
                                                         <p className="mt-1 text-sm text-gray-500">
                                                             {item.service} <span className="mx-2">•</span> {item.lastUpdate}
                                                         </p>
+                                                        {navigatingSearchItemId === item.id && (
+                                                            <p className="mt-1 text-xs font-medium text-[#7A6A53]">Membuka...</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </button>
