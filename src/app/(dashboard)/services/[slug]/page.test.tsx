@@ -18,6 +18,17 @@ jest.mock('@/layout/providers/SidebarContext', () => ({
   useSidebar: () => ({ services: [{ id: '1', name: 'Pendirian' }] }),
 }));
 
+jest.mock('@/features/dashboard/hooks/useDashboard', () => ({
+  useDashboard: () => ({
+    activities: null,
+    recommendations: [],
+    isLoadingActivities: false,
+    isLoadingRecommendations: false,
+    error: null,
+    fetchActivities: jest.fn(),
+  }),
+}));
+
 jest.mock('@/features/services/presentation/components/ServiceFolderGrid', () => ({
   ServiceFolderGrid: () => <div data-testid="service-folder-grid" />,
 }));

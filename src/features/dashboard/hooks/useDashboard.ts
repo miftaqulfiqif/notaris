@@ -10,11 +10,19 @@ export interface DashboardRecommendation {
 export interface DashboardActivity {
     folder_id: string;
     folder_name: string;
+    document_id?: string | null;
+    item_id?: string;
+    item_type?: 'FOLDER' | 'DOCUMENT' | 'LAYANAN' | 'TIPE_LAYANAN' | string;
+    layanan?: string;
     tipe_layanan: string;
+    tipe_layanan_id?: string;
+    route_path?: string;
     author: string;
     updated_at: string;
     status?: string;
     object_status?: string;
+    is_favorite?: boolean;
+    created_at?: string;
 }
 
 export interface PaginatedActivities {
@@ -49,7 +57,7 @@ export const useDashboard = () => {
             } else {
                 setError(data.message || 'Gagal memuat aktivitas');
             }
-        } catch (err) {
+        } catch {
             setError('Terjadi kesalahan jaringan');
         } finally {
             setIsLoadingActivities(false);

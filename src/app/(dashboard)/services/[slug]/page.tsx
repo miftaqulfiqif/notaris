@@ -7,17 +7,25 @@ import { useUploadModal } from '@/features/dashboard/context/UploadModalContext'
 import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 import { ServiceFolderGrid } from '@/features/services/presentation/components/ServiceFolderGrid';
 import { ActivitySection } from '@/features/dashboard/presentation/components/ActivitySection';
-import { serviceActivities } from '@/features/services/data/mock';
 import { Activity } from '@/features/dashboard/types';
 import { ActivityDetailSidebar } from '@/features/dashboard/presentation/components/ActivityDetailSidebar';
 import Link from 'next/link';
 import { useSidebar } from '@/layout/providers/SidebarContext';
+import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
+
+const toSlug = (value: string) =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 
 export default function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
     const { openModal } = useUploadModal();
     const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
+    const { activities, isLoadingActivities, error, fetchActivities } = useDashboard();
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
     const currentService = useMemo(() => {
@@ -29,6 +37,29 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
     }, [services, slug]);
 
     const serviceName = currentService?.name || slug.toUpperCase();
+    const normalizedServiceSlug = toSlug(currentService?.name || slug.replace(/-/g, ' '));
+
+    const serviceActivities = useMemo(() => {
+        if (!activities) return null;
+
+        const sourceActivities = Array.isArray(activities.data) ? activities.data : [];
+        const hasLayananInfo = sourceActivities.some((activity) => Boolean(activity.layanan));
+
+        const filteredActivities = hasLayananInfo
+            ? sourceActivities.filter((activity) => toSlug(activity.layanan || '') === normalizedServiceSlug)
+            : sourceActivities;
+
+        return {
+            ...activities,
+            data: filteredActivities,
+            total_items: filteredActivities.length,
+            total_pages: Math.max(1, Math.ceil(filteredActivities.length / 5)),
+        };
+    }, [activities, normalizedServiceSlug]);
+
+    useEffect(() => {
+        void fetchActivities(1, 100, '');
+    }, [fetchActivities]);
 
     useEffect(() => {
         if (currentService) {
@@ -76,7 +107,9 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
 
                     <ServiceFolderGrid />
                     <ActivitySection
-                        activities={serviceActivities}
+                        dashboardActivities={serviceActivities}
+                        isLoading={isLoadingActivities}
+                        error={error}
                         clientHeaderLabel="Nama Penghadap"
                         onSelectActivity={setSelectedActivity}
                     />

@@ -54,7 +54,7 @@ export default function ServiceTypeDetailPage({
 
     const typeId = currentServiceType?.id || null;
 
-    const [activeTab, setActiveTab] = useState('baru');
+    const [activeTab, setActiveTab] = useState<'baru' | 'favorite'>('baru');
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -101,6 +101,14 @@ export default function ServiceTypeDetailPage({
         { id: 'favorite', label: 'Favorite', icon: Star },
     ];
 
+    const filteredFolders = useMemo(() => {
+        if (activeTab === 'favorite') {
+            return folders.filter((folder) => Boolean(folder.is_favorite));
+        }
+
+        return folders;
+    }, [activeTab, folders]);
+
     return (
         <div className="flex h-screen overflow-hidden">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -144,7 +152,11 @@ export default function ServiceTypeDetailPage({
                         </div>
 
                         <div className="mb-6">
-                            <FilterTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+                            <FilterTabs
+                                tabs={tabs}
+                                activeTab={activeTab}
+                                onChange={(tabId) => setActiveTab(tabId as 'baru' | 'favorite')}
+                            />
                         </div>
 
                         {isLoading ? (
@@ -154,7 +166,10 @@ export default function ServiceTypeDetailPage({
                                 ))}
                             </div>
                         ) : (
-                            <FolderTable items={folders} onRefresh={() => setRefreshKey(prev => prev + 1)} />
+                            <FolderTable
+                                items={filteredFolders}
+                                onRefresh={() => setRefreshKey(prev => prev + 1)}
+                            />
                         )}
                     </div>
                 </div>

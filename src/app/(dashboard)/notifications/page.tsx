@@ -5,11 +5,14 @@ import { DashboardHeader } from '@/layout/DashboardHeader';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { NotificationsView } from '@/features/notifications/presentation/views/NotificationsView';
+import { useNotificationRedirect } from '@/features/notifications/hooks/useNotificationRedirect';
 import { useToast } from '@/shared/hooks/useToast';
 import { Toast } from '@/shared/components/Toast';
+import { useSidebar } from '@/layout/providers/SidebarContext';
 
 export default function NotificationsPage() {
     const { user } = useAuthContext();
+    const { services } = useSidebar();
     const [page, setPage] = useState(1);
     const limit = 10;
     const {
@@ -22,6 +25,7 @@ export default function NotificationsPage() {
         totalItems,
         fetchNotifications,
         markAllAsRead,
+        markAsRead,
     } = useNotifications({
         page,
         limit,
@@ -30,6 +34,11 @@ export default function NotificationsPage() {
         autoFetch: true,
     });
     const { toast, showToast, hideToast } = useToast();
+    const { navigatingNotificationId, openNotification } = useNotificationRedirect({
+        services,
+        showToast,
+        markAsRead,
+    });
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * limit;
     const endIndex = totalItems === 0 ? 0 : Math.min(startIndex + notifications.length, totalItems);
 
@@ -75,6 +84,10 @@ export default function NotificationsPage() {
                             void fetchNotifications();
                         }}
                         onPageChange={handlePageChange}
+                        navigatingNotificationId={navigatingNotificationId}
+                        onNotificationClick={(notification) => {
+                            void openNotification(notification);
+                        }}
                     />
                 </div>
             </div>

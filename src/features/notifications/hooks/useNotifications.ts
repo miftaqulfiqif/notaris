@@ -61,11 +61,41 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         setTotalNotRead(0);
     }, []);
 
+    const markAsReadLocal = useCallback((notificationId: string) => {
+        let unreadItemCount = 0;
+
+        setNotifications((prev) =>
+            prev.map((item) => {
+                if (item.id !== notificationId || !item.unread) {
+                    return item;
+                }
+
+                unreadItemCount += 1;
+                return { ...item, unread: false };
+            }),
+        );
+
+        if (unreadItemCount > 0) {
+            setTotalNotRead((prev) => Math.max(0, prev - unreadItemCount));
+        }
+    }, []);
+
     const markAllAsRead = useCallback(async () => {
         const url = ENDPOINTS.USER.NOTIFICATION_READ.replace(':notifikasi_id', 'all_read');
         await apiPost(url);
         markAllAsReadLocal();
     }, [markAllAsReadLocal]);
+
+    const markAsRead = useCallback(
+        async (notificationId: string) => {
+            if (!notificationId) return;
+
+            const url = ENDPOINTS.USER.NOTIFICATION_READ.replace(':notifikasi_id', notificationId);
+            await apiPost(url);
+            markAsReadLocal(notificationId);
+        },
+        [markAsReadLocal],
+    );
 
     useEffect(() => {
         if (!autoFetch) return;
@@ -81,6 +111,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         totalPages,
         totalItems,
         fetchNotifications,
+        markAsRead,
+        markAsReadLocal,
         markAllAsReadLocal,
         markAllAsRead,
     };

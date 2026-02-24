@@ -7,12 +7,14 @@ import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useClickOutside } from '@/shared/hooks/useClickOutside';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
+import { useNotificationRedirect } from '@/features/notifications/hooks/useNotificationRedirect';
 import { getInitials } from '@/shared/utils/initials';
 import { apiGet, ApiResponse } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
 import { FolderSidebarResponse, ServiceType } from '@/features/services/types';
+import type { NotificationItem } from '@/features/notifications/types/notification.types';
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
 const SEARCH_FILTER_ORDER: SearchFilter[] = ['ALL', 'DOCUMENT', 'FOLDER'];
@@ -90,6 +92,7 @@ export function DashboardHeader() {
         totalNotRead,
         fetchNotifications,
         markAllAsRead,
+        markAsRead,
     } = useNotifications({
         page: 1,
         limit: 10,
@@ -108,6 +111,11 @@ export function DashboardHeader() {
     const unreadCount = totalNotRead;
     const trimmedSearchQuery = searchQuery.trim();
     const isSearchOverlayVisible = isSearchFocused && trimmedSearchQuery.length > 0;
+    const { navigatingNotificationId, openNotification } = useNotificationRedirect({
+        services,
+        showToast,
+        markAsRead,
+    });
 
     useEffect(() => {
         if (!trimmedSearchQuery) {
@@ -407,6 +415,11 @@ export function DashboardHeader() {
         }
     };
 
+    const handleNotificationClick = (notification: NotificationItem) => {
+        setIsNotificationOpen(false);
+        void openNotification(notification);
+    };
+
     const handleSearchClear = () => {
         setSearchQuery('');
         setIsSearchFocused(false);
@@ -688,9 +701,16 @@ export function DashboardHeader() {
                                         </div>
                                     ) : (
                                         notifications.map((notification) => (
-                                            <div
+                                            <button
                                                 key={notification.id}
-                                                className={`flex items-center gap-4 border-b border-gray-200 px-6 py-4 ${notification.unread ? 'bg-[#F4F2EF]' : 'bg-[#F7F7F7]'
+                                                type="button"
+                                                onClick={() => handleNotificationClick(notification)}
+                                                disabled={Boolean(navigatingNotificationId)}
+                                                className={`flex w-full items-center gap-4 border-b border-gray-200 px-6 py-4 text-left transition-colors ${notification.unread ? 'bg-[#F4F2EF]' : 'bg-[#F7F7F7]'
+                                                    } ${
+                                                    navigatingNotificationId
+                                                        ? 'cursor-not-allowed opacity-70'
+                                                        : 'cursor-pointer hover:bg-[#EEEAE5]'
                                                     }`}
                                             >
                                                 <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] text-white flex items-center justify-center text-sm font-semibold shrink-0">
@@ -727,7 +747,7 @@ export function DashboardHeader() {
                                                 {notification.unread && (
                                                     <span className="w-3.5 h-3.5 rounded-full bg-red-400 shrink-0" />
                                                 )}
-                                            </div>
+                                            </button>
                                         ))
                                     )}
                                 </div>

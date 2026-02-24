@@ -16,6 +16,19 @@ jest.mock('@/shared/api/api-client', () => ({
   apiGet: jest.fn(),
 }));
 
+jest.mock('@/layout/providers/SidebarContext', () => ({
+  useSidebar: () => ({
+    services: [],
+  }),
+}));
+
+jest.mock('@/features/notifications/hooks/useNotificationRedirect', () => ({
+  useNotificationRedirect: () => ({
+    navigatingNotificationId: null,
+    openNotification: jest.fn(),
+  }),
+}));
+
 describe('NotificationsPage', () => {
   it('renders notification list from api', async () => {
     (apiGet as jest.Mock).mockResolvedValue({

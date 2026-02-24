@@ -19,6 +19,8 @@ interface NotificationsViewProps {
     onMarkAllRead: () => void;
     onRetry: () => void;
     onPageChange: (page: number) => void;
+    navigatingNotificationId: string | null;
+    onNotificationClick: (notification: NotificationItem) => void;
 }
 
 const formatStatusLabel = (value: string) =>
@@ -37,6 +39,8 @@ export function NotificationsView({
     onMarkAllRead,
     onRetry,
     onPageChange,
+    navigatingNotificationId,
+    onNotificationClick,
 }: NotificationsViewProps) {
     return (
         <div className="flex-1 px-8 pb-8">
@@ -91,10 +95,17 @@ export function NotificationsView({
             ) : (
                 <div className="space-y-3">
                     {notifications.map((notification) => (
-                        <div
+                        <button
                             key={notification.id}
-                            className={`rounded-xl border border-gray-200 px-5 py-4 ${
+                            type="button"
+                            onClick={() => onNotificationClick(notification)}
+                            disabled={Boolean(navigatingNotificationId)}
+                            className={`w-full rounded-xl border border-gray-200 px-5 py-4 text-left transition-colors ${
                                 notification.unread ? 'bg-[#F4F2EF]' : 'bg-white'
+                            } ${
+                                navigatingNotificationId
+                                    ? 'cursor-not-allowed opacity-70'
+                                    : 'cursor-pointer hover:bg-gray-50'
                             }`}
                         >
                             <div className="flex items-center gap-4">
@@ -138,7 +149,7 @@ export function NotificationsView({
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
             )}

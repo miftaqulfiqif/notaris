@@ -18,6 +18,7 @@ export const ENDPOINTS = {
         DETAIL_SERVICE_TYPE: `${API_BASE_URL}/detail-tipe-layanan/:tipe_layanan_id`,
         UPLOAD_FILE: `${API_BASE_URL}/upload-file`,
         FOLDERS: `${API_BASE_URL}/folders`,
+        FOLDERS_NOTARIS: `${API_BASE_URL}/folders/notaris`,
         FOLDER_DETAIL: `${API_BASE_URL}/detail-folder/:folderId`,
         DETAIL_FOLDER_SIDEBAR: `${API_BASE_URL}/detail-folder-sidebar/:folder_id`,
         FOLDER_ACTIVITIES: `${API_BASE_URL}/aktifitas/folder/:folder_id`,
