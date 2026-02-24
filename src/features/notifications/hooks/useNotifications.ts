@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiGet } from '@/shared/api/api-client';
+import { apiGet, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { mapNotificationItem } from '@/features/notifications/logic/notification.logic';
 import type { NotificationItem, NotificationsResponse, UseNotificationsOptions } from '@/features/notifications/types/notification.types';
@@ -61,6 +61,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         setTotalNotRead(0);
     }, []);
 
+    const markAllAsRead = useCallback(async () => {
+        const url = ENDPOINTS.USER.NOTIFICATION_READ.replace(':notifikasi_id', 'all_read');
+        await apiPost(url);
+        markAllAsReadLocal();
+    }, [markAllAsReadLocal]);
+
     useEffect(() => {
         if (!autoFetch) return;
         void fetchNotifications();
@@ -76,5 +82,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         totalItems,
         fetchNotifications,
         markAllAsReadLocal,
+        markAllAsRead,
     };
 }

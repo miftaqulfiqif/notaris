@@ -13,8 +13,11 @@ export async function apiClient<T>(
     url: string,
     options: RequestInit = {}
 ): Promise<T> {
+    const isFormDataBody =
+        typeof FormData !== 'undefined' && options.body instanceof FormData;
+
     const defaultHeaders: HeadersInit = {
-        'Content-Type': 'application/json',
+        ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
     };
 
     const config: RequestInit = {
@@ -41,22 +44,43 @@ export async function apiGet<T>(url: string): Promise<T> {
 }
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
+    const payloadBody =
+        body && typeof FormData !== 'undefined' && body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined;
+
     return apiClient<T>(url, {
         method: 'POST',
-        body: body ? JSON.stringify(body) : undefined,
+        body: payloadBody,
     });
 }
 
 export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
+    const payloadBody =
+        body && typeof FormData !== 'undefined' && body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined;
+
     return apiClient<T>(url, {
         method: 'PATCH',
-        body: body ? JSON.stringify(body) : undefined,
+        body: payloadBody,
     });
 }
 
 export async function apiDelete<T>(url: string, body?: unknown): Promise<T> {
+    const payloadBody =
+        body && typeof FormData !== 'undefined' && body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined;
+
     return apiClient<T>(url, {
         method: 'DELETE',
-        body: body ? JSON.stringify(body) : undefined,
+        body: payloadBody,
     });
 }

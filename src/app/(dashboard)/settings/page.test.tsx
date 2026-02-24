@@ -8,6 +8,7 @@ jest.mock('@/layout/DashboardHeader', () => ({
 
 jest.mock('@/shared/api/api-client', () => ({
   apiGet: jest.fn(),
+  apiPatch: jest.fn(),
 }));
 
 describe('SettingsPage', () => {

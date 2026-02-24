@@ -21,6 +21,8 @@ export default function TrashPage() {
         itemsPerPage,
         restoreItem,
         restoreItems,
+        deleteItemPermanently,
+        deleteItemsPermanently,
     } = useTrashItems();
 
     const { toast, showToast, hideToast } = useToast();
@@ -35,9 +37,15 @@ export default function TrashPage() {
     };
 
     const handleDeleteForever = async (item: TrashItem) => {
-        // TODO: Implement hard delete endpoint integration
-        showToast({ message: 'Fitur hapus selamanya belum tersedia', variant: 'info' });
-        console.log('Delete forever:', item);
+        try {
+            await deleteItemPermanently(item);
+            showToast({ message: 'Berhasil menghapus item selamanya', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menghapus item selamanya',
+                variant: 'error',
+            });
+        }
     };
 
     const handleRestoreBulk = async (selectedItems: TrashItem[]) => {
@@ -50,9 +58,18 @@ export default function TrashPage() {
     };
 
     const handleDeleteForeverBulk = async (selectedItems: TrashItem[]) => {
-        // TODO: Implement hard delete endpoint integration
-        showToast({ message: `${selectedItems.length} item belum bisa dihapus selamanya`, variant: 'info' });
-        console.log('Bulk delete forever:', selectedItems);
+        try {
+            await deleteItemsPermanently(selectedItems);
+            showToast({
+                message: `${selectedItems.length} item berhasil dihapus selamanya`,
+                variant: 'success',
+            });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menghapus item terpilih',
+                variant: 'error',
+            });
+        }
     };
 
     return (

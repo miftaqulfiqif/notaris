@@ -35,3 +35,29 @@ export interface NotarisSettingResponse {
     data: NotarisSettingData;
 }
 
+export interface UpdateNotarisGeneralPayload {
+    default_view: SettingViewMode;
+    umum: SettingViewMode;
+    halaman_awal: string;
+    ukuran_font: string;
+}
+
+export interface UpdateNotarisGeneralResponse {
+    message: string;
+    data: NotarisSetting;
+}
+
+export interface UpdateNotarisMemberPayloadItem {
+    user_id: string;
+    access: string;
+}
+
+export interface UpdateNotarisMemberItem {
+    id: string;
+    access: string | null;
+}
+
+export interface UpdateNotarisMemberResponse {
+    message: string;
+    data: UpdateNotarisMemberItem[];
+}

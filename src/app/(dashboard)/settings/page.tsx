@@ -4,9 +4,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { getInitials } from '@/shared/utils/initials';
-import { apiGet } from '@/shared/api/api-client';
+import { apiGet, apiPatch } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
-import type { NotarisMember, NotarisSettingResponse, SettingViewMode } from '@/features/dashboard/types';
+import { Toast } from '@/shared/components/Toast';
+import { useToast } from '@/shared/hooks/useToast';
+import type {
+    NotarisMember,
+    NotarisSettingResponse,
+    SettingViewMode,
+    UpdateNotarisGeneralPayload,
+    UpdateNotarisGeneralResponse,
+    UpdateNotarisMemberItem,
+    UpdateNotarisMemberPayloadItem,
+    UpdateNotarisMemberResponse,
+} from '@/features/dashboard/types';
 
 const packageFeatures = [
     '15GB storage untuk meyimpan file',
@@ -16,9 +27,50 @@ const packageFeatures = [
     'Keamanan & Backup',
 ];
 
+const memberAccessOptions = [
+    { value: 'read_only', label: 'Read Only' },
+    { value: 'access_penuh', label: 'Access Penuh' },
+];
+
+const halamanAwalOptions = [
+    { value: 'dashboard', label: 'Dashboard' },
+    { value: 'services', label: 'Layanan' },
+    { value: 'starred', label: 'Berbintang' },
+    { value: 'trash', label: 'Sampah' },
+    { value: 'notifications', label: 'Notifikasi' },
+];
+
+const ukuranFontOptions = [
+    { value: 'kecil', label: 'Kecil' },
+    { value: 'sedang', label: 'Sedang' },
+    { value: 'besar', label: 'Besar' },
+];
+
+interface GeneralSettingState {
+    default_view: SettingViewMode;
+    umum: SettingViewMode;
+    halaman_awal: string;
+    ukuran_font: string;
+}
+
 const normalizeViewMode = (value?: string | null): SettingViewMode => (
     value === 'grid' ? 'grid' : 'list'
 );
+
+const toMemberAccessMap = (members: NotarisMember[]) =>
+    Object.fromEntries(members.map((member) => [member.id, member.access ?? null])) as Record<string, string | null>;
+
+const toGeneralSettingState = (
+    defaultView: SettingViewMode,
+    generalView: SettingViewMode,
+    halamanAwal: string,
+    ukuranFont: string,
+): GeneralSettingState => ({
+    default_view: defaultView,
+    umum: generalView,
+    halaman_awal: halamanAwal,
+    ukuran_font: ukuranFont,
+});
 
 const formatLabel = (value?: string | null, fallback = '-') => {
     if (!value) return fallback;
@@ -37,8 +89,14 @@ export default function SettingsPage() {
     const [teamMembers, setTeamMembers] = useState<NotarisMember[]>([]);
     const [emailNotificationEnabled, setEmailNotificationEnabled] = useState(false);
     const [inAppNotificationEnabled, setInAppNotificationEnabled] = useState(true);
+    const [initialMemberAccessMap, setInitialMemberAccessMap] = useState<Record<string, string | null>>({});
+    const [initialGeneralSetting, setInitialGeneralSetting] = useState<GeneralSettingState>(
+        toGeneralSettingState('list', 'grid', 'dashboard', 'sedang'),
+    );
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isSavingChanges, setIsSavingChanges] = useState(false);
+    const { toast, showToast, hideToast } = useToast();
 
     useEffect(() => {
         let mounted = true;
@@ -54,13 +112,22 @@ export default function SettingsPage() {
                 setGeneralView(normalizeViewMode(payload.setting.umum));
                 setHalamanAwal(payload.setting.halaman_awal || 'dashboard');
                 setUkuranFont(payload.setting.ukuran_font || 'sedang');
+                setInitialGeneralSetting(
+                    toGeneralSettingState(
+                        normalizeViewMode(payload.setting.default_view),
+                        normalizeViewMode(payload.setting.umum),
+                        payload.setting.halaman_awal || 'dashboard',
+                        payload.setting.ukuran_font || 'sedang',
+                    ),
+                );
                 setActivePackage(payload.paket.paket);
                 setTeamMembers(payload.member || []);
+                setInitialMemberAccessMap(toMemberAccessMap(payload.member || []));
                 setInAppNotificationEnabled(Boolean(payload.notifikasi.notifikasi_dalam_aplikasi));
                 setEmailNotificationEnabled(Boolean(payload.notifikasi.notifikasi_email));
-            } catch {
+            } catch (err) {
                 if (!mounted) return;
-                setError('Gagal memuat data setting');
+                setError(err instanceof Error ? err.message : 'Gagal memuat data setting');
             } finally {
                 if (mounted) {
                     setIsLoading(false);
@@ -79,6 +146,130 @@ export default function SettingsPage() {
         () => (activePackage ? formatLabel(activePackage) : 'Belum ada paket aktif'),
         [activePackage],
     );
+
+    const hasMemberAccessChanges = useMemo(() => {
+        if (teamMembers.length !== Object.keys(initialMemberAccessMap).length) {
+            return true;
+        }
+
+        return teamMembers.some(
+            (member) => (member.access ?? null) !== (initialMemberAccessMap[member.id] ?? null),
+        );
+    }, [initialMemberAccessMap, teamMembers]);
+
+    const currentGeneralSetting = useMemo(
+        () => toGeneralSettingState(defaultView, generalView, halamanAwal, ukuranFont),
+        [defaultView, generalView, halamanAwal, ukuranFont],
+    );
+
+    const hasGeneralSettingChanges = useMemo(
+        () =>
+            currentGeneralSetting.default_view !== initialGeneralSetting.default_view
+            || currentGeneralSetting.umum !== initialGeneralSetting.umum
+            || currentGeneralSetting.halaman_awal !== initialGeneralSetting.halaman_awal
+            || currentGeneralSetting.ukuran_font !== initialGeneralSetting.ukuran_font,
+        [currentGeneralSetting, initialGeneralSetting],
+    );
+
+    const hasAnyChanges = hasGeneralSettingChanges || hasMemberAccessChanges;
+
+    const handleMemberAccessChange = (memberId: string, access: string) => {
+        const normalizedAccess = access || null;
+        setTeamMembers((prev) =>
+            prev.map((member) =>
+                member.id === memberId
+                    ? { ...member, access: normalizedAccess }
+                    : member,
+            ),
+        );
+    };
+
+    const handleCancelChanges = () => {
+        setDefaultView(initialGeneralSetting.default_view);
+        setGeneralView(initialGeneralSetting.umum);
+        setHalamanAwal(initialGeneralSetting.halaman_awal);
+        setUkuranFont(initialGeneralSetting.ukuran_font);
+        setTeamMembers((prev) =>
+            prev.map((member) => ({
+                ...member,
+                access: initialMemberAccessMap[member.id] ?? null,
+            })),
+        );
+        if (hasAnyChanges) {
+            showToast({ message: 'Perubahan dibatalkan', variant: 'info' });
+        }
+    };
+
+    const handleSaveChanges = async () => {
+        if (!hasAnyChanges || isSavingChanges) {
+            return;
+        }
+
+        const changedMembers = teamMembers.filter(
+            (member) => (member.access ?? null) !== (initialMemberAccessMap[member.id] ?? null),
+        );
+
+        if (changedMembers.some((member) => !member.access)) {
+            showToast({ message: 'Akses member tidak boleh kosong', variant: 'error' });
+            return;
+        }
+
+        setIsSavingChanges(true);
+
+        try {
+            if (hasGeneralSettingChanges) {
+                const generalPayload: UpdateNotarisGeneralPayload = {
+                    default_view: currentGeneralSetting.default_view,
+                    umum: currentGeneralSetting.umum,
+                    halaman_awal: currentGeneralSetting.halaman_awal,
+                    ukuran_font: currentGeneralSetting.ukuran_font,
+                };
+                await apiPatch<UpdateNotarisGeneralResponse>(
+                    ENDPOINTS.NOTARIS.SETTING_GENERAL,
+                    generalPayload,
+                );
+                setInitialGeneralSetting(currentGeneralSetting);
+            }
+
+            if (hasMemberAccessChanges && changedMembers.length > 0) {
+                const memberPayload: { items: UpdateNotarisMemberPayloadItem[] } = {
+                    items: changedMembers.map((member) => ({
+                        user_id: member.id,
+                        access: member.access as string,
+                    })),
+                };
+
+                const response = await apiPatch<UpdateNotarisMemberResponse>(
+                    ENDPOINTS.NOTARIS.SETTING_MEMBER,
+                    memberPayload,
+                );
+                const fallbackResponse: UpdateNotarisMemberItem[] = changedMembers.map((member) => ({
+                    id: member.id,
+                    access: member.access ?? null,
+                }));
+                const responseAccessMap = Object.fromEntries(
+                    (response.data || fallbackResponse).map((item) => [item.id, item.access ?? null]),
+                ) as Record<string, string | null>;
+
+                const normalizedMembers = teamMembers.map((member) => ({
+                    ...member,
+                    access: responseAccessMap[member.id] ?? member.access ?? null,
+                }));
+
+                setTeamMembers(normalizedMembers);
+                setInitialMemberAccessMap(toMemberAccessMap(normalizedMembers));
+            }
+
+            showToast({ message: 'Pengaturan berhasil diperbarui', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menyimpan perubahan',
+                variant: 'error',
+            });
+        } finally {
+            setIsSavingChanges(false);
+        }
+    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -182,18 +373,40 @@ export default function SettingsPage() {
 
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Halaman awal</p>
-                                            <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-full sm:w-36">
-                                                {formatLabel(halamanAwal)}
-                                                <ChevronDown className="h-4 w-4" />
-                                            </button>
+                                            <div className="relative w-full sm:w-44">
+                                                <select
+                                                    value={halamanAwal}
+                                                    onChange={(event) => setHalamanAwal(event.target.value)}
+                                                    disabled={isSavingChanges}
+                                                    className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pr-10 text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                >
+                                                    {halamanAwalOptions.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                                            </div>
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Ukuran Font</p>
-                                            <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-full sm:w-36">
-                                                {formatLabel(ukuranFont)}
-                                                <ChevronDown className="h-4 w-4" />
-                                            </button>
+                                            <div className="relative w-full sm:w-40">
+                                                <select
+                                                    value={ukuranFont}
+                                                    onChange={(event) => setUkuranFont(event.target.value)}
+                                                    disabled={isSavingChanges}
+                                                    className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pr-10 text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                >
+                                                    {ukuranFontOptions.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                                            </div>
                                         </div>
                                     </div>
                                 </section>
@@ -216,10 +429,22 @@ export default function SettingsPage() {
                                                         </div>
                                                         <p className="truncate text-lg font-medium text-gray-900">{member.name}</p>
                                                     </div>
-                                                    <button className="inline-flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-600 w-36">
-                                                        {formatLabel(member.access, 'Tanpa akses')}
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="relative w-40">
+                                                        <select
+                                                            value={member.access ?? ''}
+                                                            onChange={(event) => handleMemberAccessChange(member.id, event.target.value)}
+                                                            disabled={isSavingChanges}
+                                                            className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pr-10 text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        >
+                                                            <option value="">Tanpa akses</option>
+                                                            {memberAccessOptions.map((option) => (
+                                                                <option key={option.value} value={option.value}>
+                                                                    {option.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                                                    </div>
                                                 </div>
                                             ))
                                         )}
@@ -302,16 +527,25 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="mt-4 flex justify-end gap-3">
-                            <button className="rounded-xl border border-gray-200 bg-white px-7 py-2.5 text-base text-gray-600 hover:bg-gray-50 transition-colors">
+                            <button
+                                onClick={handleCancelChanges}
+                                disabled={isSavingChanges || !hasAnyChanges}
+                                className="rounded-xl border border-gray-200 bg-white px-7 py-2.5 text-base text-gray-600 hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                            >
                                 Batal
                             </button>
-                            <button className="rounded-xl bg-[#7A6A53] px-7 py-2.5 text-base font-medium text-white hover:bg-[#685942] transition-colors">
-                                Simpan perubahan
+                            <button
+                                onClick={() => void handleSaveChanges()}
+                                disabled={isLoading || isSavingChanges || !hasAnyChanges}
+                                className="rounded-xl bg-[#7A6A53] px-7 py-2.5 text-base font-medium text-white hover:bg-[#685942] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isSavingChanges ? 'Menyimpan...' : 'Simpan perubahan'}
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
 }

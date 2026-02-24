@@ -95,12 +95,13 @@ export default function FolderDetailPage({
                 layananName: currentService.name,
                 tipeLayananId: currentServiceType.id,
                 tipeLayananName: typeName,
+                folderName: folder?.folder_name,
                 onSuccess: () => setRefreshKey(prev => prev + 1)
             });
         }
 
         return () => setPreSelection(null);
-    }, [currentService, currentServiceType, typeName, setPreSelection]);
+    }, [currentService, currentServiceType, typeName, folder?.folder_name, setPreSelection]);
 
     const handleUploadDefault = () => {
         openModal({
@@ -108,6 +109,7 @@ export default function FolderDetailPage({
             layananName: currentService?.name,
             tipeLayananId: currentServiceType?.id,
             tipeLayananName: typeName,
+            folderName: folder?.folder_name,
             onSuccess: () => setRefreshKey(prev => prev + 1)
         });
     };

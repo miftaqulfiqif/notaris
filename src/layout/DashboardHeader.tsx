@@ -10,6 +10,8 @@ import { useNotifications } from '@/features/notifications/hooks/useNotification
 import { getInitials } from '@/shared/utils/initials';
 import { apiGet, ApiResponse } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import { Toast } from '@/shared/components/Toast';
+import { useToast } from '@/shared/hooks/useToast';
 import { FolderSidebarResponse, ServiceType } from '@/features/services/types';
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
@@ -80,13 +82,14 @@ export function DashboardHeader() {
     const [searchError, setSearchError] = useState<string | null>(null);
     const [navigatingSearchItemId, setNavigatingSearchItemId] = useState<string | null>(null);
     const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(-1);
+    const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
     const {
         notifications,
         isLoading: isNotificationLoading,
         error: notificationError,
         totalNotRead,
         fetchNotifications,
-        markAllAsReadLocal,
+        markAllAsRead,
     } = useNotifications({
         page: 1,
         limit: 10,
@@ -94,6 +97,7 @@ export function DashboardHeader() {
         fallbackActorName: user?.name,
         autoFetch: true,
     });
+    const { toast, showToast, hideToast } = useToast();
     const dropdownRef = useRef<HTMLDivElement>(null);
     const notificationRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
@@ -205,7 +209,22 @@ export function DashboardHeader() {
     useClickOutside(dropdownRef, () => setIsDropdownOpen(false), isDropdownOpen);
     useClickOutside(notificationRef, () => setIsNotificationOpen(false), isNotificationOpen);
     useClickOutside(searchRef, () => setIsSearchFocused(false), isSearchOverlayVisible);
-    const handleMarkAllRead = markAllAsReadLocal;
+    const handleMarkAllRead = () => {
+        void (async () => {
+            setIsMarkingAllRead(true);
+            try {
+                await markAllAsRead();
+                showToast({ message: 'Semua notifikasi ditandai sudah dibaca', variant: 'success' });
+            } catch (error) {
+                showToast({
+                    message: error instanceof Error ? error.message : 'Gagal menandai notifikasi',
+                    variant: 'error',
+                });
+            } finally {
+                setIsMarkingAllRead(false);
+            }
+        })();
+    };
 
     useEffect(() => {
         if (!isSearchOverlayVisible) return;
@@ -445,7 +464,8 @@ export function DashboardHeader() {
     };
 
     return (
-        <header className="relative flex items-center gap-4">
+        <>
+            <header className="relative flex items-center gap-4">
             <button
                 onClick={toggle}
                 className="p-2 lg:hidden text-gray-600 hover:bg-gray-100 rounded-lg"
@@ -621,7 +641,7 @@ export function DashboardHeader() {
                                         <h3 className="text-2xl leading-none font-semibold text-gray-800">Notifikasi</h3>
                                         <button
                                             onClick={handleMarkAllRead}
-                                            disabled={unreadCount === 0 || isNotificationLoading}
+                                            disabled={unreadCount === 0 || isNotificationLoading || isMarkingAllRead}
                                             className="mt-5 inline-flex items-center gap-2.5 text-base text-[#6E5F49] hover:text-[#5b4d39] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             Tandai semua dibaca
@@ -768,6 +788,8 @@ export function DashboardHeader() {
                     )}
                 </div>
             </div>
-        </header>
+            </header>
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
+        </>
     );
 }

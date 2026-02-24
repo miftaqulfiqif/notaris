@@ -37,6 +37,13 @@ interface MultipleRestorePayload {
     }>;
 }
 
+interface MultiplePermanentDeletePayload {
+    items: Array<{
+        item_id: string;
+        item_type: Exclude<TrashItemType, 'TIPE_LAYANAN'>;
+    }>;
+}
+
 export function useTrashItems() {
     const [items, setItems] = useState<TrashItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -122,6 +129,49 @@ export function useTrashItems() {
         }
     };
 
+    const deleteItemPermanently = async (item: TrashItem) => {
+        if (item.item_type === 'TIPE_LAYANAN') {
+            throw new Error('Tipe layanan belum mendukung hapus permanen');
+        }
+
+        try {
+            await apiPost(ENDPOINTS.USER.ITEM_DELETE_PERMANENT, {
+                item_id: item.item_id,
+                item_type: item.item_type,
+            });
+            refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to permanently delete item:', err);
+            throw err;
+        }
+    };
+
+    const deleteItemsPermanently = async (selectedItems: TrashItem[]) => {
+        if (selectedItems.length === 0) return true;
+
+        const unsupportedItem = selectedItems.find((item) => item.item_type === 'TIPE_LAYANAN');
+        if (unsupportedItem) {
+            throw new Error('Sebagian item belum mendukung hapus permanen');
+        }
+
+        try {
+            const payload: MultiplePermanentDeletePayload = {
+                items: selectedItems.map((item) => ({
+                    item_id: item.item_id,
+                    item_type: item.item_type as Exclude<TrashItemType, 'TIPE_LAYANAN'>,
+                })),
+            };
+
+            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_DELETE_PERMANENT, payload);
+            refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to permanently delete selected items:', err);
+            throw err;
+        }
+    };
+
     return {
         items,
         isLoading,
@@ -135,5 +185,7 @@ export function useTrashItems() {
         refresh,
         restoreItem,
         restoreItems,
+        deleteItemPermanently,
+        deleteItemsPermanently,
     };
 }

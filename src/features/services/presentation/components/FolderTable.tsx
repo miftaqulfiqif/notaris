@@ -358,6 +358,24 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         });
     }, [activeFolder]);
 
+    const handleDownloadFolder = useCallback(() => {
+        if (!activeFolder) return;
+
+        const downloadUrl = ENDPOINTS.USER.FOLDER_DOWNLOAD.replace(':folder_id', activeFolder.id);
+        const downloadWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+
+        if (!downloadWindow) {
+            showToast({ message: 'Gagal membuka download folder', variant: 'error' });
+            return;
+        }
+
+        showToast({ message: 'Download folder dimulai', variant: 'success' });
+    }, [activeFolder, showToast]);
+
+    const handleRenameFolder = useCallback(() => {
+        showToast({ message: 'Fitur ganti nama folder belum tersedia', variant: 'info' });
+    }, [showToast]);
+
     const handleOpenStatusDropdown = useCallback(
         (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
             closeDropdown();
@@ -402,8 +420,8 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
 
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
-            { label: 'Download file', icon: <Download className="w-4 h-4" /> },
-            { label: 'Ganti nama', icon: <Edit3 className="w-4 h-4" />, hasDivider: true },
+            { label: 'Download file', icon: <Download className="w-4 h-4" />, onClick: handleDownloadFolder },
+            { label: 'Ganti nama', icon: <Edit3 className="w-4 h-4" />, hasDivider: true, onClick: handleRenameFolder },
             { label: 'Lihat Detail', icon: <Info className="w-4 h-4" />, onClick: handleOpenDetailSidebar },
             {
                 label: activeFolderIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
@@ -423,8 +441,10 @@ export function FolderTable({ items, onRefresh }: FolderTableProps) {
         ],
         [
             activeFolderIsFavorite,
+            handleDownloadFolder,
             handleMoveToTrash,
             handleOpenDetailSidebar,
+            handleRenameFolder,
             handleToggleFavorite,
             isFavoriteLoading,
             isTrashLoading,

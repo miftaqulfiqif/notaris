@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { apiGet } from '@/shared/api/api-client';
 
-export type ItemType = 'DOCUMENT' | 'FOLDER' | 'TIPE_LAYANAN';
+export type ItemType = 'DOCUMENT' | 'FOLDER' | 'LAYANAN' | 'TIPE_LAYANAN';
 
 export interface StarredItemDetail {
     author: string;

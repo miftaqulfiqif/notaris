@@ -10,6 +10,15 @@ import { UploadFormData, EMPTY_UPLOAD_FORM } from '@/features/dashboard/types';
 import { ServiceType } from '@/features/services/types';
 import { DebouncedInput } from '@/shared/components/DebouncedInput';
 
+const PDF_MIME_TYPE = 'application/pdf';
+const PDF_ONLY_ERROR_MESSAGE = 'Hanya file PDF (.pdf) yang diperbolehkan';
+
+const isPdfFile = (file: File) =>
+    file.type === PDF_MIME_TYPE || file.name.toLowerCase().endsWith('.pdf');
+
+const hasNonPdfFile = (fileList: FileList) =>
+    Array.from(fileList).some((file) => !isPdfFile(file));
+
 export function GlobalUploadModal() {
     const { isOpen, closeModal, files, setFiles, preSelection } = useUploadModal();
     const { services } = useSidebar();
@@ -66,13 +75,20 @@ export function GlobalUploadModal() {
     }, [formData.layanan_id]);
 
     useEffect(() => {
-        if (files && files.length > 0) {
-            setFormData(prev => ({
-                ...prev,
-                file_name: files[0].name.replace(/\.[^/.]+$/, '')
-            }));
+        if (!files || files.length === 0) return;
+
+        if (hasNonPdfFile(files)) {
+            setError(PDF_ONLY_ERROR_MESSAGE);
+            setFiles(null);
+            return;
         }
-    }, [files]);
+
+        setError(null);
+        setFormData(prev => ({
+            ...prev,
+            file_name: files[0].name.replace(/\.[^/.]+$/, '')
+        }));
+    }, [files, setFiles]);
 
     if (!isOpen) return null;
 
@@ -90,12 +106,27 @@ export function GlobalUploadModal() {
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            if (hasNonPdfFile(e.dataTransfer.files)) {
+                setError(PDF_ONLY_ERROR_MESSAGE);
+                setFiles(null);
+                return;
+            }
+
+            setError(null);
             setFiles(e.dataTransfer.files);
         }
     };
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
+            if (hasNonPdfFile(e.target.files)) {
+                setError(PDF_ONLY_ERROR_MESSAGE);
+                setFiles(null);
+                e.target.value = '';
+                return;
+            }
+
+            setError(null);
             setFiles(e.target.files);
         }
     };
@@ -123,20 +154,39 @@ export function GlobalUploadModal() {
             return;
         }
 
+        const selectedFiles = files ? Array.from(files) : [];
+        if (selectedFiles.some((file) => !isPdfFile(file))) {
+            setError(PDF_ONLY_ERROR_MESSAGE);
+            return;
+        }
+
         setIsSubmitting(true);
         setError(null);
 
         try {
-            const payload = {
-                layanan_id: formData.layanan_id,
-                tipe_layanan_id: formData.tipe_layanan_id,
-                folder_name: normalizedFolderName,
-                kedudukan: formData.kedudukan,
-                nomor_akta: formData.nomor_akta,
-                ...(formData.file_name ? { file_name: formData.file_name } : {}),
+            const buildPayload = (file?: File) => {
+                const payload = new FormData();
+                payload.append('layanan_id', formData.layanan_id);
+                payload.append('tipe_layanan_id', formData.tipe_layanan_id);
+                payload.append('folder_name', normalizedFolderName);
+                payload.append('kedudukan', formData.kedudukan);
+                payload.append('nomor_akta', formData.nomor_akta);
+
+                if (file) {
+                    payload.append('file', file);
+                }
+
+                return payload;
             };
 
-            await apiPost(ENDPOINTS.USER.UPLOAD_FILE, payload);
+            if (selectedFiles.length > 0) {
+                for (const file of selectedFiles) {
+                    await apiPost(ENDPOINTS.USER.UPLOAD_FILE, buildPayload(file));
+                }
+            } else {
+                await apiPost(ENDPOINTS.USER.UPLOAD_FILE, buildPayload());
+            }
+
             if (preSelection?.onSuccess) {
                 preSelection.onSuccess();
             }
@@ -317,6 +367,7 @@ export function GlobalUploadModal() {
                         >
                             <input
                                 type="file"
+                                accept=".pdf,application/pdf"
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileInput}

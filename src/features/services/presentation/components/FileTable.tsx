@@ -105,11 +105,32 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
         }
     }, [activeFile, showToast, onRefresh]);
 
+    const handleDownloadFile = useCallback(() => {
+        if (!activeFile) return;
+
+        const downloadUrl = ENDPOINTS.USER.DOCUMENT_DOWNLOAD.replace(':documentId', activeFile.id);
+        const downloadWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        if (!downloadWindow) {
+            showToast({ message: 'Gagal membuka download file', variant: 'error' });
+            return;
+        }
+
+        showToast({ message: 'Download file dimulai', variant: 'success' });
+    }, [activeFile, showToast]);
+
+    const handleRenameFile = useCallback(() => {
+        showToast({ message: 'Fitur ganti nama file belum tersedia', variant: 'info' });
+    }, [showToast]);
+
+    const handleViewDetail = useCallback(() => {
+        showToast({ message: 'Fitur lihat detail file belum tersedia', variant: 'info' });
+    }, [showToast]);
+
     const fileMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
-            { label: 'Download file', icon: <Download className="w-4 h-4" /> },
-            { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true },
-            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
+            { label: 'Download file', icon: <Download className="w-4 h-4" />, onClick: handleDownloadFile },
+            { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true, onClick: handleRenameFile },
+            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" />, onClick: handleViewDetail },
             {
                 label: activeFileIsFavorite ? 'Hapus dari Berbintang' : 'Tambahkan ke berbintang',
                 icon: activeFileIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
@@ -125,7 +146,15 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                 className: 'text-red-600 hover:bg-red-50',
             },
         ],
-        [activeFileIsFavorite, handleToggleFavorite, handleMoveToTrash, isFavoriteLoading],
+        [
+            activeFileIsFavorite,
+            handleDownloadFile,
+            handleMoveToTrash,
+            handleRenameFile,
+            handleToggleFavorite,
+            handleViewDetail,
+            isFavoriteLoading,
+        ],
     );
 
     const handleBulkRename = useCallback(() => {

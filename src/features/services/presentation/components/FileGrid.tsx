@@ -24,6 +24,7 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFile();
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [previewErrors, setPreviewErrors] = useState<Record<string, boolean>>({});
 
     const activeFile = useMemo(() => {
         if (!activeDropdown) return null;
@@ -75,6 +76,10 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
         [handleToggleFavorite, isFavoriteLoading, resolveIsFavorite],
     );
 
+    const handlePreviewError = useCallback((fileId: string) => {
+        setPreviewErrors((prev) => ({ ...prev, [fileId]: true }));
+    }, []);
+
     const handleMoveToTrash = useCallback(async () => {
         if (!activeFile) return;
 
@@ -90,11 +95,32 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
         }
     }, [activeFile, showToast, onRefresh]);
 
+    const handleDownloadFile = useCallback(() => {
+        if (!activeFile) return;
+
+        const downloadUrl = ENDPOINTS.USER.DOCUMENT_DOWNLOAD.replace(':documentId', activeFile.id);
+        const downloadWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        if (!downloadWindow) {
+            showToast({ message: 'Gagal membuka download file', variant: 'error' });
+            return;
+        }
+
+        showToast({ message: 'Download file dimulai', variant: 'success' });
+    }, [activeFile, showToast]);
+
+    const handleRenameFile = useCallback(() => {
+        showToast({ message: 'Fitur ganti nama file belum tersedia', variant: 'info' });
+    }, [showToast]);
+
+    const handleViewDetail = useCallback(() => {
+        showToast({ message: 'Fitur lihat detail file belum tersedia', variant: 'info' });
+    }, [showToast]);
+
     const fileMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
-            { label: 'Download file', icon: <Download className="w-4 h-4" /> },
-            { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true },
-            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" /> },
+            { label: 'Download file', icon: <Download className="w-4 h-4" />, onClick: handleDownloadFile },
+            { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true, onClick: handleRenameFile },
+            { label: 'Lihat Detail', icon: <Info className="w-4 h-4" />, onClick: handleViewDetail },
             {
                 label: activeFileIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
                 icon: activeFileIsFavorite ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />,
@@ -109,7 +135,15 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
                 onClick: handleMoveToTrash,
             },
         ],
-        [activeFileIsFavorite, handleToggleFavorite, handleMoveToTrash, isFavoriteLoading],
+        [
+            activeFileIsFavorite,
+            handleDownloadFile,
+            handleMoveToTrash,
+            handleRenameFile,
+            handleToggleFavorite,
+            handleViewDetail,
+            isFavoriteLoading,
+        ],
     );
 
     if (items.length === 0) {
@@ -129,17 +163,42 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
             <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {items.map((item) => {
                     const isFavorite = resolveIsFavorite(item);
+                    const previewUrl = ENDPOINTS.USER.DOCUMENT_VIEW.replace(':documentId', item.id);
+                    const hasPreviewError = Boolean(previewErrors[item.id]);
 
                     return (
                         <div key={item.id} className="group bg-white hover:shadow-md border border-gray-200 rounded-xl overflow-hidden transition-shadow">
-                            <div className="relative flex justify-center items-center bg-gray-50 p-4 border-gray-100 border-b aspect-4/3">
-                                <div className="relative flex justify-center items-center bg-white shadow-sm border border-gray-200 w-full h-full overflow-hidden">
-                                    <div className="absolute inset-2 border-2 border-gray-200 border-double" />
-                                    <div className="flex justify-center items-center bg-gray-100 rounded-full w-12 h-12">
-                                        <FileText className="w-6 h-6 text-gray-300" />
+                            <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                            >
+                                <div className="relative flex justify-center items-center bg-gray-50 p-4 border-gray-100 border-b aspect-4/3">
+                                    <div className="relative bg-white shadow-sm border border-gray-200 w-full h-full overflow-hidden">
+                                        {hasPreviewError ? (
+                                            <div className="flex justify-center items-center bg-gray-100 w-full h-full">
+                                                <div className="flex justify-center items-center bg-gray-200 rounded-full w-12 h-12">
+                                                    <FileText className="w-6 h-6 text-gray-400" />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <iframe
+                                                src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                                                title={`Preview ${item.file_name}`}
+                                                loading="lazy"
+                                                className="border-0 w-full h-full pointer-events-none"
+                                                onError={() => handlePreviewError(item.id)}
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="absolute inset-4 flex justify-center items-end opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <span className="bg-black/65 px-3 py-1.5 rounded-full font-medium text-white text-xs">
+                                            Klik untuk preview
+                                        </span>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
 
                             <div className="flex items-center gap-3 p-4">
                                 <div className="w-6 h-6">
@@ -147,9 +206,15 @@ export function FileGrid({ items, onRefresh }: FileGridProps) {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                        <h3 className="font-semibold text-gray-900 truncate" title={item.file_name}>
+                                        <a
+                                            href={previewUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block font-semibold text-gray-900 hover:text-[#8B7355] truncate transition-colors"
+                                            title={`Preview ${item.file_name}`}
+                                        >
                                             {item.file_name}
-                                        </h3>
+                                        </a>
                                         {isFavorite && (
                                             <button
                                                 type="button"

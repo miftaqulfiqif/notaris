@@ -5,6 +5,8 @@ import { DashboardHeader } from '@/layout/DashboardHeader';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { NotificationsView } from '@/features/notifications/presentation/views/NotificationsView';
+import { useToast } from '@/shared/hooks/useToast';
+import { Toast } from '@/shared/components/Toast';
 
 export default function NotificationsPage() {
     const { user } = useAuthContext();
@@ -19,7 +21,7 @@ export default function NotificationsPage() {
         totalPages,
         totalItems,
         fetchNotifications,
-        markAllAsReadLocal,
+        markAllAsRead,
     } = useNotifications({
         page,
         limit,
@@ -27,12 +29,27 @@ export default function NotificationsPage() {
         fallbackActorName: user?.name,
         autoFetch: true,
     });
+    const { toast, showToast, hideToast } = useToast();
     const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * limit;
     const endIndex = totalItems === 0 ? 0 : Math.min(startIndex + notifications.length, totalItems);
 
     const handlePageChange = (nextPage: number) => {
         if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
         setPage(nextPage);
+    };
+
+    const handleMarkAllRead = () => {
+        void (async () => {
+            try {
+                await markAllAsRead();
+                showToast({ message: 'Semua notifikasi ditandai sudah dibaca', variant: 'success' });
+            } catch (err) {
+                showToast({
+                    message: err instanceof Error ? err.message : 'Gagal menandai notifikasi',
+                    variant: 'error',
+                });
+            }
+        })();
     };
 
     return (
@@ -53,7 +70,7 @@ export default function NotificationsPage() {
                         totalItems={totalItems}
                         startIndex={startIndex}
                         endIndex={endIndex}
-                        onMarkAllRead={markAllAsReadLocal}
+                        onMarkAllRead={handleMarkAllRead}
                         onRetry={() => {
                             void fetchNotifications();
                         }}
@@ -61,6 +78,7 @@ export default function NotificationsPage() {
                     />
                 </div>
             </div>
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
 }
