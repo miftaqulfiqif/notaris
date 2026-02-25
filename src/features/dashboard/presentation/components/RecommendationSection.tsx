@@ -11,6 +11,17 @@ interface RecommendationSectionProps {
     isLoading?: boolean;
 }
 
+const toActivityStatus = (
+    ...statuses: Array<string | null | undefined>
+): Activity['status'] => {
+    for (const status of statuses) {
+        if (status === 'Selesai' || status === 'Terjeda' || status === 'Proses') {
+            return status;
+        }
+    }
+    return 'Proses';
+};
+
 export function RecommendationSection({
     onSelectActivity,
     dashboardActivities,
@@ -18,7 +29,7 @@ export function RecommendationSection({
 }: RecommendationSectionProps) {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-    const realActivities = useMemo(() => {
+    const realActivities = useMemo<Activity[]>(() => {
         if (!dashboardActivities?.data) return [];
         return dashboardActivities.data.map((act, index) => ({
             id: act.folder_id || `fallback-id-${index}`,
@@ -27,7 +38,7 @@ export function RecommendationSection({
             service: act.tipe_layanan || '-',
             author: act.author || '-',
             modifiedDate: String(act.updated_at || '-'),
-            status: act.status || act.object_status || 'Proses',
+            status: toActivityStatus(act.status, act.object_status),
             isFavorite: false
         })).slice(0, 4); // Only show top 4 for recommendations
     }, [dashboardActivities]);
@@ -70,7 +81,7 @@ export function RecommendationSection({
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 p-1 border-none shadow-none bg-transparent">
                     {realActivities.map((activity) => (
                         <div key={activity.id} className="group relative border border-gray-200/80 bg-white rounded-2xl p-4 flex flex-col hover:border-[#B39B7D] hover:shadow-md transition-all cursor-pointer h-[180px]">
-                            <div className="flex-1 flex justify-center items-center py-2" onClick={() => onSelectActivity?.(activity as any)}>
+                            <div className="flex-1 flex justify-center items-center py-2" onClick={() => onSelectActivity?.(activity)}>
                                 <Folder className="w-[84px] h-[84px] text-[#FFB020] fill-[#FFB020] group-hover:scale-105 transition-transform" />
                             </div>
                             <div className="flex justify-between items-end mt-4 pt-3 border-t border-gray-100/60">
@@ -92,7 +103,7 @@ export function RecommendationSection({
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     {/* Simplified list view for recommendations if they toggle it */}
                     {realActivities.map((activity, idx) => (
-                        <div key={activity.id} className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${idx !== realActivities.length - 1 ? 'border-b border-gray-100' : ''}`} onClick={() => onSelectActivity?.(activity as any)}>
+                        <div key={activity.id} className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${idx !== realActivities.length - 1 ? 'border-b border-gray-100' : ''}`} onClick={() => onSelectActivity?.(activity)}>
                             <div className="flex items-center gap-4">
                                 <Folder className="w-8 h-8 text-[#FFB020] fill-[#FFB020]" />
                                 <div>
