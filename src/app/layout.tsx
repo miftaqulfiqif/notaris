@@ -1,25 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Roboto, Roboto_Mono } from 'next/font/google';
+import './globals.css';
 import { AuthProvider } from '@/features/auth/context/auth.context';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const robotoSans = Roboto({
+  variable: '--font-roboto-sans',
+  subsets: ['latin'],
+  weight: ['100', '300', '400', '500', '700', '900'],
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const robotoMono = Roboto_Mono({
+  variable: '--font-roboto-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Notarix Dashboard",
-  description: "Notaris Dashboard Application",
+  title: 'Notarix Dashboard',
+  description: 'Notaris Dashboard Application',
 };
 
 export const viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
 };
 
@@ -31,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${robotoSans.variable} ${robotoMono.variable} antialiased`}
       >
         <AuthProvider>
           {children}

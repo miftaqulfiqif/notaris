@@ -4,21 +4,23 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   /* Slide in animation for offcanvas */
   @keyframes slide-in-right {
     from {
       transform: translateX(100%);
     }
+
     to {
       transform: translateX(0);
     }
   }
-  
+
   .animate-slide-in-right {
     animation: slide-in-right 0.3s ease-out;
   }
@@ -27,8 +29,8 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-roboto-sans);
+  --font-mono: var(--font-roboto-mono);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-bg: var(--sidebar-bg);
   --color-sidebar-hover: var(--sidebar-hover);
@@ -39,7 +41,7 @@
 :root {
   --background: #ffffff;
   --foreground: #ffffff;
-  
+
   --sidebar-primary: #98856B;
   --sidebar-hover: #F9F7F5;
   --sidebar-bg: #FFFFFF;
@@ -61,5 +63,5 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-roboto-sans);
 }

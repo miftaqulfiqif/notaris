@@ -18,6 +18,7 @@ import type { NotificationItem } from '@/features/notifications/types/notificati
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
 const SEARCH_FILTER_ORDER: SearchFilter[] = ['ALL', 'DOCUMENT', 'FOLDER'];
+const MAX_NOTIFICATION_PREVIEW = 5;
 
 interface GlobalSearchItem {
     id: string;
@@ -41,7 +42,7 @@ interface GlobalSearchApiItem {
 
 interface GlobalSearchResponse {
     message: string;
-    data: GlobalSearchApiItem[];
+    data: GlobalSearchApiItem[] | { data?: GlobalSearchApiItem[] } | null;
 }
 
 const formatStatusLabel = (value: string) =>
@@ -67,6 +68,20 @@ const parseActiveServiceRoute = (pathname: string) => {
         serviceSlug: segments[1],
         typeSlug: segments[2],
     };
+};
+
+const getGlobalSearchItems = (
+    payload: GlobalSearchResponse['data'],
+): GlobalSearchApiItem[] => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && typeof payload === 'object' && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    return [];
 };
 
 export function DashboardHeader() {
@@ -116,6 +131,25 @@ export function DashboardHeader() {
         showToast,
         markAsRead,
     });
+    const latestNotifications = useMemo(() => (
+        notifications
+            .map((notification, index) => {
+                const parsedDate = Date.parse(notification.createdAt);
+                return {
+                    notification,
+                    index,
+                    timestamp: Number.isNaN(parsedDate) ? 0 : parsedDate,
+                };
+            })
+            .sort((a, b) => {
+                if (a.timestamp === b.timestamp) {
+                    return a.index - b.index;
+                }
+                return b.timestamp - a.timestamp;
+            })
+            .slice(0, MAX_NOTIFICATION_PREVIEW)
+            .map((item) => item.notification)
+    ), [notifications]);
 
     useEffect(() => {
         if (!trimmedSearchQuery) {
@@ -146,7 +180,8 @@ export function DashboardHeader() {
                         return;
                     }
 
-                    const mappedResults = (response.data || []).map((item, index) => {
+                    const items = getGlobalSearchItems(response.data);
+                    const mappedResults = items.map((item, index) => {
                         const itemType: Exclude<SearchFilter, 'ALL'> =
                             item.type === 'DOCUMENT' ? 'DOCUMENT' : 'FOLDER';
                         return {
@@ -365,8 +400,9 @@ export function DashboardHeader() {
         const response = await apiGet<GlobalSearchResponse>(
             `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
         );
+        const items = getGlobalSearchItems(response.data);
         const normalizedTarget = normalizeText(normalizedFolderName);
-        const exactMatch = (response.data || []).find(
+        const exactMatch = items.find(
             (item) => item.type === 'FOLDER' && item.folder_id && normalizeText(item.name) === normalizedTarget,
         );
 
@@ -374,7 +410,7 @@ export function DashboardHeader() {
             return exactMatch.folder_id;
         }
 
-        const fallbackMatch = (response.data || []).find((item) => item.type === 'FOLDER' && item.folder_id);
+        const fallbackMatch = items.find((item) => item.type === 'FOLDER' && item.folder_id);
         return fallbackMatch?.folder_id || null;
     };
 
@@ -695,12 +731,12 @@ export function DashboardHeader() {
                                                 Coba lagi
                                             </button>
                                         </div>
-                                    ) : notifications.length === 0 ? (
+                                    ) : latestNotifications.length === 0 ? (
                                         <div className="px-8 py-10 text-center text-lg text-gray-500">
                                             Belum ada notifikasi
                                         </div>
                                     ) : (
-                                        notifications.map((notification) => (
+                                        latestNotifications.map((notification) => (
                                             <button
                                                 key={notification.id}
                                                 type="button"
