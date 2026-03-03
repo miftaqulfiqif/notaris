@@ -1,17 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Clock3, Folder, LayoutGrid, List, Plus, Star } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { ArrowUpDown, Clock3, Download, Folder, Info, LayoutGrid, List, MoreVertical, Plus, Star, StarOff, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { DashboardHeader } from '@/layout/DashboardHeader';
-import { apiGet } from '@/shared/api/api-client';
+import { apiGet, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
+import { useDropdown } from '@/shared/hooks/useDropdown';
+import { DropdownMenu } from '@/shared/components/DropdownMenu';
+import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
+import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFavoriteFolder';
+import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
 
 interface CompanyItem {
     id: string;
     name: string;
-    principalName: string;
     service: string;
     serviceType: string;
     author: string;
@@ -61,7 +66,6 @@ const normalizeCompanyItems = (response: CompanyApiResponse, favoriteFolderIds: 
     return payload.map((item) => ({
         id: item.id,
         name: item.folder_name,
-        principalName: '-',
         service: item.layanan,
         serviceType: item.tipe_layanan,
         author: item.author,
@@ -71,14 +75,25 @@ const normalizeCompanyItems = (response: CompanyApiResponse, favoriteFolderIds: 
     }));
 };
 
+const toSlug = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '-');
+
 export default function CompanyPage() {
+    const router = useRouter();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [activeTab, setActiveTab] = useState<'baru' | 'favorite'>('baru');
     const [items, setItems] = useState<CompanyItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isMovingToTrash, setIsMovingToTrash] = useState(false);
+    const [detailSidebarFolder, setDetailSidebarFolder] = useState<{ id: string; name: string } | null>(null);
     const { toast, showToast, hideToast } = useToast();
+    const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
+    const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
+        useDropdown<string>({
+            triggerClass: 'company-table-dropdown-trigger',
+            menuClass: 'company-table-dropdown-menu',
+        });
 
     useEffect(() => {
         let isMounted = true;
@@ -159,6 +174,158 @@ export default function CompanyPage() {
             return [...prev, id];
         });
     };
+
+    const activeCompany = useMemo(() => {
+        if (!activeDropdown) return null;
+        return items.find((item) => item.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, items]);
+
+    const activeCompanyIsFavorite = Boolean(activeCompany?.isFavorite);
+
+    const updateItemFavorite = useCallback((itemId: string, isFavorite: boolean) => {
+        setItems((prev) =>
+            prev.map((item) =>
+                item.id === itemId
+                    ? { ...item, isFavorite }
+                    : item,
+            ),
+        );
+    }, []);
+
+    const handleToggleFavorite = useCallback(
+        async (targetItem?: CompanyItem | null) => {
+            const company = targetItem ?? activeCompany;
+            if (!company) return;
+
+            try {
+                if (company.isFavorite) {
+                    await removeFromFavorite(company.id);
+                    updateItemFavorite(company.id, false);
+                    showToast({ message: 'Berhasil dihapus dari berbintang', variant: 'success' });
+                } else {
+                    await addToFavorite(company.id);
+                    updateItemFavorite(company.id, true);
+                    showToast({ message: 'Berhasil ditambahkan ke berbintang', variant: 'success' });
+                }
+            } catch {
+                const message = company.isFavorite
+                    ? 'Gagal menghapus dari berbintang'
+                    : 'Gagal menambahkan ke berbintang';
+                showToast({ message, variant: 'error' });
+            }
+        },
+        [activeCompany, addToFavorite, removeFromFavorite, showToast, updateItemFavorite],
+    );
+
+    const handleFavoriteIconClick = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, company: CompanyItem) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (!company.isFavorite || isFavoriteLoading) return;
+            void handleToggleFavorite(company);
+        },
+        [handleToggleFavorite, isFavoriteLoading],
+    );
+
+    const handleDownloadFolder = useCallback(() => {
+        if (!activeCompany) return;
+
+        const downloadUrl = ENDPOINTS.USER.FOLDER_DOWNLOAD.replace(':folder_id', activeCompany.id);
+        const downloadWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+
+        if (!downloadWindow) {
+            showToast({ message: 'Gagal membuka download folder', variant: 'error' });
+            return;
+        }
+
+        showToast({ message: 'Download folder dimulai', variant: 'success' });
+    }, [activeCompany, showToast]);
+
+    const handleOpenDetailSidebar = useCallback(() => {
+        if (!activeCompany) return;
+        setDetailSidebarFolder({
+            id: activeCompany.id,
+            name: activeCompany.name,
+        });
+    }, [activeCompany]);
+
+    const handleMoveToTrash = useCallback(async () => {
+        if (!activeCompany || isMovingToTrash) return;
+
+        setIsMovingToTrash(true);
+        try {
+            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_DELETE, {
+                items: [{ item_id: activeCompany.id, item_type: 'FOLDER' }],
+            });
+            setItems((prev) => prev.filter((item) => item.id !== activeCompany.id));
+            setSelectedIds((prev) => prev.filter((id) => id !== activeCompany.id));
+            showToast({ message: 'Berhasil dipindahkan ke sampah', variant: 'success' });
+        } catch {
+            showToast({ message: 'Gagal memindahkan ke sampah', variant: 'error' });
+        } finally {
+            setIsMovingToTrash(false);
+        }
+    }, [activeCompany, isMovingToTrash, showToast]);
+
+    const handleOpenActionDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
+            openDropdown(event, folderId);
+        },
+        [openDropdown],
+    );
+
+    const handleOpenCompanyFolder = useCallback(
+        (item: CompanyItem) => {
+            const serviceSlug = toSlug(item.service) || 'layanan';
+            const typeSlug = toSlug(item.serviceType) || 'tipe-layanan';
+            router.push(
+                `/services/${encodeURIComponent(serviceSlug)}/${encodeURIComponent(typeSlug)}/${encodeURIComponent(item.id)}`,
+            );
+        },
+        [router],
+    );
+
+    const companyMenuItems = useMemo<DropdownMenuItem[]>(
+        () => [
+            {
+                label: 'Download folder',
+                icon: <Download className="h-4 w-4" />,
+                onClick: handleDownloadFolder,
+            },
+            {
+                label: 'Lihat detail',
+                icon: <Info className="h-4 w-4" />,
+                onClick: handleOpenDetailSidebar,
+            },
+            {
+                label: activeCompanyIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
+                icon: activeCompanyIsFavorite ? <StarOff className="h-4 w-4" /> : <Star className="h-4 w-4" />,
+                onClick: () => {
+                    void handleToggleFavorite();
+                },
+                hasDivider: true,
+                className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
+            },
+            {
+                label: 'Tambahkan ke sampah',
+                icon: <Trash2 className="h-4 w-4" />,
+                onClick: () => {
+                    void handleMoveToTrash();
+                },
+                className: isMovingToTrash ? 'pointer-events-none opacity-60' : '',
+            },
+        ],
+        [
+            activeCompanyIsFavorite,
+            handleDownloadFolder,
+            handleMoveToTrash,
+            handleOpenDetailSidebar,
+            handleToggleFavorite,
+            isFavoriteLoading,
+            isMovingToTrash,
+        ],
+    );
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 lg:bg-white">
@@ -255,7 +422,7 @@ export default function CompanyPage() {
 
                         <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                             <div className="overflow-x-auto">
-                                <table className="min-w-[1080px] w-full">
+                                <table className="min-w-[1160px] w-full">
                                     <thead>
                                         <tr className="border-b border-gray-200 bg-gray-50/60">
                                             <th className="w-12 px-3 py-3.5 text-left">
@@ -269,12 +436,6 @@ export default function CompanyPage() {
                                             <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
                                                 <button type="button" className="inline-flex items-center gap-2">
                                                     Nama
-                                                    <ArrowUpDown className="h-4 w-4 text-gray-500" />
-                                                </button>
-                                            </th>
-                                            <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
-                                                <button type="button" className="inline-flex items-center gap-2">
-                                                    Nama penghadap
                                                     <ArrowUpDown className="h-4 w-4 text-gray-500" />
                                                 </button>
                                             </th>
@@ -297,6 +458,7 @@ export default function CompanyPage() {
                                                 </button>
                                             </th>
                                             <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">Dimodifikasi</th>
+                                            <th className="w-14 px-3 py-3.5" />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -318,27 +480,60 @@ export default function CompanyPage() {
                                             filteredItems.map((item) => (
                                                 <tr
                                                     key={item.id}
-                                                    className="border-b border-gray-200 text-base text-gray-800 transition-colors last:border-b-0 hover:bg-gray-50"
+                                                    onClick={() => handleOpenCompanyFolder(item)}
+                                                    className="cursor-pointer border-b border-gray-200 text-base text-gray-800 transition-colors last:border-b-0 hover:bg-gray-50"
                                                 >
-                                                    <td className="px-3 py-3">
+                                                    <td className="px-3 py-3" onClick={(event) => event.stopPropagation()}>
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedIds.includes(item.id)}
                                                             onChange={() => toggleSelectOne(item.id)}
+                                                            onClick={(event) => event.stopPropagation()}
                                                             className="h-5 w-5 rounded border-gray-300 text-[#8A7A62] focus:ring-[#8A7A62]"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-3">
                                                         <div className="inline-flex items-center gap-2.5">
                                                             <Folder className="h-6 w-6 text-gray-700" />
-                                                            <span>{item.name}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span>{item.name}</span>
+                                                                {item.isFavorite && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(event) => handleFavoriteIconClick(event, item)}
+                                                                        disabled={isFavoriteLoading}
+                                                                        title="Hapus dari berbintang"
+                                                                        aria-label={`Hapus ${item.name} dari berbintang`}
+                                                                        className={`rounded-full p-1 transition-colors ${
+                                                                            isFavoriteLoading
+                                                                                ? 'cursor-not-allowed opacity-60'
+                                                                                : 'cursor-pointer hover:bg-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 py-3">{item.principalName}</td>
                                                     <td className="px-3 py-3">{item.service}</td>
                                                     <td className="px-3 py-3">{item.serviceType}</td>
                                                     <td className="px-3 py-3">{item.author}</td>
                                                     <td className="px-3 py-3 text-nowrap">{item.modifiedAt}</td>
+                                                    <td className="px-3 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Aksi ${item.name}`}
+                                                            onClick={(event) => handleOpenActionDropdown(event, item.id)}
+                                                            className={`rounded-full p-1 transition-colors ${triggerClass} ${
+                                                                isOpen(item.id)
+                                                                    ? 'bg-gray-200 text-gray-600'
+                                                                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                                            }`}
+                                                        >
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}
@@ -349,6 +544,17 @@ export default function CompanyPage() {
                     </div>
                 </div>
             </div>
+            <DropdownMenu
+                dropdown={activeDropdown}
+                menuClass={menuClass}
+                items={companyMenuItems}
+                onClose={closeDropdown}
+            />
+            <FolderDetailOffcanvas
+                folderId={detailSidebarFolder?.id ?? null}
+                folderName={detailSidebarFolder?.name}
+                onClose={() => setDetailSidebarFolder(null)}
+            />
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );

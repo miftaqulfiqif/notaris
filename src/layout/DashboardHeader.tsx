@@ -15,6 +15,7 @@ import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
 import { FolderSidebarResponse, ServiceType } from '@/features/services/types';
 import type { NotificationItem } from '@/features/notifications/types/notification.types';
+import type { Service } from '@/features/dashboard/types/service.types';
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
 const SEARCH_FILTER_ORDER: SearchFilter[] = ['ALL', 'DOCUMENT', 'FOLDER'];
@@ -43,6 +44,16 @@ interface GlobalSearchApiItem {
 interface GlobalSearchResponse {
     message: string;
     data: GlobalSearchApiItem[] | { data?: GlobalSearchApiItem[] } | null;
+}
+
+interface ServicesResponse {
+    message: string;
+    data: Service[] | { data?: Service[] } | null;
+}
+
+interface ServiceTypesResponse {
+    message: string;
+    data: ServiceType[] | { data?: ServiceType[] } | null;
 }
 
 const formatStatusLabel = (value: string) =>
@@ -84,6 +95,41 @@ const getGlobalSearchItems = (
     return [];
 };
 
+const getServicesPayload = (payload: ServicesResponse['data']): Service[] => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && typeof payload === 'object' && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    return [];
+};
+
+const getServiceTypesPayload = (payload: ServiceTypesResponse['data']): ServiceType[] => {
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    if (payload && typeof payload === 'object' && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+
+    return [];
+};
+
+const getServiceTypeId = (type: ServiceType): string => {
+    const typedValue = type as ServiceType & {
+        tipe_layanan_id?: string | number;
+        type_id?: string | number;
+        id?: string | number;
+    };
+
+    const rawId = typedValue.id ?? typedValue.tipe_layanan_id ?? typedValue.type_id;
+    return rawId == null ? '' : String(rawId);
+};
+
 export function DashboardHeader() {
     const router = useRouter();
     const pathname = usePathname();
@@ -123,6 +169,7 @@ export function DashboardHeader() {
     const searchRequestIdRef = useRef(0);
     const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
     const folderRouteCacheRef = useRef<Record<string, string>>({});
+    const servicesCacheRef = useRef<Service[]>([]);
     const unreadCount = totalNotRead;
     const trimmedSearchQuery = searchQuery.trim();
     const isSearchOverlayVisible = isSearchFocused && trimmedSearchQuery.length > 0;
@@ -284,6 +331,22 @@ export function DashboardHeader() {
         };
     }, [isSearchOverlayVisible]);
 
+    const fetchAvailableServices = async () => {
+        if (services.length > 0) {
+            servicesCacheRef.current = services;
+            return services;
+        }
+
+        if (servicesCacheRef.current.length > 0) {
+            return servicesCacheRef.current;
+        }
+
+        const response = await apiGet<ServicesResponse>(ENDPOINTS.USER.SERVICES);
+        const normalizedServices = getServicesPayload(response.data);
+        servicesCacheRef.current = normalizedServices;
+        return normalizedServices;
+    };
+
     const fetchServiceTypesByService = async (serviceId: string) => {
         const cached = serviceTypesCacheRef.current[serviceId];
         if (cached) {
@@ -291,8 +354,8 @@ export function DashboardHeader() {
         }
 
         const url = ENDPOINTS.USER.SERVICE_TYPES.replace(':serviceId', serviceId);
-        const response = await apiGet<ApiResponse<ServiceType[]>>(url);
-        const serviceTypes = response.data || [];
+        const response = await apiGet<ApiResponse<ServiceType[]> | ServiceTypesResponse>(url);
+        const serviceTypes = getServiceTypesPayload(response.data as ServiceTypesResponse['data']);
         serviceTypesCacheRef.current[serviceId] = serviceTypes;
         return serviceTypes;
     };
@@ -318,17 +381,55 @@ export function DashboardHeader() {
             return null;
         }
 
-        for (const service of services) {
-            const serviceTypes = await fetchServiceTypesByService(service.id);
-            const matchedType = serviceTypes.find((type) =>
-                normalizedCandidates.some((candidate) => isTypeNameMatch(type.name, candidate)),
-            );
+        const availableServices = await fetchAvailableServices();
+        if (availableServices.length === 0) {
+            return null;
+        }
 
-            if (matchedType) {
-                return {
-                    serviceSlug: toSlug(service.name),
-                    typeSlug: toSlug(matchedType.name),
-                };
+        for (const service of availableServices) {
+            try {
+                const serviceTypes = await fetchServiceTypesByService(service.id);
+                const matchedType = serviceTypes.find((type) =>
+                    normalizedCandidates.some((candidate) => isTypeNameMatch(type.name, candidate)),
+                );
+
+                if (matchedType) {
+                    return {
+                        serviceSlug: toSlug(service.name),
+                        typeSlug: toSlug(matchedType.name),
+                    };
+                }
+            } catch {
+                continue;
+            }
+        }
+
+        return null;
+    };
+
+    const resolveServiceAndTypeSlugsByTypeId = async (typeId?: string | null) => {
+        if (!typeId?.trim()) {
+            return null;
+        }
+
+        const availableServices = await fetchAvailableServices();
+        if (availableServices.length === 0) {
+            return null;
+        }
+
+        for (const service of availableServices) {
+            try {
+                const serviceTypes = await fetchServiceTypesByService(service.id);
+                const matchedType = serviceTypes.find((type) => getServiceTypeId(type) === String(typeId));
+
+                if (matchedType) {
+                    return {
+                        serviceSlug: toSlug(service.name),
+                        typeSlug: toSlug(matchedType.name),
+                    };
+                }
+            } catch {
+                continue;
             }
         }
 
@@ -354,7 +455,16 @@ export function DashboardHeader() {
             const typedData = detail.data as {
                 detail_folder?: { tipe_layanan?: string; tipe_layanan_id?: string };
                 tipe_layanan?: string;
+                tipe_layanan_id?: string;
             } | undefined;
+
+            const typeId = typedData?.detail_folder?.tipe_layanan_id || typedData?.tipe_layanan_id;
+            const resolvedByTypeId = await resolveServiceAndTypeSlugsByTypeId(typeId);
+            if (resolvedByTypeId) {
+                const route = `/services/${resolvedByTypeId.serviceSlug}/${resolvedByTypeId.typeSlug}/${folderId}`;
+                folderRouteCacheRef.current[folderId] = route;
+                return route;
+            }
 
             const typeNameCandidates = [
                 typedData?.detail_folder?.tipe_layanan,

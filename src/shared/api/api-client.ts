@@ -71,6 +71,20 @@ export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
     });
 }
 
+export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
+    const payloadBody =
+        body && typeof FormData !== 'undefined' && body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined;
+
+    return apiClient<T>(url, {
+        method: 'PUT',
+        body: payloadBody,
+    });
+}
+
 export async function apiDelete<T>(url: string, body?: unknown): Promise<T> {
     const payloadBody =
         body && typeof FormData !== 'undefined' && body instanceof FormData

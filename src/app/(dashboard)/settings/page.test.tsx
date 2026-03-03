@@ -53,4 +53,24 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Belum ada paket aktif')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Simpan perubahan' })).toBeInTheDocument();
   });
+
+  it('renders fallback setting when backend returns null setting', async () => {
+    (apiGet as jest.Mock).mockResolvedValueOnce({
+      message: 'Get setting success',
+      data: {
+        setting: null,
+        paket: null,
+        member: [],
+        notifikasi: null,
+      },
+    });
+
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Setting' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Belum ada paket aktif')).toBeInTheDocument();
+  });
 });

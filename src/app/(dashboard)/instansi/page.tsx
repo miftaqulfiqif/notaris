@@ -1,24 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Settings } from 'lucide-react';
-import { currentUser } from '@/layout/data/sidebar.data';
+import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { Plus, Settings, UserRound, X } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { getInitials } from '@/shared/utils/initials';
-import { apiGet } from '@/shared/api/api-client';
-import { ENDPOINTS } from '@/shared/api/endpoints';
+import { apiGet, apiPost, apiPut } from '@/shared/api/api-client';
+import { API_FILE_BASE_URL, ENDPOINTS } from '@/shared/api/endpoints';
 import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
+import type { UserDetailResponse } from '@/features/auth/types';
+
+interface NotarisDetailData {
+    avatar: string | null;
+    notaris_name: string;
+    email: string;
+    alamat: string;
+    paket: string | null;
+}
 
 interface NotarisDetailResponse {
     message: string;
-    data: {
-        avatar: string | null;
-        notaris_name: string;
-        email: string;
-        alamat: string;
-        paket: string | null;
-    };
+    data: NotarisDetailData;
+}
+
+interface NotarisUpdateResponse {
+    message: string;
+    data: NotarisDetailData;
 }
 
 interface NotarisUserItem {
@@ -34,17 +41,61 @@ interface NotarisUsersResponse {
     data: NotarisUserItem[];
 }
 
+interface CreateMemberPayload {
+    name: string;
+    email: string;
+    username: string;
+    password: string;
+    confirm_password: string;
+}
+
+const initialCreateMemberForm: CreateMemberPayload = {
+    name: '',
+    email: '',
+    username: '',
+    password: '',
+    confirm_password: '',
+};
+
 const resolveRoleClass = (role: string) =>
     role.toLowerCase().includes('kepala')
         ? 'bg-sky-100 text-sky-700'
         : 'bg-lime-100 text-lime-700';
 
+const toSafeValue = (value?: string | null) => value?.trim() ?? '';
+
+const resolveAvatarUrl = (avatar?: string | null) => {
+    if (!avatar) return null;
+
+    if (/^https?:\/\//i.test(avatar)) {
+        return avatar;
+    }
+
+    const cleanedPath = avatar.replace(/^\/+/, '');
+    if (!API_FILE_BASE_URL) {
+        return `/${cleanedPath}`;
+    }
+
+    return `${API_FILE_BASE_URL}/${cleanedPath}`;
+};
+
 export default function InstansiPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [notarisDetail, setNotarisDetail] = useState<NotarisDetailResponse['data'] | null>(null);
+    const [notarisDetail, setNotarisDetail] = useState<NotarisDetailData | null>(null);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [teamMembers, setTeamMembers] = useState<NotarisUserItem[]>([]);
+    const [isSavingGeneral, setIsSavingGeneral] = useState(false);
+    const [editedNotarisName, setEditedNotarisName] = useState('');
+    const [editedEmail, setEditedEmail] = useState('');
+    const [editedAlamat, setEditedAlamat] = useState('');
+    const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+    const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+    const [isCreateMemberModalOpen, setIsCreateMemberModalOpen] = useState(false);
+    const [isCreatingMember, setIsCreatingMember] = useState(false);
+    const [createMemberForm, setCreateMemberForm] = useState<CreateMemberPayload>(initialCreateMemberForm);
     const { toast, showToast, hideToast } = useToast();
+    const canEditNotaris = (currentUserRole ?? '').trim().toUpperCase() === 'KEPALA NOTARIS';
 
     useEffect(() => {
         let mounted = true;
@@ -53,14 +104,20 @@ export default function InstansiPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const [detailResponse, usersResponse] = await Promise.all([
+                const [detailResponse, usersResponse, detailUserResponse] = await Promise.all([
                     apiGet<NotarisDetailResponse>(ENDPOINTS.NOTARIS.DETAIL),
                     apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS),
+                    apiGet<UserDetailResponse>(ENDPOINTS.USER.DETAIL),
                 ]);
 
                 if (!mounted) return;
 
-                setNotarisDetail(detailResponse.data);
+                const detail = detailResponse.data;
+                setNotarisDetail(detail);
+                setCurrentUserRole(detailUserResponse.data.detail_akun.role);
+                setEditedNotarisName(detail.notaris_name ?? '');
+                setEditedEmail(detail.email ?? '');
+                setEditedAlamat(detail.alamat ?? '');
                 setTeamMembers(usersResponse.data || []);
             } catch (err) {
                 if (!mounted) return;
@@ -79,6 +136,12 @@ export default function InstansiPage() {
         };
     }, []);
 
+    useEffect(() => () => {
+        if (avatarPreviewUrl) {
+            URL.revokeObjectURL(avatarPreviewUrl);
+        }
+    }, [avatarPreviewUrl]);
+
     const packageLabel = useMemo(() => {
         if (!notarisDetail?.paket) return 'Basic';
         return notarisDetail.paket
@@ -86,6 +149,181 @@ export default function InstansiPage() {
             .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ');
     }, [notarisDetail?.paket]);
+
+    const displayedAvatar = useMemo(
+        () => avatarPreviewUrl || resolveAvatarUrl(notarisDetail?.avatar),
+        [avatarPreviewUrl, notarisDetail?.avatar],
+    );
+
+    const hasGeneralChanges = useMemo(() => {
+        const originalName = toSafeValue(notarisDetail?.notaris_name);
+        const originalEmail = toSafeValue(notarisDetail?.email);
+        const originalAlamat = toSafeValue(notarisDetail?.alamat);
+
+        const currentName = toSafeValue(editedNotarisName);
+        const currentEmail = toSafeValue(editedEmail);
+        const currentAlamat = toSafeValue(editedAlamat);
+
+        return (
+            originalName !== currentName
+            || originalEmail !== currentEmail
+            || originalAlamat !== currentAlamat
+            || Boolean(selectedAvatarFile)
+        );
+    }, [editedAlamat, editedEmail, editedNotarisName, notarisDetail?.alamat, notarisDetail?.email, notarisDetail?.notaris_name, selectedAvatarFile]);
+
+    const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+        if (!canEditNotaris) return;
+
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (avatarPreviewUrl) {
+            URL.revokeObjectURL(avatarPreviewUrl);
+        }
+
+        setSelectedAvatarFile(file);
+        setAvatarPreviewUrl(URL.createObjectURL(file));
+        event.target.value = '';
+    };
+
+    const handleCancelGeneralEdit = () => {
+        setEditedNotarisName(notarisDetail?.notaris_name ?? '');
+        setEditedEmail(notarisDetail?.email ?? '');
+        setEditedAlamat(notarisDetail?.alamat ?? '');
+        if (avatarPreviewUrl) {
+            URL.revokeObjectURL(avatarPreviewUrl);
+        }
+        setAvatarPreviewUrl(null);
+        setSelectedAvatarFile(null);
+    };
+
+    const handleSaveGeneral = async () => {
+        if (!canEditNotaris) {
+            showToast({ message: 'Hanya Kepala Notaris yang dapat mengubah data instansi', variant: 'error' });
+            return;
+        }
+
+        if (!notarisDetail || isSavingGeneral) return;
+
+        if (!hasGeneralChanges) {
+            showToast({ message: 'Belum ada perubahan', variant: 'info' });
+            return;
+        }
+
+        const normalizedName = toSafeValue(editedNotarisName);
+        const normalizedEmail = toSafeValue(editedEmail);
+        const normalizedAlamat = toSafeValue(editedAlamat);
+
+        if (!normalizedName) {
+            showToast({ message: 'Nama instansi tidak boleh kosong', variant: 'error' });
+            return;
+        }
+
+        if (!normalizedEmail) {
+            showToast({ message: 'Email instansi tidak boleh kosong', variant: 'error' });
+            return;
+        }
+
+        setIsSavingGeneral(true);
+        try {
+            const formData = new FormData();
+            formData.append('notaris_name', normalizedName);
+            formData.append('email', normalizedEmail);
+            formData.append('alamat', normalizedAlamat);
+            if (selectedAvatarFile) {
+                formData.append('avatar', selectedAvatarFile);
+            }
+
+            const response = await apiPut<NotarisUpdateResponse>(ENDPOINTS.NOTARIS.UPDATE, formData);
+            const updatedDetail = response.data;
+
+            setNotarisDetail(updatedDetail);
+            setEditedNotarisName(updatedDetail.notaris_name ?? '');
+            setEditedEmail(updatedDetail.email ?? '');
+            setEditedAlamat(updatedDetail.alamat ?? '');
+            if (avatarPreviewUrl) {
+                URL.revokeObjectURL(avatarPreviewUrl);
+            }
+            setAvatarPreviewUrl(null);
+            setSelectedAvatarFile(null);
+            showToast({ message: 'Informasi instansi berhasil diperbarui', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal memperbarui informasi instansi',
+                variant: 'error',
+            });
+        } finally {
+            setIsSavingGeneral(false);
+        }
+    };
+
+    const openCreateMemberModal = () => {
+        if (!canEditNotaris) {
+            showToast({ message: 'Hanya Kepala Notaris yang dapat menambah member', variant: 'error' });
+            return;
+        }
+
+        setCreateMemberForm(initialCreateMemberForm);
+        setIsCreateMemberModalOpen(true);
+    };
+
+    const closeCreateMemberModal = () => {
+        if (isCreatingMember) return;
+        setIsCreateMemberModalOpen(false);
+        setCreateMemberForm(initialCreateMemberForm);
+    };
+
+    const handleCreateMemberInputChange = (field: keyof CreateMemberPayload, value: string) => {
+        setCreateMemberForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleCreateMember = async () => {
+        if (!canEditNotaris) {
+            showToast({ message: 'Hanya Kepala Notaris yang dapat menambah member', variant: 'error' });
+            return;
+        }
+
+        if (isCreatingMember) return;
+
+        const payload: CreateMemberPayload = {
+            name: createMemberForm.name.trim(),
+            email: createMemberForm.email.trim(),
+            username: createMemberForm.username.trim(),
+            password: createMemberForm.password,
+            confirm_password: createMemberForm.confirm_password,
+        };
+
+        if (!payload.name || !payload.email || !payload.username || !payload.password || !payload.confirm_password) {
+            showToast({ message: 'Semua field wajib diisi', variant: 'error' });
+            return;
+        }
+
+        if (payload.password !== payload.confirm_password) {
+            showToast({ message: 'Password dan konfirmasi password tidak sama', variant: 'error' });
+            return;
+        }
+
+        setIsCreatingMember(true);
+        try {
+            await apiPost(ENDPOINTS.USER.CREATE, payload);
+            const usersResponse = await apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS);
+            setTeamMembers(usersResponse.data || []);
+            setIsCreateMemberModalOpen(false);
+            setCreateMemberForm(initialCreateMemberForm);
+            showToast({ message: 'Member baru berhasil ditambahkan', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menambahkan member',
+                variant: 'error',
+            });
+        } finally {
+            setIsCreatingMember(false);
+        }
+    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -102,39 +340,124 @@ export default function InstansiPage() {
                                     {error}
                                 </div>
                             )}
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{currentUser.name} Teams</h1>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{notarisDetail?.notaris_name || 'Instansi'} Teams</h1>
 
                             <section className="mt-8">
-                                <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Umum</h2>
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Umum</h2>
+                                </div>
                                 <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between border-b border-gray-200 px-4 sm:px-5 py-3.5">
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Avatar</p>
-                                        <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-500">
-                                            {getInitials(currentUser.name)}
+                                        <div className="flex items-center">
+                                            {canEditNotaris ? (
+                                                <label className="group cursor-pointer" title="Klik avatar untuk mengubah">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                                                        className="hidden"
+                                                        onChange={handleAvatarChange}
+                                                    />
+                                                    <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500 transition-colors group-hover:border-[#8B7355]">
+                                                        {displayedAvatar ? (
+                                                            <img
+                                                                src={displayedAvatar}
+                                                                alt="Avatar instansi"
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            getInitials(notarisDetail?.notaris_name || 'Instansi')
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            ) : (
+                                                <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500">
+                                                    {displayedAvatar ? (
+                                                        <img
+                                                            src={displayedAvatar}
+                                                            alt="Avatar instansi"
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        getInitials(notarisDetail?.notaris_name || 'Instansi')
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-gray-200 px-4 sm:px-5 py-3.5">
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Nama</p>
-                                        <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
-                                            {notarisDetail?.notaris_name || currentUser.name}
-                                        </div>
+                                        {canEditNotaris ? (
+                                            <input
+                                                value={editedNotarisName}
+                                                onChange={(event) => setEditedNotarisName(event.target.value)}
+                                                disabled={isSavingGeneral}
+                                                className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm sm:text-base text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                            />
+                                        ) : (
+                                            <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
+                                                {notarisDetail?.notaris_name || '-'}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-gray-200 px-4 sm:px-5 py-3.5">
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Email</p>
-                                        <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
-                                            {notarisDetail?.email || currentUser.email}
-                                        </div>
+                                        {canEditNotaris ? (
+                                            <input
+                                                type="email"
+                                                value={editedEmail}
+                                                onChange={(event) => setEditedEmail(event.target.value)}
+                                                disabled={isSavingGeneral}
+                                                className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm sm:text-base text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                            />
+                                        ) : (
+                                            <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
+                                                {notarisDetail?.email || '-'}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-gray-200 px-4 sm:px-5 py-3.5">
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Alamat</p>
-                                        <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
-                                            {notarisDetail?.alamat || '-'}
-                                        </div>
+                                        {canEditNotaris ? (
+                                            <textarea
+                                                rows={2}
+                                                value={editedAlamat}
+                                                onChange={(event) => setEditedAlamat(event.target.value)}
+                                                disabled={isSavingGeneral}
+                                                className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm sm:text-base text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                            />
+                                        ) : (
+                                            <div className="w-full sm:max-w-md rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm sm:text-base text-gray-800">
+                                                {notarisDetail?.alamat || '-'}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex items-center justify-between px-4 sm:px-5 py-3.5">
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Paket</p>
                                         <span className="rounded-lg bg-sky-100 px-3 py-1 text-sm text-sky-700">{packageLabel}</span>
                                     </div>
+                                    {canEditNotaris && (
+                                        <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-4 sm:px-5 py-3.5">
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelGeneralEdit}
+                                                disabled={isSavingGeneral}
+                                                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Batal
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    void handleSaveGeneral();
+                                                }}
+                                                disabled={!hasGeneralChanges || isSavingGeneral}
+                                                className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {isSavingGeneral ? 'Menyimpan...' : 'Simpan'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
 

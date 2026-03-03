@@ -34,6 +34,33 @@ describe('InstansiPage', () => {
             created_at: 'Januari, 31 2026',
           },
         ],
+      })
+      .mockResolvedValueOnce({
+        message: 'Get detail user success',
+        data: {
+          informasi_user: {
+            profile_picture: null,
+            name: 'Johny Marteen',
+            gender: null,
+            phone: null,
+            jabatan: null,
+          },
+          detail_akun: {
+            username: 'johny',
+            email: 'example@mail.com',
+            password: '***',
+            role: 'KEPALA NOTARIS',
+            created_at: '2026-02-18T13:43:35.126Z',
+            last_login: null,
+            last_updated_password: null,
+          },
+          informasi_instansi: {
+            notaris_name: 'Johny Marteen SH. M.Kn',
+            email: 'example@mail.com',
+            phone: null,
+            paket: null,
+          },
+        },
       });
 
     render(<InstansiPage />);

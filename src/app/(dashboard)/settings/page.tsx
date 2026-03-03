@@ -10,6 +10,7 @@ import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
 import type {
     NotarisMember,
+    NotarisSetting,
     NotarisSettingResponse,
     SettingViewMode,
     UpdateNotarisGeneralPayload,
@@ -80,6 +81,13 @@ const formatLabel = (value?: string | null, fallback = '-') => {
         .join(' ');
 };
 
+const fallbackSetting: NotarisSetting = {
+    default_view: 'list',
+    umum: 'grid',
+    halaman_awal: 'dashboard',
+    ukuran_font: 'sedang',
+};
+
 export default function SettingsPage() {
     const [defaultView, setDefaultView] = useState<SettingViewMode>('list');
     const [generalView, setGeneralView] = useState<SettingViewMode>('grid');
@@ -108,23 +116,30 @@ export default function SettingsPage() {
                 if (!mounted) return;
 
                 const payload = response.data;
-                setDefaultView(normalizeViewMode(payload.setting.default_view));
-                setGeneralView(normalizeViewMode(payload.setting.umum));
-                setHalamanAwal(payload.setting.halaman_awal || 'dashboard');
-                setUkuranFont(payload.setting.ukuran_font || 'sedang');
+                const setting = payload.setting ?? fallbackSetting;
+                const normalizedDefaultView = normalizeViewMode(setting.default_view);
+                const normalizedGeneralView = normalizeViewMode(setting.umum);
+                const normalizedHalamanAwal = setting.halaman_awal || 'dashboard';
+                const normalizedUkuranFont = setting.ukuran_font || 'sedang';
+                const members = payload.member || [];
+
+                setDefaultView(normalizedDefaultView);
+                setGeneralView(normalizedGeneralView);
+                setHalamanAwal(normalizedHalamanAwal);
+                setUkuranFont(normalizedUkuranFont);
                 setInitialGeneralSetting(
                     toGeneralSettingState(
-                        normalizeViewMode(payload.setting.default_view),
-                        normalizeViewMode(payload.setting.umum),
-                        payload.setting.halaman_awal || 'dashboard',
-                        payload.setting.ukuran_font || 'sedang',
+                        normalizedDefaultView,
+                        normalizedGeneralView,
+                        normalizedHalamanAwal,
+                        normalizedUkuranFont,
                     ),
                 );
-                setActivePackage(payload.paket.paket);
-                setTeamMembers(payload.member || []);
-                setInitialMemberAccessMap(toMemberAccessMap(payload.member || []));
-                setInAppNotificationEnabled(Boolean(payload.notifikasi.notifikasi_dalam_aplikasi));
-                setEmailNotificationEnabled(Boolean(payload.notifikasi.notifikasi_email));
+                setActivePackage(payload.paket?.paket ?? null);
+                setTeamMembers(members);
+                setInitialMemberAccessMap(toMemberAccessMap(members));
+                setInAppNotificationEnabled(Boolean(payload.notifikasi?.notifikasi_dalam_aplikasi));
+                setEmailNotificationEnabled(Boolean(payload.notifikasi?.notifikasi_email));
             } catch (err) {
                 if (!mounted) return;
                 setError(err instanceof Error ? err.message : 'Gagal memuat data setting');

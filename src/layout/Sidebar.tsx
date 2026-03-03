@@ -11,13 +11,14 @@ import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
 import { BrandLogo } from '@/shared/components';
 import { useState } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
-import { currentUser } from '@/layout/data/sidebar.data';
+import { useCurrentUser } from '@/layout/data/sidebar.data';
 import { navigationItems } from '@/layout/data/navigation.data';
 import { getInitials } from '@/shared/utils/initials';
 
 export function Sidebar() {
     const pathname = usePathname();
     const { isOpen, close, services } = useSidebar();
+    const currentUser = useCurrentUser();
 
     const isActive = (path: string) => pathname === path;
     const isServiceActive = pathname.startsWith('/services/');
@@ -53,9 +54,17 @@ export function Sidebar() {
                         className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer"
                     >
                         <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
-                            <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
-                                {getInitials(currentUser.name)}
-                            </div>
+                            {currentUser.avatar ? (
+                                <img
+                                    src={currentUser.avatar}
+                                    alt={currentUser.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
+                                    {getInitials(currentUser.name)}
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm truncate">{currentUser.name}</p>

@@ -1,4 +1,7 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+export const API_FILE_BASE_URL = API_BASE_URL
+    ? API_BASE_URL.replace(/\/api\/?$/, '')
+    : '';
 const API_BASE_URL_WITH_API_PREFIX = API_BASE_URL
     ? API_BASE_URL.replace(/\/$/, '').endsWith('/api')
         ? API_BASE_URL.replace(/\/$/, '')
@@ -13,6 +16,7 @@ export const ENDPOINTS = {
         LOGOUT: `${API_BASE_URL}/user/logout`,
     },
     USER: {
+        CREATE: `${API_BASE_URL}/user/create`,
         SERVICES: `${API_BASE_URL}/user/layanan`,
         SERVICE_TYPES: `${API_BASE_URL}/user/layanan/:serviceId/tipe-layanan`,
         DETAIL_SERVICE_TYPE: `${API_BASE_URL}/detail-tipe-layanan/:tipe_layanan_id`,
@@ -45,6 +49,7 @@ export const ENDPOINTS = {
         DETAIL: `${API_BASE_URL}/user/detail`,
     },
     NOTARIS: {
+        UPDATE: `${API_BASE_URL}/notaris/update`,
         DETAIL: `${API_BASE_URL}/notaris/detail`,
         USERS: `${API_BASE_URL}/notaris/users`,
         SETTING: `${API_BASE_URL}/notaris/setting`,

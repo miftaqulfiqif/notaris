@@ -24,10 +24,10 @@ export interface NotarisNotificationSetting {
 }
 
 export interface NotarisSettingData {
-    setting: NotarisSetting;
-    paket: NotarisPaket;
-    member: NotarisMember[];
-    notifikasi: NotarisNotificationSetting;
+    setting: NotarisSetting | null;
+    paket: NotarisPaket | null;
+    member: NotarisMember[] | null;
+    notifikasi: NotarisNotificationSetting | null;
 }
 
 export interface NotarisSettingResponse {
