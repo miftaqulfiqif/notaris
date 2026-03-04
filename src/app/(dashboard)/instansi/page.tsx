@@ -1,7 +1,8 @@
 'use client';
 
-import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Settings, UserRound, X } from 'lucide-react';
+import Cropper, { type Area } from 'react-easy-crop';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { getInitials } from '@/shared/utils/initials';
 import { apiGet, apiPost, apiPut } from '@/shared/api/api-client';
@@ -49,6 +50,9 @@ interface CreateMemberPayload {
     confirm_password: string;
 }
 
+const MAX_TENANT_ACCOUNTS = 2;
+const AVATAR_OUTPUT_SIZE = 512;
+
 const initialCreateMemberForm: CreateMemberPayload = {
     name: '',
     email: '',
@@ -79,7 +83,57 @@ const resolveAvatarUrl = (avatar?: string | null) => {
     return `${API_FILE_BASE_URL}/${cleanedPath}`;
 };
 
+const createImageElement = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Gagal memuat gambar untuk dipotong'));
+        image.src = src;
+    });
+
+const createCroppedAvatarFile = async (imageSrc: string, cropAreaPixels: Area) => {
+    const image = await createImageElement(imageSrc);
+    const canvas = document.createElement('canvas');
+    canvas.width = AVATAR_OUTPUT_SIZE;
+    canvas.height = AVATAR_OUTPUT_SIZE;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+        throw new Error('Browser tidak mendukung proses crop gambar');
+    }
+
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(
+        image,
+        cropAreaPixels.x,
+        cropAreaPixels.y,
+        cropAreaPixels.width,
+        cropAreaPixels.height,
+        0,
+        0,
+        AVATAR_OUTPUT_SIZE,
+        AVATAR_OUTPUT_SIZE,
+    );
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+            (result) => {
+                if (result) {
+                    resolve(result);
+                    return;
+                }
+                reject(new Error('Gagal membuat hasil crop gambar'));
+            },
+            'image/jpeg',
+            0.92,
+        );
+    });
+
+    return new File([blob], `avatar-${Date.now()}.jpg`, { type: 'image/jpeg' });
+};
+
 export default function InstansiPage() {
+    const avatarUploadInputRef = useRef<HTMLInputElement | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notarisDetail, setNotarisDetail] = useState<NotarisDetailData | null>(null);
@@ -91,11 +145,18 @@ export default function InstansiPage() {
     const [editedAlamat, setEditedAlamat] = useState('');
     const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
     const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+    const [isAvatarCropModalOpen, setIsAvatarCropModalOpen] = useState(false);
+    const [avatarCropSourceUrl, setAvatarCropSourceUrl] = useState<string | null>(null);
+    const [avatarCropPosition, setAvatarCropPosition] = useState({ x: 0, y: 0 });
+    const [avatarZoom, setAvatarZoom] = useState(1);
+    const [avatarCropPixels, setAvatarCropPixels] = useState<Area | null>(null);
+    const [isApplyingAvatarCrop, setIsApplyingAvatarCrop] = useState(false);
     const [isCreateMemberModalOpen, setIsCreateMemberModalOpen] = useState(false);
     const [isCreatingMember, setIsCreatingMember] = useState(false);
     const [createMemberForm, setCreateMemberForm] = useState<CreateMemberPayload>(initialCreateMemberForm);
     const { toast, showToast, hideToast } = useToast();
     const canEditNotaris = (currentUserRole ?? '').trim().toUpperCase() === 'KEPALA NOTARIS';
+    const hasReachedTeamAccountLimit = teamMembers.length >= MAX_TENANT_ACCOUNTS;
 
     useEffect(() => {
         let mounted = true;
@@ -142,6 +203,12 @@ export default function InstansiPage() {
         }
     }, [avatarPreviewUrl]);
 
+    useEffect(() => () => {
+        if (avatarCropSourceUrl) {
+            URL.revokeObjectURL(avatarCropSourceUrl);
+        }
+    }, [avatarCropSourceUrl]);
+
     const packageLabel = useMemo(() => {
         if (!notarisDetail?.paket) return 'Basic';
         return notarisDetail.paket
@@ -172,19 +239,78 @@ export default function InstansiPage() {
         );
     }, [editedAlamat, editedEmail, editedNotarisName, notarisDetail?.alamat, notarisDetail?.email, notarisDetail?.notaris_name, selectedAvatarFile]);
 
+    const resetAvatarCropState = () => {
+        setAvatarCropPosition({ x: 0, y: 0 });
+        setAvatarZoom(1);
+        setAvatarCropPixels(null);
+        setAvatarCropSourceUrl(null);
+    };
+
+    const openAvatarCropModal = () => {
+        if (!canEditNotaris) {
+            showToast({ message: 'Hanya Kepala Notaris yang dapat mengubah avatar', variant: 'error' });
+            return;
+        }
+
+        setIsAvatarCropModalOpen(true);
+    };
+
+    const closeAvatarCropModal = () => {
+        if (isApplyingAvatarCrop) return;
+        setIsAvatarCropModalOpen(false);
+        resetAvatarCropState();
+    };
+
     const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
         if (!canEditNotaris) return;
 
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (avatarPreviewUrl) {
-            URL.revokeObjectURL(avatarPreviewUrl);
+        if (!file.type.startsWith('image/')) {
+            showToast({ message: 'File harus berupa gambar', variant: 'error' });
+            event.target.value = '';
+            return;
         }
 
-        setSelectedAvatarFile(file);
-        setAvatarPreviewUrl(URL.createObjectURL(file));
+        const nextSourceUrl = URL.createObjectURL(file);
+        setAvatarCropSourceUrl(nextSourceUrl);
+        setAvatarCropPosition({ x: 0, y: 0 });
+        setAvatarZoom(1);
+        setAvatarCropPixels(null);
         event.target.value = '';
+    };
+
+    const handleAvatarCropComplete = (_: Area, croppedAreaPixels: Area) => {
+        setAvatarCropPixels(croppedAreaPixels);
+    };
+
+    const handleApplyAvatarCrop = async () => {
+        if (!avatarCropSourceUrl || !avatarCropPixels) {
+            showToast({ message: 'Silakan upload gambar terlebih dahulu', variant: 'error' });
+            return;
+        }
+
+        setIsApplyingAvatarCrop(true);
+        try {
+            const croppedFile = await createCroppedAvatarFile(avatarCropSourceUrl, avatarCropPixels);
+            if (avatarPreviewUrl) {
+                URL.revokeObjectURL(avatarPreviewUrl);
+            }
+
+            setSelectedAvatarFile(croppedFile);
+            setAvatarPreviewUrl(URL.createObjectURL(croppedFile));
+            setIsAvatarCropModalOpen(false);
+            resetAvatarCropState();
+            showToast({ message: 'Avatar siap disimpan. Klik tombol Simpan untuk menerapkan perubahan.', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal memproses crop avatar',
+                variant: 'error',
+            });
+        } finally {
+            setIsApplyingAvatarCrop(false);
+        }
     };
 
     const handleCancelGeneralEdit = () => {
@@ -264,6 +390,14 @@ export default function InstansiPage() {
             return;
         }
 
+        if (hasReachedTeamAccountLimit) {
+            showToast({
+                message: 'Maksimal 2 akun per tenant (1 Kepala Notaris dan 1 staff)',
+                variant: 'error',
+            });
+            return;
+        }
+
         setCreateMemberForm(initialCreateMemberForm);
         setIsCreateMemberModalOpen(true);
     };
@@ -284,6 +418,14 @@ export default function InstansiPage() {
     const handleCreateMember = async () => {
         if (!canEditNotaris) {
             showToast({ message: 'Hanya Kepala Notaris yang dapat menambah member', variant: 'error' });
+            return;
+        }
+
+        if (hasReachedTeamAccountLimit) {
+            showToast({
+                message: 'Member tidak dapat ditambahkan. Tenant sudah memiliki 2 akun.',
+                variant: 'error',
+            });
             return;
         }
 
@@ -309,7 +451,7 @@ export default function InstansiPage() {
 
         setIsCreatingMember(true);
         try {
-            await apiPost(ENDPOINTS.USER.CREATE, payload);
+            await apiPost('/api/user/create', payload);
             const usersResponse = await apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS);
             setTeamMembers(usersResponse.data || []);
             setIsCreateMemberModalOpen(false);
@@ -351,13 +493,13 @@ export default function InstansiPage() {
                                         <p className="text-base sm:text-lg font-semibold text-gray-800">Avatar</p>
                                         <div className="flex items-center">
                                             {canEditNotaris ? (
-                                                <label className="group cursor-pointer" title="Klik avatar untuk mengubah">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                                                        className="hidden"
-                                                        onChange={handleAvatarChange}
-                                                    />
+                                                <button
+                                                    type="button"
+                                                    onClick={openAvatarCropModal}
+                                                    className="group cursor-pointer"
+                                                    title="Klik avatar untuk mengubah"
+                                                    aria-label="Ubah avatar instansi"
+                                                >
                                                     <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500 transition-colors group-hover:border-[#8B7355]">
                                                         {displayedAvatar ? (
                                                             <img
@@ -369,7 +511,7 @@ export default function InstansiPage() {
                                                             getInitials(notarisDetail?.notaris_name || 'Instansi')
                                                         )}
                                                     </div>
-                                                </label>
+                                                </button>
                                             ) : (
                                                 <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500">
                                                     {displayedAvatar ? (
@@ -467,8 +609,9 @@ export default function InstansiPage() {
                                     <div className="flex items-center gap-3">
                                         <button
                                             type="button"
-                                            onClick={() => showToast({ message: 'Form tambah member belum tersedia', variant: 'info' })}
-                                            className="rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-gray-400"
+                                            onClick={openCreateMemberModal}
+                                            className="rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-[#6E5F49] hover:border-[#D6CCBC] disabled:cursor-not-allowed disabled:opacity-60"
+                                            disabled={isLoading || isCreatingMember}
                                         >
                                             Tambah member baru
                                         </button>
@@ -537,6 +680,227 @@ export default function InstansiPage() {
                     </div>
                 </div>
             </div>
+            {isAvatarCropModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+                    onClick={closeAvatarCropModal}
+                >
+                    <div
+                        className="w-full max-w-4xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between px-5 py-5">
+                            <h3 className="text-3xl font-semibold text-[#6E5F49]">Upload Gambar</h3>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    ref={avatarUploadInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={handleAvatarChange}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => avatarUploadInputRef.current?.click()}
+                                    disabled={isApplyingAvatarCrop}
+                                    className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-base text-[#6E5F49] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Upload
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeAvatarCropModal}
+                                    disabled={isApplyingAvatarCrop}
+                                    className="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                    aria-label="Tutup modal upload avatar"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="px-3 pb-4 sm:px-5 sm:pb-5">
+                            <div className="relative h-[320px] overflow-hidden rounded-xl bg-gray-200 sm:h-[460px]">
+                                {avatarCropSourceUrl ? (
+                                    <Cropper
+                                        image={avatarCropSourceUrl}
+                                        crop={avatarCropPosition}
+                                        zoom={avatarZoom}
+                                        aspect={1}
+                                        showGrid
+                                        onCropChange={setAvatarCropPosition}
+                                        onCropComplete={handleAvatarCropComplete}
+                                        onZoomChange={setAvatarZoom}
+                                    />
+                                ) : (
+                                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-500 sm:text-base">
+                                        Pilih gambar lewat tombol Upload untuk mulai crop avatar
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-3">
+                                    <label htmlFor="avatar-zoom" className="text-sm font-medium text-gray-600">Zoom</label>
+                                    <input
+                                        id="avatar-zoom"
+                                        type="range"
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        value={avatarZoom}
+                                        onChange={(event) => setAvatarZoom(Number(event.target.value))}
+                                        disabled={!avatarCropSourceUrl || isApplyingAvatarCrop}
+                                        className="w-52 accent-[#7A6A53] disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={closeAvatarCropModal}
+                                        disabled={isApplyingAvatarCrop}
+                                        className="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-base text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            void handleApplyAvatarCrop();
+                                        }}
+                                        disabled={!avatarCropSourceUrl || isApplyingAvatarCrop}
+                                        className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-6 py-2.5 text-base font-medium text-white hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isApplyingAvatarCrop ? 'Memproses...' : 'Simpan'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isCreateMemberModalOpen && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25 px-4">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                            <h3 className="text-2xl font-semibold text-gray-800">Tambah member baru</h3>
+                            <button
+                                type="button"
+                                onClick={closeCreateMemberModal}
+                                disabled={isCreatingMember}
+                                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Tutup modal tambah member"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form
+                            className="px-5 py-6"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleCreateMember();
+                            }}
+                        >
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                                    <UserRound className="h-8 w-8" />
+                                </div>
+                                <p className="text-xs text-gray-400">
+                                    Maksimal member per tenant: 1 staff (total 2 akun termasuk Kepala Notaris)
+                                </p>
+                            </div>
+
+                            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <label className="flex flex-col gap-1.5 text-sm text-gray-700">
+                                    <span>Email <span className="text-red-500">*</span></span>
+                                    <input
+                                        type="email"
+                                        value={createMemberForm.email}
+                                        onChange={(event) => handleCreateMemberInputChange('email', event.target.value)}
+                                        placeholder="email@example.com"
+                                        disabled={isCreatingMember}
+                                        className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                        required
+                                    />
+                                </label>
+
+                                <label className="flex flex-col gap-1.5 text-sm text-gray-700">
+                                    <span>User name <span className="text-red-500">*</span></span>
+                                    <input
+                                        type="text"
+                                        value={createMemberForm.username}
+                                        onChange={(event) => handleCreateMemberInputChange('username', event.target.value)}
+                                        placeholder="staff_notaris"
+                                        disabled={isCreatingMember}
+                                        className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                        required
+                                    />
+                                </label>
+
+                                <label className="flex flex-col gap-1.5 text-sm text-gray-700 sm:col-span-2">
+                                    <span>Nama lengkap <span className="text-red-500">*</span></span>
+                                    <input
+                                        type="text"
+                                        value={createMemberForm.name}
+                                        onChange={(event) => handleCreateMemberInputChange('name', event.target.value)}
+                                        placeholder="Nama staff"
+                                        disabled={isCreatingMember}
+                                        className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                        required
+                                    />
+                                </label>
+
+                                <label className="flex flex-col gap-1.5 text-sm text-gray-700">
+                                    <span>Password <span className="text-red-500">*</span></span>
+                                    <input
+                                        type="password"
+                                        value={createMemberForm.password}
+                                        onChange={(event) => handleCreateMemberInputChange('password', event.target.value)}
+                                        placeholder="Minimal 8 karakter"
+                                        disabled={isCreatingMember}
+                                        className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                        required
+                                    />
+                                </label>
+
+                                <label className="flex flex-col gap-1.5 text-sm text-gray-700">
+                                    <span>Konfirmasi password <span className="text-red-500">*</span></span>
+                                    <input
+                                        type="password"
+                                        value={createMemberForm.confirm_password}
+                                        onChange={(event) => handleCreateMemberInputChange('confirm_password', event.target.value)}
+                                        placeholder="Ulangi password"
+                                        disabled={isCreatingMember}
+                                        className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                                        required
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="mt-7 flex items-center justify-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeCreateMemberModal}
+                                    disabled={isCreatingMember}
+                                    className="rounded-xl border border-gray-200 bg-white px-10 py-2.5 text-base text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isCreatingMember || hasReachedTeamAccountLimit}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-8 py-2.5 text-base font-medium text-white hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    {isCreatingMember ? 'Menambahkan...' : 'Tambah member'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );

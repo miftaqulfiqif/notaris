@@ -27,11 +27,20 @@ export function GlobalEditFolderModal() {
 
     const handleInputChange = (field: keyof EditFolderFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'folder_name' && value.trim()) {
+            setError(null);
+        }
     };
 
     const handleSubmit = async () => {
         if (!preSelection?.folderId) {
             setError('Folder tidak ditemukan');
+            return;
+        }
+
+        const normalizedFolderName = formData.folder_name.trim();
+        if (!normalizedFolderName) {
+            setError('Nama Folder harus diisi');
             return;
         }
 
@@ -41,7 +50,7 @@ export function GlobalEditFolderModal() {
         try {
             const url = ENDPOINTS.USER.EDIT_FOLDER.replace(':folder_id', preSelection.folderId);
             await apiPatch(url, {
-                folder_name: formData.folder_name,
+                folder_name: normalizedFolderName,
                 kedudukan: formData.kedudukan,
                 nomor_akta: formData.nomor_akta,
             });
@@ -82,12 +91,15 @@ export function GlobalEditFolderModal() {
 
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Nama Folder</label>
+                            <label className="font-medium text-gray-700 text-sm">
+                                Nama Folder <span className="text-red-500">*</span>
+                            </label>
                             <DebouncedInput
                                 type="text"
                                 value={formData.folder_name}
                                 onChange={(value) => handleInputChange('folder_name', value as string)}
                                 placeholder="Contoh: PT ABC"
+                                required
                                 className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
                             />
                         </div>
@@ -126,7 +138,7 @@ export function GlobalEditFolderModal() {
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !formData.folder_name.trim()}
                         className="flex items-center gap-2 bg-[#8B7355] hover:bg-[#7A6548] disabled:opacity-50 shadow-sm px-6 py-2.5 rounded-xl font-medium text-white transition-colors"
                     >
                         {isSubmitting ? (

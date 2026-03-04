@@ -54,6 +54,7 @@ export function useTrashItems() {
     const [searchQuery, setSearchQuery] = useState('');
     const [itemsPerPage] = useState(10);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
 
     const fetchItems = useCallback(async () => {
         try {
@@ -172,9 +173,63 @@ export function useTrashItems() {
         }
     };
 
+    const emptyTrashPermanently = async () => {
+        setIsEmptyingTrash(true);
+        try {
+            const allDeletedItems: TrashItem[] = [];
+            const limit = 100;
+            let page = 1;
+            let totalPagesFromApi = 1;
+
+            do {
+                const queryParams = new URLSearchParams({
+                    page: page.toString(),
+                    limit: limit.toString(),
+                    search: '',
+                });
+
+                const response = await apiGet<TrashResponse>(
+                    `${ENDPOINTS.USER.ITEM_DELETE}?${queryParams.toString()}`
+                );
+
+                const pageItems = response.data.data ?? [];
+                allDeletedItems.push(...pageItems);
+                totalPagesFromApi = response.data.total_pages ?? 1;
+                page += 1;
+            } while (page <= totalPagesFromApi);
+
+            if (allDeletedItems.length === 0) {
+                refresh();
+                return true;
+            }
+
+            const unsupportedItem = allDeletedItems.find((item) => item.item_type === 'TIPE_LAYANAN');
+            if (unsupportedItem) {
+                throw new Error('Sebagian item belum mendukung hapus permanen');
+            }
+
+            const payload: MultiplePermanentDeletePayload = {
+                items: allDeletedItems.map((item) => ({
+                    item_id: item.item_id,
+                    item_type: item.item_type as Exclude<TrashItemType, 'TIPE_LAYANAN'>,
+                })),
+            };
+
+            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_DELETE_PERMANENT, payload);
+            refresh();
+            return true;
+        } catch (err) {
+            console.error('Failed to empty trash permanently:', err);
+            throw err;
+        } finally {
+            setIsEmptyingTrash(false);
+        }
+    };
+
     return {
         items,
         isLoading,
+        isEmptyingTrash,
         error,
         currentPage,
         totalPages,
@@ -187,5 +242,6 @@ export function useTrashItems() {
         restoreItems,
         deleteItemPermanently,
         deleteItemsPermanently,
+        emptyTrashPermanently,
     };
 }

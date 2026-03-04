@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
-import { LayoutGrid, List } from 'lucide-react';
+import { AlertCircle, LayoutGrid, List, Trash2 } from 'lucide-react';
 import { useTrashItems, TrashItem } from '@/features/dashboard/hooks/useTrashItems';
 import { TrashTable } from '@/features/dashboard/presentation/components/TrashTable';
 import { Pagination } from '@/shared/components/Pagination';
@@ -11,9 +11,11 @@ import { Toast } from '@/shared/components/Toast';
 
 export default function TrashPage() {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const [isEmptyTrashConfirmOpen, setIsEmptyTrashConfirmOpen] = useState(false);
     const {
         items,
         isLoading,
+        isEmptyingTrash,
         currentPage,
         totalItems,
         totalPages,
@@ -23,6 +25,7 @@ export default function TrashPage() {
         restoreItems,
         deleteItemPermanently,
         deleteItemsPermanently,
+        emptyTrashPermanently,
     } = useTrashItems();
 
     const { toast, showToast, hideToast } = useToast();
@@ -72,6 +75,33 @@ export default function TrashPage() {
         }
     };
 
+    const handleEmptyTrash = async () => {
+        if (isEmptyingTrash) return;
+
+        try {
+            await emptyTrashPermanently();
+            setIsEmptyTrashConfirmOpen(false);
+            showToast({ message: 'Sampah berhasil dikosongkan', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal mengosongkan sampah',
+                variant: 'error',
+            });
+        }
+    };
+
+    const openEmptyTrashConfirm = () => {
+        if (isEmptyingTrash) return;
+        setIsEmptyTrashConfirmOpen(true);
+    };
+
+    const closeEmptyTrashConfirm = () => {
+        if (isEmptyingTrash) return;
+        setIsEmptyTrashConfirmOpen(false);
+    };
+
+    const hasTrashItems = totalItems > 0;
+
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 lg:bg-white">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -104,14 +134,21 @@ export default function TrashPage() {
                             </div>
                         </div>
 
-                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center justify-between">
-                            <p className="text-red-600 text-sm font-medium">
-                                Item dalam sampah akan dihapus selamanya setelah 30 hari
-                            </p>
-                            <button className="text-red-600 text-sm font-bold hover:text-red-700 transition-colors">
-                                Kosongkan sampah
-                            </button>
-                        </div>
+                        {hasTrashItems && (
+                            <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center justify-between">
+                                <p className="text-red-600 text-sm font-medium">
+                                    Item dalam sampah akan dihapus selamanya setelah 30 hari
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={openEmptyTrashConfirm}
+                                    disabled={isEmptyingTrash}
+                                    className="text-red-600 text-sm font-bold hover:text-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isEmptyingTrash ? 'Mengosongkan...' : 'Kosongkan sampah'}
+                                </button>
+                            </div>
+                        )}
 
                         {isLoading ? (
                             <div className="space-y-4">
@@ -143,6 +180,61 @@ export default function TrashPage() {
                     </div>
                 </div>
             </div>
+            {isEmptyTrashConfirmOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+                    onClick={closeEmptyTrashConfirm}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="empty-trash-modal-title"
+                        className="w-full max-w-[460px] overflow-hidden rounded-2xl bg-white shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3 bg-[#F3E8E8] px-5 py-4">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-red-300 bg-red-100 text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                            </div>
+                            <h2 id="empty-trash-modal-title" className="text-lg font-semibold text-[#101010]">
+                                Hapus Permanen Semua Item
+                            </h2>
+                        </div>
+
+                        <div className="px-6 py-8 text-center">
+                            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-700">
+                                <AlertCircle className="h-10 w-10" />
+                            </div>
+                            <p className="mx-auto max-w-[350px] text-sm leading-relaxed text-[#1F1F1F]">
+                                Semua item di Sampah akan dihapus secara permanen dan tidak dapat dipulihkan.
+                                Pastikan Anda telah memulihkan atau mengekspor data penting sebelum melanjutkan.
+                            </p>
+
+                            <div className="mt-8 flex items-center justify-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        void handleEmptyTrash();
+                                    }}
+                                    disabled={isEmptyingTrash}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-red-500 bg-red-50 px-7 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    {isEmptyingTrash ? 'Menghapus...' : 'Hapus Permanen'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeEmptyTrashConfirm}
+                                    disabled={isEmptyingTrash}
+                                    className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
