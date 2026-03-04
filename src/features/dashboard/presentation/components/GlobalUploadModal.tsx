@@ -169,8 +169,12 @@ export function GlobalUploadModal() {
                 payload.append('layanan_id', formData.layanan_id);
                 payload.append('tipe_layanan_id', formData.tipe_layanan_id);
                 payload.append('folder_name', normalizedFolderName);
-                payload.append('kedudukan', formData.kedudukan);
-                payload.append('nomor_akta', formData.nomor_akta);
+
+                // Saat upload dari halaman detail folder, metadata kedudukan/nomor akta tidak diperlukan.
+                if (!isFolderLocked) {
+                    payload.append('kedudukan', formData.kedudukan);
+                    payload.append('nomor_akta', formData.nomor_akta);
+                }
 
                 if (file) {
                     payload.append('file', file);
@@ -330,27 +334,31 @@ export function GlobalUploadModal() {
                             )}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.kedudukan}
-                                onChange={(value) => handleInputChange('kedudukan', value as string)}
-                                placeholder="Kedudukan"
-                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
-                            />
-                        </div>
+                        {!isFolderLocked && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
+                                    <DebouncedInput
+                                        type="text"
+                                        value={formData.kedudukan}
+                                        onChange={(value) => handleInputChange('kedudukan', value as string)}
+                                        placeholder="Kedudukan"
+                                        className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
+                                    />
+                                </div>
 
-                        <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.nomor_akta}
-                                onChange={(value) => handleInputChange('nomor_akta', value as string)}
-                                placeholder="Nomor Akta"
-                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
-                            />
-                        </div>
+                                <div className="space-y-2">
+                                    <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
+                                    <DebouncedInput
+                                        type="text"
+                                        value={formData.nomor_akta}
+                                        onChange={(value) => handleInputChange('nomor_akta', value as string)}
+                                        placeholder="Nomor Akta"
+                                        className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </>
+                        )}
 
                     </div>
 

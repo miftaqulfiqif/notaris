@@ -56,5 +56,6 @@ describe('ServicePage', () => {
 
     expect(screen.getByText('Pendirian')).toBeInTheDocument();
     expect(screen.getByText('Tambah Baru')).toBeInTheDocument();
+    expect(screen.getByTestId('service-folder-grid')).toBeInTheDocument();
   });
 });

@@ -19,6 +19,10 @@ jest.mock('@/features/dashboard/context/DragDropContext', () => ({
   useDragDropContext: () => ({ setPreSelection: jest.fn() }),
 }));
 
+jest.mock('@/features/dashboard/context/EditFolderModalContext', () => ({
+  useEditFolderModal: () => ({ openModal: jest.fn() }),
+}));
+
 jest.mock('@/layout/providers/SidebarContext', () => ({
   useSidebar: () => ({ services: [{ id: '1', name: 'Pendirian' }] }),
 }));
@@ -29,6 +33,7 @@ jest.mock('@/features/services/context/ServiceTypesContext', () => ({
 
 jest.mock('@/shared/api/api-client', () => ({
   apiGet: jest.fn(),
+  apiPatch: jest.fn(),
 }));
 
 jest.mock('@/features/services/presentation/components/FileTable', () => ({

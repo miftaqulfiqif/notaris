@@ -29,6 +29,7 @@ export const ENDPOINTS = {
         FOLDER_FILES: `${API_BASE_URL}/files/:folderId`,
         DOCUMENT_VIEW: `${API_BASE_URL}/document/:documentId/view`,
         DOCUMENT_DOWNLOAD: `${API_BASE_URL}/document/:documentId/download`,
+        RENAME_FILE: `${API_BASE_URL}/rename-file/:document_id`,
         FOLDER_DOWNLOAD: `${API_BASE_URL}/folder/:folder_id/download`,
         RENAME_FOLDER: `${API_BASE_URL}/rename-folder/:folder_id`,
         EDIT_FOLDER: `${API_BASE_URL}/edit-folder/:folder_id`,

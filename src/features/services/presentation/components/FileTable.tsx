@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, useState, useEffect, type MouseEvent } from 'react';
-import { MoreVertical, Search, FileText, Star, Download, Pencil, Info, Trash2, StarOff } from 'lucide-react';
+import { MoreVertical, Search, FileText, Star, Download, Pencil, Info, Trash2, StarOff, X } from 'lucide-react';
 import { FileItem } from '@/features/services/types';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
@@ -11,7 +11,7 @@ import { useToast } from '@/shared/hooks/useToast';
 import { Toast } from '@/shared/components/Toast';
 import { useSelection } from '@/shared/hooks/useSelection';
 import { ENDPOINTS } from '@/shared/api/endpoints';
-import { apiPost } from '@/shared/api/api-client';
+import { apiPatch, apiPost } from '@/shared/api/api-client';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 
 interface FileTableProps {
@@ -24,6 +24,11 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFile();
     const { toast, showToast, hideToast } = useToast();
     const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [fileNameOverrides, setFileNameOverrides] = useState<Record<string, string>>({});
+    const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
+    const [renameFileName, setRenameFileName] = useState('');
+    const [renameError, setRenameError] = useState<string | null>(null);
+    const [isRenamingFile, setIsRenamingFile] = useState(false);
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
         items,
         itemIdKey: 'id',
@@ -45,6 +50,17 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
         setSelectedItems((prev) => prev.filter((selectedId) => items.some((item) => item.id === selectedId)));
     }, [items, setSelectedItems]);
 
+    useEffect(() => {
+        const existingIds = new Set(items.map((item) => item.id));
+        setFileNameOverrides((prev) => {
+            const filteredEntries = Object.entries(prev).filter(([fileId]) => existingIds.has(fileId));
+            if (filteredEntries.length === Object.keys(prev).length) {
+                return prev;
+            }
+            return Object.fromEntries(filteredEntries);
+        });
+    }, [items]);
+
     const resolveIsFavorite = useCallback(
         (file: { id: string; is_favorite?: boolean }) =>
             favoriteOverrides[file.id] ?? Boolean(file.is_favorite),
@@ -55,6 +71,11 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
         if (!activeFile) return false;
         return resolveIsFavorite(activeFile);
     }, [activeFile, resolveIsFavorite]);
+
+    const resolveFileName = useCallback(
+        (file: Pick<FileItem, 'id' | 'file_name'>) => fileNameOverrides[file.id] ?? file.file_name,
+        [fileNameOverrides],
+    );
 
     const handleToggleFavorite = useCallback(async (targetFile?: { id: string; is_favorite?: boolean } | null) => {
         const file = targetFile ?? activeFile;
@@ -118,9 +139,51 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
         showToast({ message: 'Download file dimulai', variant: 'success' });
     }, [activeFile, showToast]);
 
+    const openRenameModalForFile = useCallback((target: { id: string; name: string }) => {
+        if (isRenamingFile) return;
+        setRenameTarget({ id: target.id, name: target.name });
+        setRenameFileName(target.name);
+        setRenameError(null);
+    }, [isRenamingFile]);
+
+    const closeRenameModal = useCallback(() => {
+        if (isRenamingFile) return;
+        setRenameTarget(null);
+        setRenameFileName('');
+        setRenameError(null);
+    }, [isRenamingFile]);
+
     const handleRenameFile = useCallback(() => {
-        showToast({ message: 'Fitur ganti nama file belum tersedia', variant: 'info' });
-    }, [showToast]);
+        if (!activeFile) return;
+        openRenameModalForFile({ id: activeFile.id, name: resolveFileName(activeFile) });
+    }, [activeFile, openRenameModalForFile, resolveFileName]);
+
+    const submitRenameFile = useCallback(async () => {
+        if (!renameTarget || isRenamingFile) return;
+
+        const normalizedFileName = renameFileName.trim();
+        if (!normalizedFileName) {
+            setRenameError('Nama file wajib diisi');
+            return;
+        }
+
+        setIsRenamingFile(true);
+        setRenameError(null);
+        try {
+            const url = ENDPOINTS.USER.RENAME_FILE.replace(':document_id', renameTarget.id);
+            await apiPatch(url, { file_name: normalizedFileName });
+
+            setFileNameOverrides((prev) => ({ ...prev, [renameTarget.id]: normalizedFileName }));
+            setRenameTarget(null);
+            setRenameFileName('');
+            showToast({ message: 'Nama file berhasil diperbarui', variant: 'success' });
+            setTimeout(() => onRefresh?.(), 300);
+        } catch (error) {
+            setRenameError(error instanceof Error ? error.message : 'Gagal mengganti nama file');
+        } finally {
+            setIsRenamingFile(false);
+        }
+    }, [isRenamingFile, onRefresh, renameFileName, renameTarget, showToast]);
 
     const handleViewDetail = useCallback(() => {
         showToast({ message: 'Fitur lihat detail file belum tersedia', variant: 'info' });
@@ -129,7 +192,13 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
     const fileMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
             { label: 'Download file', icon: <Download className="w-4 h-4" />, onClick: handleDownloadFile },
-            { label: 'Ganti nama', icon: <Pencil className="w-4 h-4" />, hasDivider: true, onClick: handleRenameFile },
+            {
+                label: 'Ganti nama',
+                icon: <Pencil className="w-4 h-4" />,
+                hasDivider: true,
+                onClick: handleRenameFile,
+                className: isRenamingFile ? 'pointer-events-none opacity-60' : '',
+            },
             { label: 'Lihat Detail', icon: <Info className="w-4 h-4" />, onClick: handleViewDetail },
             {
                 label: activeFileIsFavorite ? 'Hapus dari Berbintang' : 'Tambahkan ke berbintang',
@@ -154,6 +223,7 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
             handleToggleFavorite,
             handleViewDetail,
             isFavoriteLoading,
+            isRenamingFile,
         ],
     );
 
@@ -227,7 +297,7 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-gray-900 transition-colors">
-                                                        {item.file_name}
+                                                        {resolveFileName(item)}
                                                     </span>
                                                     {isFavorite && (
                                                         <button
@@ -276,6 +346,86 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                 items={fileMenuItems}
                 onClose={closeDropdown}
             />
+            {renameTarget && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+                    onClick={closeRenameModal}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="rename-file-modal-title"
+                        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                            <h2 id="rename-file-modal-title" className="text-lg font-semibold text-gray-900">
+                                Ganti nama file
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={closeRenameModal}
+                                disabled={isRenamingFile}
+                                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Tutup modal ganti nama file"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form
+                            className="px-5 py-5"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void submitRenameFile();
+                            }}
+                        >
+                            {renameError && (
+                                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                                    {renameError}
+                                </div>
+                            )}
+
+                            <label htmlFor="rename-file-name" className="mb-2 block text-sm font-medium text-gray-700">
+                                Nama File <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="rename-file-name"
+                                type="text"
+                                value={renameFileName}
+                                onChange={(event) => {
+                                    setRenameFileName(event.target.value);
+                                    if (renameError) {
+                                        setRenameError(null);
+                                    }
+                                }}
+                                placeholder="Masukkan nama file"
+                                disabled={isRenamingFile}
+                                autoFocus
+                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                            />
+
+                            <div className="mt-5 flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeRenameModal}
+                                    disabled={isRenamingFile}
+                                    className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isRenamingFile || !renameFileName.trim()}
+                                    className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isRenamingFile ? 'Menyimpan...' : 'Simpan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
             {hasSelectedItems && (
                 <BulkActionToast

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, use, useMemo } from 'react';
+import { useState, useEffect, use, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Pencil, Plus, LayoutGrid, List } from 'lucide-react';
+import { ChevronRight, Pencil, Plus, LayoutGrid, List, ChevronDown, ChevronUp } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
-import { apiGet } from '@/shared/api/api-client';
+import { apiGet, apiPatch } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { StatusBadge } from '@/shared/components';
+import { Toast } from '@/shared/components/Toast';
+import { useToast } from '@/shared/hooks/useToast';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import { useDragDropContext } from '@/features/dashboard/context/DragDropContext';
 import { useEditFolderModal } from '@/features/dashboard/context/EditFolderModalContext';
@@ -16,6 +18,46 @@ import { FileItem, FilesResponse } from '@/features/services/types/file.types';
 import { FileTable } from '@/features/services/presentation/components/FileTable';
 import { FileGrid } from '@/features/services/presentation/components/FileGrid';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
+
+type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+
+interface StatusOption {
+    value: FolderStatusValue;
+    label: string;
+    badgeClassName: string;
+}
+
+const STATUS_OPTIONS: StatusOption[] = [
+    {
+        value: 'selesai',
+        label: 'Selesai',
+        badgeClassName: 'bg-green-100 text-green-700',
+    },
+    {
+        value: 'tertunda',
+        label: 'Tertunda',
+        badgeClassName: 'bg-red-100 text-red-700',
+    },
+    {
+        value: 'proses',
+        label: 'Proses',
+        badgeClassName: 'bg-yellow-100 text-yellow-700',
+    },
+];
+
+const normalizeFolderStatus = (status?: string): FolderStatusValue => {
+    const normalizedStatus = status?.toLowerCase().trim() || 'proses';
+
+    if (normalizedStatus === 'terutunda' || normalizedStatus === 'terjeda') {
+        return 'tertunda';
+    }
+
+    if (normalizedStatus === 'selesai' || normalizedStatus === 'tertunda' || normalizedStatus === 'proses') {
+        return normalizedStatus as FolderStatusValue;
+    }
+
+    return 'proses';
+};
 
 export default function FolderDetailPage({
     params
@@ -28,6 +70,8 @@ export default function FolderDetailPage({
     const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
     const { serviceTypes } = useServiceTypes();
+    const { toast, showToast, hideToast } = useToast();
+    const statusDropdownRef = useRef<HTMLDivElement | null>(null);
 
     const currentService = useMemo(() => {
         if (!services.length) return null;
@@ -49,9 +93,62 @@ export default function FolderDetailPage({
     const [isLoading, setIsLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
     const serviceName = currentService?.name || slug.replace(/-/g, ' ').toUpperCase();
     const typeName = currentServiceType?.name || typeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const resolvedFolderStatus = normalizeFolderStatus(folder?.status);
+
+    const handleUpdateStatus = useCallback(async (nextStatus: FolderStatusValue) => {
+        if (!folder || isUpdatingStatus) return;
+
+        const currentStatus = normalizeFolderStatus(folder.status);
+        if (currentStatus === nextStatus) {
+            setIsStatusDropdownOpen(false);
+            return;
+        }
+
+        setIsUpdatingStatus(true);
+        try {
+            await apiPatch(ENDPOINTS.USER.UPDATE_STATUS_FOLDER, {
+                folder_id: folder.id,
+                status: nextStatus,
+            });
+
+            setFolder((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    status: nextStatus,
+                };
+            });
+            showToast({ message: 'Status folder berhasil diperbarui', variant: 'success' });
+            setIsStatusDropdownOpen(false);
+        } catch {
+            showToast({ message: 'Gagal memperbarui status folder', variant: 'error' });
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    }, [folder, isUpdatingStatus, showToast]);
+
+    useEffect(() => {
+        function handleOutsideClick(event: MouseEvent) {
+            const target = event.target as Node;
+            if (!statusDropdownRef.current?.contains(target)) {
+                setIsStatusDropdownOpen(false);
+            }
+        }
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, []);
+
+    useEffect(() => {
+        setIsStatusDropdownOpen(false);
+    }, [folderId]);
 
     useEffect(() => {
         const fetchFolderDetail = async () => {
@@ -186,7 +283,66 @@ export default function FolderDetailPage({
 
                                         <span className="font-medium text-gray-900">Status</span>
                                         <div className="flex items-center gap-2 text-gray-900">
-                                            : <StatusBadge status={folder?.status || 'proses'} />
+                                            :{' '}
+                                            <div className="relative inline-flex items-center gap-2" ref={statusDropdownRef}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (isUpdatingStatus) return;
+                                                        setIsStatusDropdownOpen((prev) => !prev);
+                                                    }}
+                                                    disabled={!folder || isUpdatingStatus}
+                                                    aria-label="Ubah status folder"
+                                                    className="inline-flex rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer hover:opacity-90"
+                                                >
+                                                    <StatusBadge status={resolvedFolderStatus} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (isUpdatingStatus) return;
+                                                        setIsStatusDropdownOpen((prev) => !prev);
+                                                    }}
+                                                    disabled={!folder || isUpdatingStatus}
+                                                    aria-label="Buka pilihan status folder"
+                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {isStatusDropdownOpen ? (
+                                                        <ChevronUp className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    )}
+                                                </button>
+
+                                                {isStatusDropdownOpen && (
+                                                    <div className="absolute left-0 top-[calc(100%+10px)] z-40 w-48 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+                                                        <div className="space-y-2">
+                                                            {STATUS_OPTIONS.map((option) => {
+                                                                const isActive = option.value === resolvedFolderStatus;
+                                                                return (
+                                                                    <button
+                                                                        key={option.value}
+                                                                        type="button"
+                                                                        disabled={isUpdatingStatus}
+                                                                        onClick={() => {
+                                                                            void handleUpdateStatus(option.value);
+                                                                        }}
+                                                                        className={`flex w-full items-center justify-center rounded-lg px-3 py-2 text-base font-medium transition-colors ${
+                                                                            isUpdatingStatus
+                                                                                ? 'cursor-not-allowed opacity-60'
+                                                                                : isActive
+                                                                                    ? option.badgeClassName
+                                                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        {option.label}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -236,6 +392,7 @@ export default function FolderDetailPage({
                     </div>
                 </div>
             </div>
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
 }

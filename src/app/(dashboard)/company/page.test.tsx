@@ -5,6 +5,7 @@ import { apiGet, apiPatch, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 
 const mockPush = jest.fn();
+const mockOpenUploadModal = jest.fn();
 
 jest.mock('next/navigation', () => ({
     useRouter: () => ({
@@ -14,6 +15,12 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/layout/DashboardHeader', () => ({
     DashboardHeader: () => <div data-testid="dashboard-header" />,
+}));
+
+jest.mock('@/features/dashboard/context/UploadModalContext', () => ({
+    useUploadModal: () => ({
+        openModal: mockOpenUploadModal,
+    }),
 }));
 
 jest.mock('@/shared/api/api-client', () => ({
@@ -91,6 +98,7 @@ describe('CompanyPage', () => {
         mockedApiPatch.mockReset();
         mockedApiPost.mockReset();
         mockPush.mockReset();
+        mockOpenUploadModal.mockReset();
         mockedApiGet
             .mockResolvedValueOnce(folderListResponse as never)
             .mockResolvedValueOnce(favoriteLookupResponse as never);
@@ -106,6 +114,20 @@ describe('CompanyPage', () => {
         await waitFor(() => {
             expect(screen.getByText('PT Integrasi')).toBeInTheDocument();
         });
+    });
+
+    it('opens global upload modal when klik Tambah Baru', async () => {
+        const user = userEvent.setup();
+
+        render(<CompanyPage />);
+
+        await user.click(screen.getByRole('button', { name: /Tambah Baru/i }));
+
+        expect(mockOpenUploadModal).toHaveBeenCalledWith(
+            expect.objectContaining({
+                onSuccess: expect.any(Function),
+            }),
+        );
     });
 
     it('opens actions menu and can add item to favorite', async () => {

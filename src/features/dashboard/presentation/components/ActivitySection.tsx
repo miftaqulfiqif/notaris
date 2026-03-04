@@ -1,16 +1,30 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useLayoutEffect,
+    type MouseEvent,
+} from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+    Download,
+    Edit3,
+    Info,
+    Check,
+    X,
     Star,
     StarOff,
     Folder,
     MoreVertical,
     Clock,
-    Eye,
     Trash2,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Activity, ActivityItemType, ActivityStatus } from '@/features/dashboard/types';
 import { mockActivities } from '@/features/dashboard/data';
 import { SortableHeader } from '@/shared/components/SortableHeader';
@@ -25,13 +39,15 @@ import { useToast } from '@/shared/hooks/useToast';
 import { Toast } from '@/shared/components/Toast';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { PaginatedActivities } from '@/features/dashboard/hooks/useDashboard';
-import { ApiResponse, apiGet, apiPost } from '@/shared/api/api-client';
+import { ApiResponse, apiGet, apiPatch, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
-import { useDropdown } from '@/shared/hooks/useDropdown';
+import { useDropdown, type DropdownState } from '@/shared/hooks/useDropdown';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import type { FolderSidebarResponse, ServiceType } from '@/features/services/types';
+import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
+import folderIcon from '@/assets/icons/folder.png';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
@@ -68,6 +84,44 @@ interface FavoriteLookupResponse {
 }
 
 const ACTIVITY_ITEM_TYPES: ActivityItemType[] = ['FOLDER', 'DOCUMENT', 'LAYANAN', 'TIPE_LAYANAN'];
+
+type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+
+interface StatusOption {
+    value: FolderStatusValue;
+    label: string;
+    activeClass: string;
+    textClass: string;
+    dotBorderClass: string;
+    dotFillClass: string;
+}
+
+const STATUS_OPTIONS: StatusOption[] = [
+    {
+        value: 'selesai',
+        label: 'Selesai',
+        activeClass: 'bg-green-100',
+        textClass: 'text-green-700',
+        dotBorderClass: 'border-green-300',
+        dotFillClass: 'bg-green-400',
+    },
+    {
+        value: 'tertunda',
+        label: 'Tertunda',
+        activeClass: 'bg-red-100',
+        textClass: 'text-red-700',
+        dotBorderClass: 'border-red-300',
+        dotFillClass: 'bg-red-500',
+    },
+    {
+        value: 'proses',
+        label: 'Proses',
+        activeClass: 'bg-yellow-100',
+        textClass: 'text-yellow-700',
+        dotBorderClass: 'border-yellow-300',
+        dotFillClass: 'bg-yellow-400',
+    },
+];
 
 const toSlug = (value: string) =>
     value
@@ -114,6 +168,157 @@ const normalizeActivityItemType = (value?: string | null): ActivityItemType => {
     return 'FOLDER';
 };
 
+const resolveFolderIdFromActivity = (activity: Activity): string | null => {
+    if (activity.folderId?.trim()) {
+        return activity.folderId;
+    }
+
+    if (activity.itemType === 'FOLDER') {
+        return activity.itemId?.trim() || activity.id;
+    }
+
+    return null;
+};
+
+const normalizeFolderStatus = (status: string): string => {
+    const normalizedStatus = status.toLowerCase().trim();
+
+    if (normalizedStatus === 'terutunda' || normalizedStatus === 'terjeda') {
+        return 'tertunda';
+    }
+
+    return normalizedStatus;
+};
+
+const toFolderStatusValue = (status: string): FolderStatusValue | null => {
+    const normalizedStatus = normalizeFolderStatus(status);
+
+    if (STATUS_OPTIONS.some((option) => option.value === normalizedStatus)) {
+        return normalizedStatus as FolderStatusValue;
+    }
+
+    return null;
+};
+
+const toStatusBadgeLabel = (status: string): string => {
+    const value = toFolderStatusValue(status);
+    const option = STATUS_OPTIONS.find((candidate) => candidate.value === value);
+    return option?.label || status;
+};
+
+interface ActivityStatusPopoverProps {
+    dropdown: DropdownState<string> | null;
+    menuClass: string;
+    activeStatus: FolderStatusValue | null;
+    isLoading: boolean;
+    onSelect: (status: FolderStatusValue) => void;
+    onClose: () => void;
+}
+
+function ActivityStatusPopover({
+    dropdown,
+    menuClass,
+    activeStatus,
+    isLoading,
+    onSelect,
+    onClose,
+}: ActivityStatusPopoverProps) {
+    const menuRef = useRef<HTMLDivElement | null>(null);
+
+    const repositionMenu = useCallback(() => {
+        if (!dropdown) return;
+
+        const menuElement = menuRef.current;
+        if (!menuElement) return;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const menuWidth = menuElement.offsetWidth;
+        const menuHeight = menuElement.offsetHeight;
+        const viewportPadding = 8;
+
+        const initialLeft = viewportWidth - dropdown.right - menuWidth;
+        const minLeft = viewportPadding;
+        const maxLeft = Math.max(viewportPadding, viewportWidth - menuWidth - viewportPadding);
+        const clampedLeft = Math.min(Math.max(initialLeft, minLeft), maxLeft);
+        const clampedRight = viewportWidth - clampedLeft - menuWidth;
+
+        const minTop = viewportPadding;
+        const maxTop = Math.max(viewportPadding, viewportHeight - menuHeight - viewportPadding);
+        const clampedTop = Math.min(Math.max(dropdown.top, minTop), maxTop);
+
+        menuElement.style.top = `${clampedTop}px`;
+        menuElement.style.right = `${clampedRight}px`;
+    }, [dropdown]);
+
+    useLayoutEffect(() => {
+        repositionMenu();
+    }, [repositionMenu, activeStatus]);
+
+    useEffect(() => {
+        function handleResize() {
+            repositionMenu();
+        }
+
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [repositionMenu]);
+
+    if (!dropdown || typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div
+            ref={menuRef}
+            className={`fixed z-50 w-64 rounded-xl border border-gray-200 bg-white p-2 shadow-xl ${menuClass} animate-in fade-in zoom-in-95 duration-100`}
+            style={{
+                top: dropdown.top,
+                right: dropdown.right,
+            }}
+            onClick={(event) => event.stopPropagation()}
+        >
+            <div className="space-y-1">
+                {STATUS_OPTIONS.map((option) => {
+                    const isActive = option.value === activeStatus;
+
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => {
+                                onClose();
+                                onSelect(option.value);
+                            }}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                                isLoading
+                                    ? 'cursor-not-allowed opacity-60'
+                                    : isActive
+                                        ? `${option.activeClass} ${option.textClass} cursor-pointer`
+                                        : 'cursor-pointer text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            <span
+                                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${option.dotBorderClass}`}
+                            >
+                                <span
+                                    className={`h-3 w-3 rounded-full ${
+                                        isActive ? option.dotFillClass : 'bg-transparent'
+                                    }`}
+                                />
+                            </span>
+                            <span className="flex-1 text-base font-medium">{option.label}</span>
+                            {isActive && <Check className={`h-4 w-4 ${option.textClass}`} />}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
 export function ActivitySection({
     onSelectActivity,
     activities,
@@ -132,6 +337,26 @@ export function ActivitySection({
             triggerClass: 'activity-table-dropdown-trigger',
             menuClass: 'activity-table-dropdown-menu',
         });
+    const {
+        activeDropdown: activeStatusDropdown,
+        openDropdown: openStatusDropdown,
+        closeDropdown: closeStatusDropdown,
+        isOpen: isStatusOpen,
+        triggerClass: statusTriggerClass,
+        menuClass: statusMenuClass,
+    } = useDropdown<string>({
+        triggerClass: 'activity-table-status-trigger',
+        menuClass: 'activity-table-status-menu',
+    });
+    const {
+        activeDropdown: activeBulkStatusDropdown,
+        openDropdown: openBulkStatusDropdown,
+        closeDropdown: closeBulkStatusDropdown,
+        menuClass: bulkStatusMenuClass,
+    } = useDropdown<string>({
+        triggerClass: 'activity-table-bulk-status-trigger',
+        menuClass: 'activity-table-bulk-status-menu',
+    });
     const routeCacheRef = useRef<Record<string, string | null>>({});
     const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
     const documentFolderCacheRef = useRef<Record<string, string | null>>({});
@@ -180,6 +405,13 @@ export function ActivitySection({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isProcessingBulk, setIsProcessingBulk] = useState(false);
     const [isTrashLoading, setIsTrashLoading] = useState(false);
+    const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+    const [updatingStatusActivityId, setUpdatingStatusActivityId] = useState<string | null>(null);
+    const [renameTarget, setRenameTarget] = useState<{ activityId: string; folderId: string; name: string } | null>(null);
+    const [renameFolderName, setRenameFolderName] = useState('');
+    const [renameError, setRenameError] = useState<string | null>(null);
+    const [isRenamingFolder, setIsRenamingFolder] = useState(false);
+    const [detailSidebarFolder, setDetailSidebarFolder] = useState<{ id: string; name: string } | null>(null);
 
     const resolveFavoriteTarget = useCallback((activity: Activity) => {
         const itemType = activity.itemType ?? 'FOLDER';
@@ -205,6 +437,7 @@ export function ActivitySection({
     useEffect(() => {
         setLocalActivities(initialActivityData);
         setFavoriteOverrides({});
+        setStatusOverrides({});
     }, [initialActivityData]);
 
     useEffect(() => {
@@ -282,12 +515,39 @@ export function ActivitySection({
     );
 
     const hasSelectedItems = selectedActivities.length > 0;
+    const selectedFolderActivities = useMemo(
+        () => selectedActivities.filter((activity) => Boolean(resolveFolderIdFromActivity(activity))),
+        [selectedActivities],
+    );
+    const canBulkRename = selectedFolderActivities.length === 1 && selectedActivities.length === 1;
+    const bulkFavoriteLabel = selectedActivities.length > 0 && selectedActivities.every((activity) => resolveIsFavorite(activity))
+        ? 'Hapus dari berbintang'
+        : 'Tambahkan ke berbintang';
 
     useEffect(() => {
         setSelectedItems((prev) =>
             prev.filter((selectedId) => filteredActivities.some((activity) => activity.id === selectedId)),
         );
     }, [filteredActivities, setSelectedItems]);
+
+    useEffect(() => {
+        if (!hasSelectedItems) {
+            closeBulkStatusDropdown();
+        }
+    }, [closeBulkStatusDropdown, hasSelectedItems]);
+
+    useEffect(() => {
+        const existingIds = new Set(localActivities.map((activity) => activity.id));
+        setStatusOverrides((prev) => {
+            const filteredEntries = Object.entries(prev).filter(([activityId]) => existingIds.has(activityId));
+
+            if (filteredEntries.length === Object.keys(prev).length) {
+                return prev;
+            }
+
+            return Object.fromEntries(filteredEntries);
+        });
+    }, [localActivities]);
 
     const {
         currentPage,
@@ -306,10 +566,55 @@ export function ActivitySection({
             || null;
     }, [activeDropdown, filteredActivities, paginatedItems]);
 
+    const activeStatusActivity = useMemo(() => {
+        if (!activeStatusDropdown) return null;
+        return paginatedItems.find((item) => item.id === activeStatusDropdown.id)
+            || filteredActivities.find((item) => item.id === activeStatusDropdown.id)
+            || null;
+    }, [activeStatusDropdown, filteredActivities, paginatedItems]);
+
+    const resolveActivityStatus = useCallback(
+        (activity: Activity) => statusOverrides[activity.id] ?? activity.status,
+        [statusOverrides],
+    );
+
     const activeActivityIsFavorite = useMemo(() => {
         if (!activeActivity) return false;
         return resolveIsFavorite(activeActivity);
     }, [activeActivity, resolveIsFavorite]);
+
+    const activeActivityFolderId = useMemo(
+        () => (activeActivity ? resolveFolderIdFromActivity(activeActivity) : null),
+        [activeActivity],
+    );
+    const activeStatusFolderId = useMemo(
+        () => (activeStatusActivity ? resolveFolderIdFromActivity(activeStatusActivity) : null),
+        [activeStatusActivity],
+    );
+
+    const activeStatusValue = useMemo(() => {
+        if (!activeStatusActivity) return null;
+        return toFolderStatusValue(resolveActivityStatus(activeStatusActivity));
+    }, [activeStatusActivity, resolveActivityStatus]);
+
+    const activeBulkStatus = useMemo<FolderStatusValue | null>(() => {
+        if (selectedFolderActivities.length === 0) return null;
+
+        const normalizedStatuses = selectedFolderActivities
+            .map((activity) => toFolderStatusValue(resolveActivityStatus(activity)))
+            .filter((status): status is FolderStatusValue => Boolean(status));
+
+        if (normalizedStatuses.length !== selectedFolderActivities.length) {
+            return null;
+        }
+
+        const [firstStatus] = normalizedStatuses;
+        if (normalizedStatuses.every((status) => status === firstStatus)) {
+            return firstStatus;
+        }
+
+        return null;
+    }, [resolveActivityStatus, selectedFolderActivities]);
 
     const fetchServiceTypesByService = useCallback(async (serviceId: string) => {
         const cached = serviceTypesCacheRef.current[serviceId];
@@ -640,58 +945,354 @@ export function ActivitySection({
         }
     }, [activeActivity, resolveFavoriteTarget, showToast]);
 
+    const downloadFolderById = useCallback(async (folderId: string, folderName: string) => {
+        const downloadUrl = ENDPOINTS.USER.FOLDER_DOWNLOAD.replace(':folder_id', folderId);
+        try {
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                let errorMessage = `Request failed with status ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.errors || errorData?.message || errorMessage;
+                } catch {
+                    // Ignore JSON parse errors and keep fallback.
+                }
+
+                if (errorMessage === 'Folder is empty') {
+                    errorMessage = 'Folder kosong, tidak ada file untuk diunduh';
+                }
+                throw new Error(errorMessage);
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const contentDisposition = response.headers.get('content-disposition');
+            const fileNameMatch = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+            const fallbackName = `${folderName || 'folder'}.zip`;
+            const resolvedFileName = fileNameMatch?.[1]
+                ? decodeURIComponent(fileNameMatch[1].replace(/["']/g, '').trim())
+                : fallbackName;
+
+            link.href = objectUrl;
+            link.download = resolvedFileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+            showToast({ message: 'Download folder dimulai', variant: 'success' });
+        } catch (error) {
+            showToast({
+                message: error instanceof Error ? error.message : 'Gagal mengunduh folder',
+                variant: 'error',
+            });
+        }
+    }, [showToast]);
+
+    const handleDownloadFromMenu = useCallback(() => {
+        if (!activeActivity) return;
+        if (!activeActivityFolderId) {
+            showToast({ message: 'Item ini tidak memiliki folder untuk diunduh', variant: 'error' });
+            return;
+        }
+        void downloadFolderById(activeActivityFolderId, activeActivity.companyName);
+    }, [activeActivity, activeActivityFolderId, downloadFolderById, showToast]);
+
+    const handleOpenDetailFromMenu = useCallback(() => {
+        if (!activeActivity) return;
+        if (!activeActivityFolderId) {
+            showToast({ message: 'Item ini tidak memiliki folder untuk detail', variant: 'error' });
+            return;
+        }
+
+        setDetailSidebarFolder({
+            id: activeActivityFolderId,
+            name: activeActivity.companyName,
+        });
+    }, [activeActivity, activeActivityFolderId, showToast]);
+
+    const openRenameModalForActivity = useCallback((activity: Activity) => {
+        const folderId = resolveFolderIdFromActivity(activity);
+        if (!folderId || isRenamingFolder) return;
+
+        setRenameTarget({
+            activityId: activity.id,
+            folderId,
+            name: activity.companyName,
+        });
+        setRenameFolderName(activity.companyName);
+        setRenameError(null);
+    }, [isRenamingFolder]);
+
+    const closeRenameModal = useCallback(() => {
+        if (isRenamingFolder) return;
+        setRenameTarget(null);
+        setRenameFolderName('');
+        setRenameError(null);
+    }, [isRenamingFolder]);
+
+    const handleRenameFolder = useCallback(async () => {
+        if (!renameTarget || isRenamingFolder) return;
+
+        const normalizedFolderName = renameFolderName.trim();
+        if (!normalizedFolderName) {
+            setRenameError('Nama folder wajib diisi');
+            return;
+        }
+
+        setIsRenamingFolder(true);
+        setRenameError(null);
+        try {
+            const url = ENDPOINTS.USER.RENAME_FOLDER.replace(':folder_id', renameTarget.folderId);
+            await apiPatch(url, { folder_name: normalizedFolderName });
+
+            setLocalActivities((prev) =>
+                prev.map((activity) =>
+                    activity.id === renameTarget.activityId
+                        ? { ...activity, companyName: normalizedFolderName }
+                        : activity,
+                ),
+            );
+            setRenameTarget(null);
+            setRenameFolderName('');
+            showToast({ message: 'Nama folder berhasil diperbarui', variant: 'success' });
+        } catch (error) {
+            setRenameError(error instanceof Error ? error.message : 'Gagal mengganti nama folder');
+        } finally {
+            setIsRenamingFolder(false);
+        }
+    }, [isRenamingFolder, renameFolderName, renameTarget, showToast]);
+
+    const handleRenameFromMenu = useCallback(() => {
+        if (!activeActivity) return;
+        if (!activeActivityFolderId) {
+            showToast({ message: 'Item ini tidak mendukung ganti nama folder', variant: 'error' });
+            return;
+        }
+        openRenameModalForActivity(activeActivity);
+    }, [activeActivity, activeActivityFolderId, openRenameModalForActivity, showToast]);
+
+    const handleOpenActionDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, activityId: string) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeStatusDropdown();
+            closeBulkStatusDropdown();
+            openDropdown(event, activityId);
+        },
+        [closeBulkStatusDropdown, closeStatusDropdown, openDropdown],
+    );
+
+    const handleOpenStatusDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>, activityId: string) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeDropdown();
+            closeBulkStatusDropdown();
+            openStatusDropdown(event, activityId);
+        },
+        [closeBulkStatusDropdown, closeDropdown, openStatusDropdown],
+    );
+
+    const handleUpdateActivityStatus = useCallback(async (nextStatus: FolderStatusValue) => {
+        if (!activeStatusActivity || !activeStatusFolderId) {
+            showToast({ message: 'Item ini tidak mendukung ubah status', variant: 'error' });
+            return;
+        }
+
+        const activityId = activeStatusActivity.id;
+        const currentStatus = toFolderStatusValue(resolveActivityStatus(activeStatusActivity));
+        if (currentStatus === nextStatus) return;
+
+        setUpdatingStatusActivityId(activityId);
+        try {
+            await apiPatch(ENDPOINTS.USER.UPDATE_STATUS_FOLDER, {
+                folder_id: activeStatusFolderId,
+                status: nextStatus,
+            });
+
+            const statusLabel = STATUS_OPTIONS.find((option) => option.value === nextStatus)?.label || nextStatus;
+            setStatusOverrides((prev) => ({ ...prev, [activityId]: statusLabel }));
+            setLocalActivities((prev) =>
+                prev.map((activity) =>
+                    activity.id === activityId
+                        ? { ...activity, status: statusLabel as ActivityStatus }
+                        : activity,
+                ),
+            );
+            showToast({ message: 'Status folder berhasil diperbarui', variant: 'success' });
+        } catch {
+            showToast({ message: 'Gagal memperbarui status folder', variant: 'error' });
+        } finally {
+            setUpdatingStatusActivityId((prev) => (prev === activityId ? null : prev));
+        }
+    }, [activeStatusActivity, activeStatusFolderId, resolveActivityStatus, showToast]);
+
+    const handleOpenBulkStatusDropdown = useCallback(
+        (event: MouseEvent<HTMLButtonElement>) => {
+            closeDropdown();
+            closeStatusDropdown();
+            openBulkStatusDropdown(event, 'bulk-status');
+        },
+        [closeDropdown, closeStatusDropdown, openBulkStatusDropdown],
+    );
+
     const handleBulkRename = useCallback(() => {
-        showToast({ message: 'Ganti nama massal belum didukung sepenuhnya', variant: 'info' });
-        setSelectedItems([]);
-    }, [setSelectedItems, showToast]);
+        if (!canBulkRename) return;
+        const target = selectedFolderActivities[0];
+        if (!target) return;
+        closeBulkStatusDropdown();
+        openRenameModalForActivity(target);
+    }, [canBulkRename, closeBulkStatusDropdown, openRenameModalForActivity, selectedFolderActivities]);
 
     const handleBulkFavorite = useCallback(async () => {
         if (isProcessingBulk || selectedActivities.length === 0) return;
 
         const candidates = selectedActivities
-            .filter((activity) => !resolveIsFavorite(activity))
             .map((activity) => ({ activityId: activity.id, target: resolveFavoriteTarget(activity) }))
             .filter((item): item is { activityId: string; target: { item_id: string; item_type: ActivityItemType } } => Boolean(item.target));
 
         if (candidates.length === 0) {
-            showToast({ message: 'Semua item terpilih sudah berbintang', variant: 'info' });
+            showToast({ message: 'Tidak ada item valid untuk proses berbintang', variant: 'error' });
             return;
         }
 
+        const shouldRemoveFromFavorite = selectedActivities.every((activity) => resolveIsFavorite(activity));
+
         setIsProcessingBulk(true);
         try {
-            await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_FAVORITE, {
-                items: candidates.map((item) => item.target),
-            });
+            if (shouldRemoveFromFavorite) {
+                await apiPost(ENDPOINTS.USER.MULTIPLE_REMOVE_ITEM_FAVORITE, {
+                    items: candidates.map((item) => item.target),
+                });
+            } else {
+                await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_FAVORITE, {
+                    items: candidates.map((item) => item.target),
+                });
+            }
 
             setFavoriteOverrides((prev) => {
                 const next = { ...prev };
                 candidates.forEach((item) => {
-                    next[item.activityId] = true;
+                    next[item.activityId] = !shouldRemoveFromFavorite;
                 });
                 return next;
             });
 
             showToast({
-                message: `${candidates.length} item berhasil ditambahkan ke Berbintang`,
+                message: shouldRemoveFromFavorite
+                    ? `${candidates.length} item berhasil dihapus dari berbintang`
+                    : `${candidates.length} item berhasil ditambahkan ke berbintang`,
                 variant: 'success',
             });
             setSelectedItems([]);
         } catch {
-            showToast({ message: 'Gagal menambahkan item ke Berbintang', variant: 'error' });
+            showToast({
+                message: shouldRemoveFromFavorite
+                    ? 'Gagal menghapus item dari berbintang'
+                    : 'Gagal menambahkan item ke berbintang',
+                variant: 'error',
+            });
         } finally {
             setIsProcessingBulk(false);
         }
     }, [isProcessingBulk, resolveFavoriteTarget, resolveIsFavorite, selectedActivities, setSelectedItems, showToast]);
 
     const handleBulkDownload = useCallback(() => {
-        showToast({ message: `Mendownload ${selectedActivities.length} item...`, variant: 'info' });
-        setSelectedItems([]);
-    }, [selectedActivities.length, setSelectedItems, showToast]);
+        if (selectedActivities.length === 0) return;
+
+        if (selectedActivities.length > 1) {
+            showToast({
+                message: `Download massal untuk ${selectedActivities.length} folder belum tersedia`,
+                variant: 'info',
+            });
+            return;
+        }
+
+        const target = selectedActivities[0];
+        if (!target) return;
+        const folderId = resolveFolderIdFromActivity(target);
+        if (!folderId) {
+            showToast({ message: 'Item terpilih tidak memiliki folder untuk diunduh', variant: 'error' });
+            return;
+        }
+
+        void downloadFolderById(folderId, target.companyName);
+    }, [downloadFolderById, selectedActivities, showToast]);
 
     const handleBulkMoveToTrash = useCallback(() => {
         setIsDeleteModalOpen(true);
     }, []);
+
+    const handleBulkUpdateStatus = useCallback(async (nextStatus: FolderStatusValue) => {
+        if (selectedFolderActivities.length === 0 || isProcessingBulk) return;
+
+        const activitiesToUpdate = selectedFolderActivities.filter(
+            (activity) => toFolderStatusValue(resolveActivityStatus(activity)) !== nextStatus,
+        );
+
+        if (activitiesToUpdate.length === 0) return;
+
+        setIsProcessingBulk(true);
+        try {
+            const updateResults = await Promise.allSettled(
+                activitiesToUpdate.map((activity) => {
+                    const folderId = resolveFolderIdFromActivity(activity);
+                    if (!folderId) {
+                        return Promise.reject(new Error('Folder id tidak ditemukan'));
+                    }
+                    return apiPatch(ENDPOINTS.USER.UPDATE_STATUS_FOLDER, {
+                        folder_id: folderId,
+                        status: nextStatus,
+                    });
+                }),
+            );
+
+            const successIds = activitiesToUpdate
+                .filter((_, index) => updateResults[index]?.status === 'fulfilled')
+                .map((activity) => activity.id);
+
+            if (successIds.length > 0) {
+                const statusLabel = STATUS_OPTIONS.find((option) => option.value === nextStatus)?.label || nextStatus;
+                setStatusOverrides((prev) => {
+                    const next = { ...prev };
+                    successIds.forEach((id) => {
+                        next[id] = statusLabel;
+                    });
+                    return next;
+                });
+                setLocalActivities((prev) =>
+                    prev.map((activity) =>
+                        successIds.includes(activity.id)
+                            ? { ...activity, status: statusLabel as ActivityStatus }
+                            : activity,
+                    ),
+                );
+            }
+
+            if (successIds.length === activitiesToUpdate.length) {
+                showToast({
+                    message: `Status ${activitiesToUpdate.length} folder berhasil diperbarui`,
+                    variant: 'success',
+                });
+            } else if (successIds.length > 0) {
+                showToast({
+                    message: `Status ${successIds.length} dari ${activitiesToUpdate.length} folder berhasil diperbarui`,
+                    variant: 'info',
+                });
+            } else {
+                showToast({ message: 'Gagal memperbarui status pilihan', variant: 'error' });
+            }
+        } catch {
+            showToast({ message: 'Gagal memperbarui status pilihan', variant: 'error' });
+        } finally {
+            setIsProcessingBulk(false);
+        }
+    }, [isProcessingBulk, resolveActivityStatus, selectedFolderActivities, showToast]);
 
     const confirmBulkDelete = useCallback(async () => {
         setIsProcessingBulk(true);
@@ -724,15 +1325,26 @@ export function ActivitySection({
     const moreActions = useMemo<DropdownMenuItem[]>(
         () => [
             {
-                label: 'Buka item',
-                icon: <Eye className="h-4 w-4" />,
-                onClick: () => {
-                    if (!activeActivity) return;
-                    void handleOpenActivity(activeActivity);
-                },
+                label: 'Download folder',
+                icon: <Download className="h-4 w-4" />,
+                onClick: handleDownloadFromMenu,
+                className: !activeActivityFolderId ? 'pointer-events-none opacity-60' : '',
             },
             {
-                label: activeActivityIsFavorite ? 'Hapus dari Berbintang' : 'Tambahkan ke Berbintang',
+                label: 'Ganti nama',
+                icon: <Edit3 className="h-4 w-4" />,
+                onClick: handleRenameFromMenu,
+                hasDivider: true,
+                className: !activeActivityFolderId || isRenamingFolder ? 'pointer-events-none opacity-60' : '',
+            },
+            {
+                label: 'Lihat Detail Folder',
+                icon: <Info className="h-4 w-4" />,
+                onClick: handleOpenDetailFromMenu,
+                className: !activeActivityFolderId ? 'pointer-events-none opacity-60' : '',
+            },
+            {
+                label: activeActivityIsFavorite ? 'Hapus dari berbintang' : 'Tambahkan ke berbintang',
                 icon: activeActivityIsFavorite ? <StarOff className="h-4 w-4" /> : <Star className="h-4 w-4" />,
                 onClick: () => {
                     void handleToggleFavorite();
@@ -741,7 +1353,7 @@ export function ActivitySection({
                 className: pendingFavoriteId ? 'pointer-events-none opacity-60' : '',
             },
             {
-                label: 'Pindahkan ke sampah',
+                label: 'Tambahkan ke sampah',
                 icon: <Trash2 className="h-4 w-4" />,
                 onClick: () => {
                     void handleMoveToTrash();
@@ -750,11 +1362,14 @@ export function ActivitySection({
             },
         ],
         [
-            activeActivity,
+            activeActivityFolderId,
             activeActivityIsFavorite,
+            handleDownloadFromMenu,
             handleMoveToTrash,
-            handleOpenActivity,
+            handleOpenDetailFromMenu,
+            handleRenameFromMenu,
             handleToggleFavorite,
+            isRenamingFolder,
             isTrashLoading,
             pendingFavoriteId,
         ],
@@ -841,6 +1456,10 @@ export function ActivitySection({
                                     const isFavorite = resolveIsFavorite(activity);
                                     const isNavigating = navigatingItemId === activity.id;
                                     const isFavoritePending = pendingFavoriteId === activity.id;
+                                    const folderId = resolveFolderIdFromActivity(activity);
+                                    const resolvedStatus = toStatusBadgeLabel(resolveActivityStatus(activity));
+                                    const isUpdatingStatus = updatingStatusActivityId === activity.id;
+                                    const canEditStatus = Boolean(folderId);
 
                                     return (
                                         <tr
@@ -875,7 +1494,7 @@ export function ActivitySection({
                                             <td className="min-w-[200px] px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="rounded-lg bg-gray-100 p-2 text-gray-600">
-                                                        <Folder className="h-5 w-5 fill-[#FFB020] text-[#FFB020]" />
+                                                        <Image src={folderIcon} alt="Folder" width={20} height={20} className="h-5 w-5" />
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-left font-medium text-gray-900">{activity.companyName}</span>
@@ -902,12 +1521,31 @@ export function ActivitySection({
                                             <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.author}</td>
                                             <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.modifiedDate}</td>
                                             <td className="min-w-[200px] px-6 py-4">
-                                                <StatusBadge status={activity.status} />
+                                                {canEditStatus ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => handleOpenStatusDropdown(event, activity.id)}
+                                                        disabled={isUpdatingStatus}
+                                                        className={`inline-flex rounded-md transition-opacity ${statusTriggerClass} ${
+                                                            isStatusOpen(activity.id)
+                                                                ? 'ring-2 ring-[#8B7355]/25 ring-offset-1'
+                                                                : ''
+                                                        } ${
+                                                            isUpdatingStatus
+                                                                ? 'cursor-not-allowed opacity-60'
+                                                                : 'cursor-pointer hover:opacity-80'
+                                                        }`}
+                                                    >
+                                                        <StatusBadge status={resolvedStatus} />
+                                                    </button>
+                                                ) : (
+                                                    <StatusBadge status={resolvedStatus} />
+                                                )}
                                             </td>
                                             <td className="min-w-[120px] px-6 py-4 text-gray-600" onClick={(event) => event.stopPropagation()}>
                                                 <button
                                                     type="button"
-                                                    onClick={(event) => openDropdown(event, activity.id)}
+                                                    onClick={(event) => handleOpenActionDropdown(event, activity.id)}
                                                     className={`rounded-lg p-1 transition-colors ${triggerClass} ${
                                                         isOpen(activity.id)
                                                             ? 'bg-gray-100 text-gray-600'
@@ -944,18 +1582,128 @@ export function ActivitySection({
                 onClose={closeDropdown}
                 widthClass="w-60"
             />
+            <ActivityStatusPopover
+                dropdown={activeStatusDropdown}
+                menuClass={statusMenuClass}
+                activeStatus={activeStatusValue}
+                isLoading={Boolean(updatingStatusActivityId)}
+                onSelect={(status) => {
+                    void handleUpdateActivityStatus(status);
+                }}
+                onClose={closeStatusDropdown}
+            />
+            <ActivityStatusPopover
+                dropdown={activeBulkStatusDropdown}
+                menuClass={bulkStatusMenuClass}
+                activeStatus={activeBulkStatus}
+                isLoading={isProcessingBulk}
+                onSelect={(status) => {
+                    void handleBulkUpdateStatus(status);
+                }}
+                onClose={closeBulkStatusDropdown}
+            />
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
 
             {hasSelectedItems && (
                 <BulkActionToast
                     onRename={handleBulkRename}
+                    onStatusClick={handleOpenBulkStatusDropdown}
                     onToggleFavorite={handleBulkFavorite}
                     onDownload={handleBulkDownload}
                     onMoveToTrash={handleBulkMoveToTrash}
                     onCancel={() => setSelectedItems([])}
-                    disabled={isProcessingBulk}
-                    statusLabel={`${selectedActivities.length} Terpilih`}
+                    favoriteLabel={bulkFavoriteLabel}
+                    disabled={isProcessingBulk || isRenamingFolder}
+                    showRename={canBulkRename}
+                    statusDisabled={isProcessingBulk || isRenamingFolder || selectedFolderActivities.length === 0}
                 />
+            )}
+
+            <FolderDetailOffcanvas
+                folderId={detailSidebarFolder?.id ?? null}
+                folderName={detailSidebarFolder?.name}
+                onClose={() => setDetailSidebarFolder(null)}
+            />
+
+            {renameTarget && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+                    onClick={closeRenameModal}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="rename-activity-folder-modal-title"
+                        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                            <h2 id="rename-activity-folder-modal-title" className="text-lg font-semibold text-gray-900">
+                                Ganti nama folder
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={closeRenameModal}
+                                disabled={isRenamingFolder}
+                                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Tutup modal ganti nama folder"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form
+                            className="px-5 py-5"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleRenameFolder();
+                            }}
+                        >
+                            {renameError && (
+                                <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                                    {renameError}
+                                </div>
+                            )}
+
+                            <label htmlFor="rename-activity-folder-name" className="mb-2 block text-sm font-medium text-gray-700">
+                                Nama Folder <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="rename-activity-folder-name"
+                                type="text"
+                                value={renameFolderName}
+                                onChange={(event) => {
+                                    setRenameFolderName(event.target.value);
+                                    if (renameError) {
+                                        setRenameError(null);
+                                    }
+                                }}
+                                placeholder="Masukkan nama folder"
+                                disabled={isRenamingFolder}
+                                autoFocus
+                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#8B7355] focus:ring-1 focus:ring-[#8B7355]"
+                            />
+
+                            <div className="mt-5 flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeRenameModal}
+                                    disabled={isRenamingFolder}
+                                    className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isRenamingFolder || !renameFolderName.trim()}
+                                    className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isRenamingFolder ? 'Menyimpan...' : 'Simpan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
 
             <ConfirmationModal

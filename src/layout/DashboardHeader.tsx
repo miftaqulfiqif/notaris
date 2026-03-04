@@ -497,10 +497,10 @@ export function DashboardHeader() {
         }
     };
 
-    const resolveFolderIdFromDocumentParent = async (folderName: string) => {
+    const resolveFolderFromSearch = async (folderName: string, preferredFolderId?: string | null) => {
         const normalizedFolderName = folderName.trim();
         if (!normalizedFolderName) {
-            return null;
+            return { folderId: null, parentTypeName: null as string | null };
         }
 
         const params = new URLSearchParams({
@@ -512,16 +512,40 @@ export function DashboardHeader() {
         );
         const items = getGlobalSearchItems(response.data);
         const normalizedTarget = normalizeText(normalizedFolderName);
-        const exactMatch = items.find(
+        const exactById = preferredFolderId
+            ? items.find(
+                (item) => item.type === 'FOLDER' && item.folder_id === preferredFolderId,
+            )
+            : null;
+
+        const exactByName = items.find(
             (item) => item.type === 'FOLDER' && item.folder_id && normalizeText(item.name) === normalizedTarget,
         );
 
-        if (exactMatch?.folder_id) {
-            return exactMatch.folder_id;
+        const folderCandidates = items.filter((item) => item.type === 'FOLDER' && item.folder_id);
+        const fallbackMatch = folderCandidates.length === 1 ? folderCandidates[0] : null;
+        const resolvedMatch = exactById || exactByName || fallbackMatch;
+
+        return {
+            folderId: resolvedMatch?.folder_id || null,
+            parentTypeName: resolvedMatch?.parent || null,
+        };
+    };
+
+    const resolveFolderTypeNameById = async (folderId: string, folderName?: string | null) => {
+        if (!folderId?.trim()) {
+            return null;
         }
 
-        const fallbackMatch = items.find((item) => item.type === 'FOLDER' && item.folder_id);
-        return fallbackMatch?.folder_id || null;
+        const normalizedFolderName = folderName?.trim();
+        if (normalizedFolderName) {
+            const resolved = await resolveFolderFromSearch(normalizedFolderName, folderId);
+            if (resolved.parentTypeName) {
+                return resolved.parentTypeName;
+            }
+        }
+
+        return null;
     };
 
     const handleSearchItemClick = async (item: GlobalSearchItem) => {
@@ -534,9 +558,17 @@ export function DashboardHeader() {
 
         try {
             let folderId = item.folderId;
+            let parentTypeName: string | null =
+                item.type === 'FOLDER' ? (item.parent || null) : null;
 
             if (!folderId && item.type === 'DOCUMENT') {
-                folderId = await resolveFolderIdFromDocumentParent(item.parent);
+                const resolved = await resolveFolderFromSearch(item.parent);
+                folderId = resolved.folderId;
+                parentTypeName = resolved.parentTypeName;
+            }
+
+            if (folderId && !parentTypeName) {
+                parentTypeName = await resolveFolderTypeNameById(folderId, item.type === 'FOLDER' ? item.title : item.parent);
             }
 
             if (!folderId) {
@@ -544,7 +576,7 @@ export function DashboardHeader() {
                 return;
             }
 
-            const route = await resolveFolderRoute(folderId, item.parent);
+            const route = await resolveFolderRoute(folderId, parentTypeName || undefined);
             if (!route) {
                 setSearchError('Rute item ini belum bisa ditentukan');
                 return;
@@ -797,11 +829,11 @@ export function DashboardHeader() {
                             <div className="relative overflow-hidden border border-gray-200 rounded-2xl bg-[#F7F7F7] shadow-[0_18px_36px_rgba(0,0,0,0.15)]">
                                 <div className="flex items-start justify-between border-b border-gray-200 px-6 pt-5 pb-4">
                                     <div>
-                                        <h3 className="text-2xl leading-none font-semibold text-gray-800">Notifikasi</h3>
+                                        <h3 className="text-xl leading-tight font-semibold text-gray-800">Notifikasi</h3>
                                         <button
                                             onClick={handleMarkAllRead}
                                             disabled={unreadCount === 0 || isNotificationLoading || isMarkingAllRead}
-                                            className="mt-5 inline-flex items-center gap-2.5 text-base text-[#6E5F49] hover:text-[#5b4d39] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                                            className="mt-5 inline-flex items-center gap-2.5 text-sm sm:text-base text-[#6E5F49] hover:text-[#5b4d39] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             Tandai semua dibaca
                                             <span className="min-w-8 h-7 px-2 rounded-md bg-[#7A6A53] text-white text-sm leading-7 text-center">
@@ -828,12 +860,12 @@ export function DashboardHeader() {
 
                                 <div className="max-h-[55vh] overflow-y-auto">
                                     {isNotificationLoading ? (
-                                        <div className="px-8 py-10 text-center text-lg text-gray-500">
+                                        <div className="px-8 py-10 text-center text-base text-gray-500">
                                             Memuat notifikasi...
                                         </div>
                                     ) : notificationError ? (
                                         <div className="px-8 py-10 text-center">
-                                            <p className="text-lg text-red-500">{notificationError}</p>
+                                            <p className="text-base text-red-500">{notificationError}</p>
                                             <button
                                                 onClick={() => void fetchNotifications()}
                                                 className="mt-4 inline-flex rounded-lg bg-[#8A7A62] px-4 py-2 text-sm font-medium text-white hover:bg-[#75674F] transition-colors"
@@ -842,7 +874,7 @@ export function DashboardHeader() {
                                             </button>
                                         </div>
                                     ) : latestNotifications.length === 0 ? (
-                                        <div className="px-8 py-10 text-center text-lg text-gray-500">
+                                        <div className="px-8 py-10 text-center text-base text-gray-500">
                                             Belum ada notifikasi
                                         </div>
                                     ) : (
@@ -863,13 +895,13 @@ export function DashboardHeader() {
                                                     {getInitials(notification.actor)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-lg font-semibold text-[#2F343B]">
+                                                    <p className="truncate text-base font-semibold text-[#2F343B]">
                                                         {notification.description}
                                                     </p>
-                                                    <p className="mt-2 text-base leading-none text-gray-500">
+                                                    <p className="mt-2 text-sm leading-normal text-gray-500">
                                                         {notification.createdAt} <span className="mx-2">•</span> {notification.actionLabel}
                                                     </p>
-                                                    <div className="mt-3 inline-flex max-w-full items-center gap-2 text-base leading-none text-[#2F343B]">
+                                                    <div className="mt-3 inline-flex max-w-full items-center gap-2 text-sm leading-normal text-[#2F343B]">
                                                         {notification.objectType === 'DOCUMENT' ? (
                                                             <FileText className="w-5 h-5 shrink-0 text-red-500" />
                                                         ) : (
@@ -903,7 +935,7 @@ export function DashboardHeader() {
                                         setIsNotificationOpen(false);
                                         router.push('/notifications');
                                     }}
-                                    className="w-full flex items-center justify-end gap-2 px-6 py-3.5 text-[#6E5F49] text-lg leading-none hover:bg-[#EEEAE5] transition-colors"
+                                    className="w-full flex items-center justify-end gap-2 px-6 py-3.5 text-sm sm:text-base text-[#6E5F49] leading-normal hover:bg-[#EEEAE5] transition-colors"
                                 >
                                     Lihat semua notifikasi
                                     <ChevronRight className="w-5 h-5" />

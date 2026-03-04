@@ -16,6 +16,7 @@ import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFavoriteFolder';
 import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
+import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import folderIcon from '@/assets/icons/folder.png';
 
 interface CompanyItem {
@@ -63,6 +64,27 @@ interface FavoriteLookupResponse {
         }>;
     };
 }
+
+const loadCompanyItemsWithFavorite = async (): Promise<CompanyItem[]> => {
+    const url = `${ENDPOINTS.USER.FOLDERS_NOTARIS}?page=1&limit=100&search=`;
+    const response = await apiGet<CompanyApiResponse>(url);
+
+    let favoriteFolderIds = new Set<string>();
+    try {
+        const favorites = await apiGet<FavoriteLookupResponse>(
+            `${ENDPOINTS.USER.ITEM_FAVORITE}?page=1&limit=500&search=`,
+        );
+        favoriteFolderIds = new Set(
+            (favorites.data.data || [])
+                .filter((item) => item.item_type === 'FOLDER')
+                .map((item) => item.item_id),
+        );
+    } catch {
+        favoriteFolderIds = new Set();
+    }
+
+    return normalizeCompanyItems(response, favoriteFolderIds);
+};
 
 const normalizeCompanyItems = (response: CompanyApiResponse, favoriteFolderIds: Set<string>): CompanyItem[] => {
     const payload = Array.isArray(response.data) ? response.data : response.data?.data || [];
@@ -254,6 +276,7 @@ function CompanyStatusPopover({
 
 export default function CompanyPage() {
     const router = useRouter();
+    const { openModal } = useUploadModal();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [activeTab, setActiveTab] = useState<'baru' | 'favorite'>('baru');
     const [items, setItems] = useState<CompanyItem[]>([]);
@@ -296,49 +319,23 @@ export default function CompanyPage() {
         menuClass: 'company-bulk-status-menu',
     });
 
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchCompanyItems = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const url = `${ENDPOINTS.USER.FOLDERS_NOTARIS}?page=1&limit=100&search=`;
-                const response = await apiGet<CompanyApiResponse>(url);
-
-                let favoriteFolderIds = new Set<string>();
-                try {
-                    const favorites = await apiGet<FavoriteLookupResponse>(
-                        `${ENDPOINTS.USER.ITEM_FAVORITE}?page=1&limit=500&search=`,
-                    );
-                    favoriteFolderIds = new Set(
-                        (favorites.data.data || [])
-                            .filter((item) => item.item_type === 'FOLDER')
-                            .map((item) => item.item_id),
-                    );
-                } catch {
-                    favoriteFolderIds = new Set();
-                }
-
-                if (!isMounted) return;
-                setItems(normalizeCompanyItems(response, favoriteFolderIds));
-            } catch (err) {
-                if (!isMounted) return;
-                setItems([]);
-                setError(err instanceof Error ? err.message : 'Gagal memuat data perusahaan');
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        void fetchCompanyItems();
-
-        return () => {
-            isMounted = false;
-        };
+    const refreshCompanyItems = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const normalizedItems = await loadCompanyItemsWithFavorite();
+            setItems(normalizedItems);
+        } catch (err) {
+            setItems([]);
+            setError(err instanceof Error ? err.message : 'Gagal memuat data perusahaan');
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        void refreshCompanyItems();
+    }, [refreshCompanyItems]);
 
     const filteredItems = useMemo(() => {
         if (activeTab === 'favorite') {
@@ -899,9 +896,10 @@ export default function CompanyPage() {
                             <button
                                 type="button"
                                 onClick={() =>
-                                    showToast({
-                                        message: 'Aksi tambah perusahaan belum tersedia',
-                                        variant: 'info',
+                                    openModal({
+                                        onSuccess: () => {
+                                            void refreshCompanyItems();
+                                        },
                                     })
                                 }
                                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
