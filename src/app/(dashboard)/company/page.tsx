@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUpDown, Check, Clock3, Download, Edit3, Info, LayoutGrid, List, MoreVertical, Plus, Star, StarOff, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Clock3, Download, Edit3, Info, LayoutGrid, List, MoreVertical, Plus, Star, StarOff, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { DashboardHeader } from '@/layout/DashboardHeader';
@@ -38,6 +38,7 @@ interface CompanyApiItem {
     author: string;
     updated_at: string;
     status: string;
+    is_favorite?: boolean;
 }
 
 interface CompanyApiResponse {
@@ -52,41 +53,14 @@ interface CompanyApiResponse {
     };
 }
 
-interface FavoriteLookupResponse {
-    message: string;
-    data: {
-        current_page: number;
-        total_items: number;
-        total_pages: number;
-        data: Array<{
-            item_id: string;
-            item_type: string;
-        }>;
-    };
-}
-
-const loadCompanyItemsWithFavorite = async (): Promise<CompanyItem[]> => {
+const loadCompanyItems = async (): Promise<CompanyItem[]> => {
     const url = `${ENDPOINTS.USER.FOLDERS_NOTARIS}?page=1&limit=100&search=`;
     const response = await apiGet<CompanyApiResponse>(url);
 
-    let favoriteFolderIds = new Set<string>();
-    try {
-        const favorites = await apiGet<FavoriteLookupResponse>(
-            `${ENDPOINTS.USER.ITEM_FAVORITE}?page=1&limit=500&search=`,
-        );
-        favoriteFolderIds = new Set(
-            (favorites.data.data || [])
-                .filter((item) => item.item_type === 'FOLDER')
-                .map((item) => item.item_id),
-        );
-    } catch {
-        favoriteFolderIds = new Set();
-    }
-
-    return normalizeCompanyItems(response, favoriteFolderIds);
+    return normalizeCompanyItems(response);
 };
 
-const normalizeCompanyItems = (response: CompanyApiResponse, favoriteFolderIds: Set<string>): CompanyItem[] => {
+const normalizeCompanyItems = (response: CompanyApiResponse): CompanyItem[] => {
     const payload = Array.isArray(response.data) ? response.data : response.data?.data || [];
 
     return payload.map((item) => ({
@@ -97,13 +71,18 @@ const normalizeCompanyItems = (response: CompanyApiResponse, favoriteFolderIds: 
         author: item.author,
         modifiedAt: item.updated_at,
         status: item.status,
-        isFavorite: favoriteFolderIds.has(item.id),
+        isFavorite: Boolean(item.is_favorite),
     }));
 };
 
 const toSlug = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '-');
 
 type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+type CompanySortField = 'name' | 'service' | 'serviceType' | 'author' | null;
+type SortDirection = 'asc' | 'desc';
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
 
 interface StatusOption {
     value: FolderStatusValue;
@@ -291,6 +270,8 @@ export default function CompanyPage() {
     const [isRenamingFolder, setIsRenamingFolder] = useState(false);
     const [updatingStatusFolderId, setUpdatingStatusFolderId] = useState<string | null>(null);
     const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+    const [sortField, setSortField] = useState<CompanySortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const { toast, showToast, hideToast } = useToast();
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
@@ -323,7 +304,7 @@ export default function CompanyPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const normalizedItems = await loadCompanyItemsWithFavorite();
+            const normalizedItems = await loadCompanyItems();
             setItems(normalizedItems);
         } catch (err) {
             setItems([]);
@@ -345,9 +326,19 @@ export default function CompanyPage() {
         return items;
     }, [activeTab, items]);
 
+    const sortedItems = useMemo(() => {
+        if (!sortField) return filteredItems;
+
+        const sorted = [...filteredItems].sort((left, right) =>
+            compareText(left[sortField], right[sortField]),
+        );
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [filteredItems, sortDirection, sortField]);
+
     const selectedCompanyItems = useMemo(
-        () => filteredItems.filter((item) => selectedIds.includes(item.id)),
-        [filteredItems, selectedIds],
+        () => sortedItems.filter((item) => selectedIds.includes(item.id)),
+        [selectedIds, sortedItems],
     );
     const hasSelectedCompanyItems = selectedCompanyItems.length > 0;
     const canBulkRename = selectedCompanyItems.length === 1;
@@ -374,8 +365,8 @@ export default function CompanyPage() {
     }, [selectedCompanyItems]);
 
     useEffect(() => {
-        setSelectedIds((prev) => prev.filter((id) => filteredItems.some((item) => item.id === id)));
-    }, [filteredItems]);
+        setSelectedIds((prev) => prev.filter((id) => sortedItems.some((item) => item.id === id)));
+    }, [sortedItems]);
 
     useEffect(() => {
         if (!hasSelectedCompanyItems) {
@@ -384,8 +375,8 @@ export default function CompanyPage() {
     }, [closeBulkStatusDropdown, hasSelectedCompanyItems]);
 
     const isAllSelected = useMemo(
-        () => filteredItems.length > 0 && selectedIds.length === filteredItems.length,
-        [filteredItems, selectedIds.length],
+        () => sortedItems.length > 0 && selectedIds.length === sortedItems.length,
+        [selectedIds.length, sortedItems],
     );
 
     const toggleSelectAll = () => {
@@ -394,7 +385,7 @@ export default function CompanyPage() {
             return;
         }
 
-        setSelectedIds(filteredItems.map((item) => item.id));
+        setSelectedIds(sortedItems.map((item) => item.id));
     };
 
     const toggleSelectOne = (id: string) => {
@@ -406,6 +397,33 @@ export default function CompanyPage() {
             return [...prev, id];
         });
     };
+
+    const handleSort = useCallback((field: Exclude<CompanySortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+    }, [sortDirection]);
+
+    const renderSortIcon = useCallback((field: Exclude<CompanySortField, null>) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4 text-gray-500" />;
+        }
+
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-4 w-4 text-[#8A7A62]" />
+            : <ArrowDown className="h-4 w-4 text-[#8A7A62]" />;
+    }, [sortDirection, sortField]);
 
     const activeCompany = useMemo(() => {
         if (!activeDropdown) return null;
@@ -984,7 +1002,7 @@ export default function CompanyPage() {
                                             </div>
                                         ))}
                                     </div>
-                                ) : filteredItems.length === 0 ? (
+                                ) : sortedItems.length === 0 ? (
                                     <div className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-gray-500">
                                         {activeTab === 'favorite'
                                             ? 'Belum ada data perusahaan berbintang'
@@ -992,7 +1010,7 @@ export default function CompanyPage() {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                        {filteredItems.map((item) => (
+                                        {sortedItems.map((item) => (
                                             <article
                                                 key={item.id}
                                                 onClick={() => handleOpenCompanyFolder(item)}
@@ -1058,27 +1076,43 @@ export default function CompanyPage() {
                                                     />
                                                 </th>
                                                 <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
-                                                    <button type="button" className="inline-flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSort('name')}
+                                                        className={`inline-flex items-center gap-2 ${sortField === 'name' ? 'text-[#8A7A62]' : ''}`}
+                                                    >
                                                         Nama
-                                                        <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                                                        {renderSortIcon('name')}
                                                     </button>
                                                 </th>
                                                 <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
-                                                    <button type="button" className="inline-flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSort('service')}
+                                                        className={`inline-flex items-center gap-2 ${sortField === 'service' ? 'text-[#8A7A62]' : ''}`}
+                                                    >
                                                         Layanan
-                                                        <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                                                        {renderSortIcon('service')}
                                                     </button>
                                                 </th>
                                                 <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
-                                                    <button type="button" className="inline-flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSort('serviceType')}
+                                                        className={`inline-flex items-center gap-2 ${sortField === 'serviceType' ? 'text-[#8A7A62]' : ''}`}
+                                                    >
                                                         Tipe layanan
-                                                        <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                                                        {renderSortIcon('serviceType')}
                                                     </button>
                                                 </th>
                                                 <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">
-                                                    <button type="button" className="inline-flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSort('author')}
+                                                        className={`inline-flex items-center gap-2 ${sortField === 'author' ? 'text-[#8A7A62]' : ''}`}
+                                                    >
                                                         Author
-                                                        <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                                                        {renderSortIcon('author')}
                                                     </button>
                                                 </th>
                                                 <th className="px-3 py-3.5 text-left text-base font-semibold text-gray-800">Dimodifikasi</th>
@@ -1093,7 +1127,7 @@ export default function CompanyPage() {
                                                         Memuat data perusahaan...
                                                     </td>
                                                 </tr>
-                                            ) : filteredItems.length === 0 ? (
+                                            ) : sortedItems.length === 0 ? (
                                                 <tr>
                                                     <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                                                         {activeTab === 'favorite'
@@ -1102,7 +1136,7 @@ export default function CompanyPage() {
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                filteredItems.map((item) => {
+                                                sortedItems.map((item) => {
                                                     const resolvedStatus = normalizeFolderStatus(item.status);
                                                     const isUpdatingStatus = updatingStatusFolderId === item.id;
 

@@ -1,4 +1,4 @@
-export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Proses';
+export type ActivityStatus = 'Selesai' | 'Terjeda' | 'Tertunda' | 'Proses';
 
 export type ActivityItemType = 'FOLDER' | 'DOCUMENT' | 'LAYANAN' | 'TIPE_LAYANAN';
 

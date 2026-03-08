@@ -20,6 +20,7 @@ export const ENDPOINTS = {
         SERVICES: `${API_BASE_URL}/user/layanan`,
         SERVICE_TYPES: `${API_BASE_URL}/user/layanan/:serviceId/tipe-layanan`,
         DETAIL_SERVICE_TYPE: `${API_BASE_URL}/detail-tipe-layanan/:tipe_layanan_id`,
+        SERVICE_TYPE_DOWNLOAD: `${API_BASE_URL}/tipe-layanan/:tipe_layanan_id/download`,
         UPLOAD_FILE: `${API_BASE_URL}/upload-file`,
         FOLDERS: `${API_BASE_URL}/folders`,
         FOLDERS_NOTARIS: `${API_BASE_URL}/folders/notaris`,

@@ -8,6 +8,7 @@ import { useAuthContext } from '@/features/auth/context/auth.context';
 import { useClickOutside } from '@/shared/hooks/useClickOutside';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { useNotificationRedirect } from '@/features/notifications/hooks/useNotificationRedirect';
+import { getStatusColor } from '@/features/dashboard/utils';
 import { getInitials } from '@/shared/utils/initials';
 import { apiGet, ApiResponse } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
@@ -56,8 +57,32 @@ interface ServiceTypesResponse {
     data: ServiceType[] | { data?: ServiceType[] } | null;
 }
 
-const formatStatusLabel = (value: string) =>
-    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+const normalizeNotificationStatus = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, '_');
+
+const toStatusColorValue = (value: string) => {
+    const normalizedStatus = normalizeNotificationStatus(value);
+
+    if (normalizedStatus === 'dalam_proses') return 'proses';
+    if (normalizedStatus === 'terutunda' || normalizedStatus === 'tertunda') return 'terjeda';
+
+    return normalizedStatus;
+};
+
+const formatStatusLabel = (value: string) => {
+    const normalizedStatus = normalizeNotificationStatus(value);
+
+    if (normalizedStatus === 'selesai') return 'Selesai';
+    if (normalizedStatus === 'proses' || normalizedStatus === 'dalam_proses') return 'Proses';
+    if (normalizedStatus === 'tertunda' || normalizedStatus === 'terjeda' || normalizedStatus === 'terutunda') {
+        return 'Tertunda';
+    }
+
+    return value
+        .trim()
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
 
 const normalizeText = (value: string) =>
     value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -916,7 +941,7 @@ export function DashboardHeader() {
                                                     )}
                                                     {notification.actionKey === 'update_status' && notification.objectUpdated && (
                                                         <div className="mt-2">
-                                                            <span className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                                                            <span className={`rounded-lg px-2.5 py-1 text-xs font-medium ${getStatusColor(toStatusColorValue(notification.objectUpdated))}`}>
                                                                 {formatStatusLabel(notification.objectUpdated)}
                                                             </span>
                                                         </div>

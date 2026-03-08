@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { FileText, FolderArchive, FolderClosed, X } from 'lucide-react';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
@@ -14,6 +14,9 @@ import { getInitials } from '@/shared/utils/initials';
 
 type DetailTab = 'detail' | 'aktivitas';
 type ActivityGroup = 'Hari ini' | 'Kemarin' | 'Sebelumnya';
+
+const ACTIVITIES_PAGE_LIMIT = 20;
+const SCROLL_BOTTOM_THRESHOLD = 160;
 
 interface FolderDetailOffcanvasProps {
     folderId: string | null;
@@ -181,6 +184,26 @@ const resolveActivityNodes = (
     return nodes;
 };
 
+const parseFolderActivitiesResponse = (payload: FolderActivitiesResponse['data']) => {
+    if (Array.isArray(payload)) {
+        return {
+            items: payload,
+            currentPage: 1,
+            totalItems: payload.length,
+            totalPages: payload.length > 0 ? 1 : 0,
+        };
+    }
+
+    const items = Array.isArray(payload?.data) ? payload.data : [];
+
+    return {
+        items,
+        currentPage: payload?.current_page ?? 1,
+        totalItems: payload?.total_items ?? items.length,
+        totalPages: payload?.total_pages ?? (items.length > 0 ? 1 : 0),
+    };
+};
+
 function ActivitySection({
     title,
     items,
@@ -251,10 +274,29 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
     const [activeTab, setActiveTab] = useState<DetailTab>('detail');
     const [detail, setDetail] = useState<FolderSidebarData | null>(null);
     const [activities, setActivities] = useState<FolderActivityItem[]>([]);
+    const [activitiesPage, setActivitiesPage] = useState(1);
+    const [activitiesTotalPages, setActivitiesTotalPages] = useState(0);
+    const [activitiesTotalItems, setActivitiesTotalItems] = useState(0);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
     const [isActivitiesLoading, setIsActivitiesLoading] = useState(false);
+    const [isLoadingMoreActivities, setIsLoadingMoreActivities] = useState(false);
     const [activitiesError, setActivitiesError] = useState<string | null>(null);
+    const [activitiesLoadMoreError, setActivitiesLoadMoreError] = useState<string | null>(null);
+    const contentContainerRef = useRef<HTMLDivElement | null>(null);
+    const activitiesRequestIdRef = useRef(0);
+
+    const hasMoreActivities = activitiesPage < activitiesTotalPages;
+
+    const fetchFolderActivitiesPage = useCallback(async (targetFolderId: string, page: number) => {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: ACTIVITIES_PAGE_LIMIT.toString(),
+        });
+        const url = `${ENDPOINTS.USER.FOLDER_ACTIVITIES.replace(':folder_id', targetFolderId)}?${params.toString()}`;
+        const response = await apiGet<FolderActivitiesResponse>(url);
+        return parseFolderActivitiesResponse(response.data);
+    }, []);
 
     useEffect(() => {
         if (!folderId) return;
@@ -291,21 +333,33 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
         if (!folderId) return;
 
         let isMounted = true;
+        const requestId = activitiesRequestIdRef.current + 1;
+        activitiesRequestIdRef.current = requestId;
+
+        setActivities([]);
+        setActivitiesPage(1);
+        setActivitiesTotalPages(0);
+        setActivitiesTotalItems(0);
         setIsActivitiesLoading(true);
+        setIsLoadingMoreActivities(false);
         setActivitiesError(null);
+        setActivitiesLoadMoreError(null);
 
         const fetchFolderActivities = async () => {
             try {
-                const url = ENDPOINTS.USER.FOLDER_ACTIVITIES.replace(':folder_id', folderId);
-                const response = await apiGet<FolderActivitiesResponse>(url);
-                if (!isMounted) return;
-                setActivities(Array.isArray(response.data) ? response.data : []);
+                const result = await fetchFolderActivitiesPage(folderId, 1);
+                if (!isMounted || activitiesRequestIdRef.current !== requestId) return;
+
+                setActivities(result.items);
+                setActivitiesPage(result.currentPage);
+                setActivitiesTotalPages(result.totalPages);
+                setActivitiesTotalItems(result.totalItems);
             } catch {
-                if (!isMounted) return;
+                if (!isMounted || activitiesRequestIdRef.current !== requestId) return;
                 setActivitiesError('Gagal memuat aktivitas folder');
                 setActivities([]);
             } finally {
-                if (isMounted) {
+                if (isMounted && activitiesRequestIdRef.current === requestId) {
                     setIsActivitiesLoading(false);
                 }
             }
@@ -316,7 +370,84 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
         return () => {
             isMounted = false;
         };
-    }, [folderId]);
+    }, [fetchFolderActivitiesPage, folderId]);
+
+    const loadMoreActivities = useCallback(async () => {
+        if (!folderId || isActivitiesLoading || isLoadingMoreActivities || !hasMoreActivities) {
+            return;
+        }
+
+        const nextPage = activitiesPage + 1;
+        const activeRequestId = activitiesRequestIdRef.current;
+        setIsLoadingMoreActivities(true);
+        setActivitiesLoadMoreError(null);
+
+        try {
+            const result = await fetchFolderActivitiesPage(folderId, nextPage);
+            if (activitiesRequestIdRef.current !== activeRequestId) return;
+
+            setActivities((prev) => {
+                const existingIds = new Set(prev.map((item) => item.id));
+                const newItems = result.items.filter((item) => !existingIds.has(item.id));
+                return [...prev, ...newItems];
+            });
+            setActivitiesPage(result.currentPage);
+            setActivitiesTotalPages(result.totalPages);
+            setActivitiesTotalItems(result.totalItems);
+        } catch {
+            if (activitiesRequestIdRef.current !== activeRequestId) return;
+            setActivitiesLoadMoreError('Gagal memuat aktivitas berikutnya');
+        } finally {
+            if (activitiesRequestIdRef.current === activeRequestId) {
+                setIsLoadingMoreActivities(false);
+            }
+        }
+    }, [
+        activitiesPage,
+        fetchFolderActivitiesPage,
+        folderId,
+        hasMoreActivities,
+        isActivitiesLoading,
+        isLoadingMoreActivities,
+    ]);
+
+    const handleContentScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+        if (activeTab !== 'aktivitas' || isActivitiesLoading || isLoadingMoreActivities || !hasMoreActivities) {
+            return;
+        }
+
+        const container = event.currentTarget;
+        const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+        if (distanceToBottom <= SCROLL_BOTTOM_THRESHOLD) {
+            void loadMoreActivities();
+        }
+    }, [activeTab, hasMoreActivities, isActivitiesLoading, isLoadingMoreActivities, loadMoreActivities]);
+
+    useEffect(() => {
+        if (
+            activeTab !== 'aktivitas' ||
+            isActivitiesLoading ||
+            isLoadingMoreActivities ||
+            !hasMoreActivities
+        ) {
+            return;
+        }
+
+        const container = contentContainerRef.current;
+        if (!container) return;
+
+        if (container.scrollHeight <= container.clientHeight + 1) {
+            void loadMoreActivities();
+        }
+    }, [
+        activeTab,
+        activities.length,
+        hasMoreActivities,
+        isActivitiesLoading,
+        isLoadingMoreActivities,
+        loadMoreActivities,
+    ]);
 
     useEffect(() => {
         setActiveTab('detail');
@@ -462,9 +593,9 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
         </div>
     );
 
-    const activityTabContent = isActivitiesLoading ? (
+    const activityTabContent = isActivitiesLoading && activities.length === 0 ? (
         <div className="text-sm text-gray-500">Memuat aktivitas...</div>
-    ) : activitiesError ? (
+    ) : activitiesError && activities.length === 0 ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {activitiesError}
         </div>
@@ -491,6 +622,17 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                 fallbackFolderLabel={folderLabel}
                 withBottomBorder
             />
+            {isLoadingMoreActivities && (
+                <p className="text-sm text-gray-500">Memuat aktivitas berikutnya...</p>
+            )}
+            {activitiesLoadMoreError && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                    {activitiesLoadMoreError}
+                </p>
+            )}
+            {!isLoadingMoreActivities && !hasMoreActivities && activitiesTotalItems > 0 && (
+                <p className="text-sm text-gray-500">Semua aktivitas sudah ditampilkan.</p>
+            )}
         </div>
     );
 
@@ -541,7 +683,11 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-5 py-6">
+                <div
+                    ref={contentContainerRef}
+                    className="flex-1 overflow-y-auto px-5 py-6"
+                    onScroll={handleContentScroll}
+                >
                     {activeTab === 'detail' ? detailTabContent : activityTabContent}
                 </div>
             </div>

@@ -21,6 +21,9 @@ export interface DashboardActivity {
     updated_at: string;
     status?: string;
     object_status?: string;
+    status_folder?: string;
+    folder_status?: string;
+    detail_status?: { status?: string | null } | string | null;
     is_favorite?: boolean;
     created_at?: string;
 }

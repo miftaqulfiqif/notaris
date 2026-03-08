@@ -35,9 +35,9 @@ describe('NotificationsPage', () => {
       message: 'Get notifikasi success',
       data: {
         current_page: 1,
-        total_items: 1,
+        total_items: 3,
         total_pages: 1,
-        total_not_read: 1,
+        total_not_read: 3,
         data: [
           {
             id: 'notif-1',
@@ -47,7 +47,33 @@ describe('NotificationsPage', () => {
             object: 'FOLDER',
             object_id: 'folder-1',
             object_name: 'PT ABC',
-            object_updated: 'terjeda',
+            object_updated: 'selesai',
+            has_read: false,
+            file_path: null,
+            created_at: 'Sekarang',
+          },
+          {
+            id: 'notif-2',
+            type: 'general',
+            action: 'update_status',
+            description: 'Saya mengubah status layanan PT DEF',
+            object: 'FOLDER',
+            object_id: 'folder-2',
+            object_name: 'PT DEF',
+            object_updated: 'proses',
+            has_read: false,
+            file_path: null,
+            created_at: 'Sekarang',
+          },
+          {
+            id: 'notif-3',
+            type: 'general',
+            action: 'update_status',
+            description: 'Saya mengubah status layanan PT GHI',
+            object: 'FOLDER',
+            object_id: 'folder-3',
+            object_name: 'PT GHI',
+            object_updated: 'tertunda',
             has_read: false,
             file_path: null,
             created_at: 'Sekarang',
@@ -64,5 +90,9 @@ describe('NotificationsPage', () => {
       expect(screen.getByText('Saya mengubah status layanan PT ABC')).toBeInTheDocument();
       expect(screen.getByText('Tandai semua dibaca')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Selesai')).toHaveClass('bg-green-100', 'text-green-600');
+    expect(screen.getByText('Proses')).toHaveClass('bg-yellow-100', 'text-yellow-600');
+    expect(screen.getByText('Tertunda')).toHaveClass('bg-red-100', 'text-red-600');
   });
 });

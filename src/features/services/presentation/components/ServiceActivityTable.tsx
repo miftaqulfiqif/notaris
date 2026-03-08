@@ -29,10 +29,50 @@ interface ServiceActivityTableProps {
     onSelectActivity?: (activity: Activity) => void;
 }
 
+type ActivitySortField = 'companyName' | 'service' | 'author' | 'modifiedDate' | 'status' | null;
+type SortDirection = 'asc' | 'desc';
+
+const STATUS_SORT_PRIORITY: Record<string, number> = {
+    selesai: 0,
+    proses: 1,
+    tertunda: 2,
+    terjeda: 2,
+    terutunda: 2,
+};
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
+
+const normalizeActivityStatus = (status: string): string => {
+    const normalizedStatus = status.toLowerCase().trim();
+
+    if (normalizedStatus === 'dalam_proses' || normalizedStatus === 'dalam proses') {
+        return 'proses';
+    }
+
+    if (normalizedStatus === 'terjeda' || normalizedStatus === 'terutunda') {
+        return 'tertunda';
+    }
+
+    return normalizedStatus;
+};
+
+const toStatusBadgeLabel = (status: string): string => {
+    const normalizedStatus = normalizeActivityStatus(status);
+
+    if (normalizedStatus === 'selesai') return 'Selesai';
+    if (normalizedStatus === 'proses') return 'Proses';
+    if (normalizedStatus === 'tertunda') return 'Tertunda';
+
+    return status;
+};
+
 export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
     const { toast, showToast, hideToast } = useToast();
     const [localActivities, setLocalActivities] = useState<Activity[]>(serviceActivities);
+    const [sortField, setSortField] = useState<ActivitySortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
             triggerClass: 'service-activity-dropdown-trigger',
@@ -47,12 +87,44 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
         return localActivities;
     }, [activeTab, localActivities]);
 
+    const sortedActivities = useMemo(() => {
+        if (!sortField) return filteredActivities;
+
+        const sorted = [...filteredActivities].sort((left, right) => {
+            if (sortField === 'modifiedDate') {
+                const leftTime = Date.parse(left.modifiedDate);
+                const rightTime = Date.parse(right.modifiedDate);
+
+                if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+                    return leftTime - rightTime;
+                }
+            }
+
+            if (sortField === 'status') {
+                const leftStatus = normalizeActivityStatus(left.status);
+                const rightStatus = normalizeActivityStatus(right.status);
+                const leftPriority = STATUS_SORT_PRIORITY[leftStatus];
+                const rightPriority = STATUS_SORT_PRIORITY[rightStatus];
+
+                if (leftPriority !== undefined && rightPriority !== undefined && leftPriority !== rightPriority) {
+                    return leftPriority - rightPriority;
+                }
+
+                return compareText(leftStatus, rightStatus);
+            }
+
+            return compareText(left[sortField], right[sortField]);
+        });
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [filteredActivities, sortDirection, sortField]);
+
     const {
         toggleSelectAll,
         toggleSelectItem,
         isSelected,
         isAllSelected,
-    } = useSelection({ items: filteredActivities, itemIdKey: 'id' });
+    } = useSelection({ items: sortedActivities, itemIdKey: 'id' });
 
     const {
         currentPage,
@@ -62,12 +134,30 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
         startIndex,
         endIndex,
         totalItems,
-    } = usePagination({ items: filteredActivities, itemsPerPage: 5 });
+    } = usePagination({ items: sortedActivities, itemsPerPage: 5 });
+
+    const handleSort = useCallback((field: Exclude<ActivitySortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+        setPage(1);
+    }, [setPage, sortDirection]);
 
     const activeActivity = useMemo(() => {
         if (!activeDropdown) return null;
-        return filteredActivities.find((activity) => activity.id === activeDropdown.id) ?? null;
-    }, [activeDropdown, filteredActivities]);
+        return sortedActivities.find((activity) => activity.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, sortedActivities]);
 
     const handleToggleFavorite = useCallback((targetActivity?: Activity | null) => {
         const activity = targetActivity ?? activeActivity;
@@ -168,22 +258,44 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Nama Perusahaan" />
+                                    <SortableHeader
+                                        label="Nama Perusahaan"
+                                        active={sortField === 'companyName'}
+                                        direction={sortField === 'companyName' ? sortDirection : null}
+                                        onClick={() => handleSort('companyName')}
+                                    />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Nama Penghadap" />
+                                    <SortableHeader
+                                        label="Layanan"
+                                        active={sortField === 'service'}
+                                        direction={sortField === 'service' ? sortDirection : null}
+                                        onClick={() => handleSort('service')}
+                                    />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Layanan" />
+                                    <SortableHeader
+                                        label="Author"
+                                        active={sortField === 'author'}
+                                        direction={sortField === 'author' ? sortDirection : null}
+                                        onClick={() => handleSort('author')}
+                                    />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Author" />
+                                    <SortableHeader
+                                        label="Dimodifikasi"
+                                        active={sortField === 'modifiedDate'}
+                                        direction={sortField === 'modifiedDate' ? sortDirection : null}
+                                        onClick={() => handleSort('modifiedDate')}
+                                    />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Dimodifikasi" />
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                    <SortableHeader label="Status" />
+                                    <SortableHeader
+                                        label="Status"
+                                        active={sortField === 'status'}
+                                        direction={sortField === 'status' ? sortDirection : null}
+                                        onClick={() => handleSort('status')}
+                                    />
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                                     <span className="sr-only">Aksi</span>
@@ -193,7 +305,7 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                         <tbody className="divide-y divide-gray-100">
                             {paginatedItems.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
+                                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">
                                         {activeTab === 'favorite'
                                             ? 'Belum ada aktivitas berbintang'
                                             : 'Belum ada aktivitas'}
@@ -237,9 +349,6 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                                             </button>
                                         </td>
                                         <td className="min-w-[150px] truncate px-6 py-4 text-gray-600">
-                                            {activity.clientName}
-                                        </td>
-                                        <td className="min-w-[150px] truncate px-6 py-4 text-gray-600">
                                             {activity.service}
                                         </td>
                                         <td className="min-w-[150px] truncate px-6 py-4 text-gray-600">
@@ -249,7 +358,7 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
                                             {activity.modifiedDate}
                                         </td>
                                         <td className="min-w-[150px] truncate px-6 py-4">
-                                            <StatusBadge status={activity.status} />
+                                            <StatusBadge status={toStatusBadgeLabel(activity.status)} />
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button

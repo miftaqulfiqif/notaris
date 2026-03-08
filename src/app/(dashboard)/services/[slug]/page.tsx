@@ -110,7 +110,6 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
                         dashboardActivities={serviceActivities}
                         isLoading={isLoadingActivities}
                         error={error}
-                        clientHeaderLabel="Nama Penghadap"
                         onSelectActivity={setSelectedActivity}
                     />
                 </div>

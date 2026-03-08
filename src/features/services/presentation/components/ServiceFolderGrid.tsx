@@ -8,6 +8,7 @@ import { useServiceTypes } from '@/features/services/context/ServiceTypesContext
 import { useFavoriteServiceType } from '@/features/services/presentation/hooks/useFavoriteServiceType';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { useToast } from '@/shared/hooks/useToast';
+import { ENDPOINTS } from '@/shared/api/endpoints';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
 import { Toast } from '@/shared/components/Toast';
 import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
@@ -96,6 +97,63 @@ export function ServiceFolderGrid() {
         });
     }, [activeFolder, showToast]);
 
+    const downloadFolderByServiceType = useCallback(async (folder: { id: string; name: string }) => {
+        const downloadUrl = ENDPOINTS.USER.SERVICE_TYPE_DOWNLOAD.replace(':tipe_layanan_id', folder.id);
+
+        try {
+            const response = await fetch(downloadUrl, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                let errorMessage = `Request failed with status ${response.status}`;
+
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.errors || errorData?.message || errorMessage;
+                } catch {
+                    // Ignore JSON parse error and keep fallback message.
+                }
+
+                if (errorMessage === 'Folder is empty') {
+                    errorMessage = 'Folder kosong, tidak ada file untuk diunduh';
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const contentDisposition = response.headers.get('content-disposition');
+            const fileNameMatch = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+            const fallbackName = `${folder.name || 'tipe-layanan'}.zip`;
+            const resolvedFileName = fileNameMatch?.[1]
+                ? decodeURIComponent(fileNameMatch[1].replace(/["']/g, '').trim())
+                : fallbackName;
+
+            link.href = objectUrl;
+            link.download = resolvedFileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+
+            showToast({ message: 'Download folder dimulai', variant: 'success' });
+        } catch (error) {
+            showToast({
+                message: error instanceof Error ? error.message : 'Gagal mengunduh folder',
+                variant: 'error',
+            });
+        }
+    }, [showToast]);
+
+    const handleDownloadFolder = useCallback(() => {
+        if (!activeFolder) return;
+        void downloadFolderByServiceType({ id: activeFolder.id, name: activeFolder.name });
+    }, [activeFolder, downloadFolderByServiceType]);
+
     const handleOpenDetailSidebar = useCallback(() => {
         if (!activeFolder) return;
         setDetailSidebarServiceType({
@@ -106,7 +164,12 @@ export function ServiceFolderGrid() {
 
     const folderMenuItems = useMemo<DropdownMenuItem[]>(
         () => [
-            { label: 'Download Folder', icon: <Download className="w-4 h-4" />, hasDivider: true },
+            {
+                label: 'Download Folder',
+                icon: <Download className="w-4 h-4" />,
+                onClick: handleDownloadFolder,
+                hasDivider: true,
+            },
             {
                 label: 'Lihat Detail Folder',
                 icon: <Info className="w-4 h-4" />,
@@ -135,6 +198,7 @@ export function ServiceFolderGrid() {
         ],
         [
             activeFolderIsFavorite,
+            handleDownloadFolder,
             handleMoveToTrash,
             handleOpenDetailSidebar,
             handleToggleFavorite,

@@ -9,7 +9,6 @@ import { apiGet, apiPost, apiPut } from '@/shared/api/api-client';
 import { API_FILE_BASE_URL, ENDPOINTS } from '@/shared/api/endpoints';
 import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
-import type { UserDetailResponse } from '@/features/auth/types';
 
 interface NotarisDetailData {
     avatar: string | null;
@@ -40,6 +39,13 @@ interface NotarisUserItem {
 interface NotarisUsersResponse {
     message: string;
     data: NotarisUserItem[];
+}
+
+interface CurrentUserResponse {
+    message: string;
+    data: {
+        role?: string | null;
+    };
 }
 
 interface CreateMemberPayload {
@@ -165,17 +171,18 @@ export default function InstansiPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const [detailResponse, usersResponse, detailUserResponse] = await Promise.all([
+                const [detailResponse, usersResponse, currentUserResponse] = await Promise.all([
                     apiGet<NotarisDetailResponse>(ENDPOINTS.NOTARIS.DETAIL),
                     apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS),
-                    apiGet<UserDetailResponse>(ENDPOINTS.USER.DETAIL),
+                    apiGet<CurrentUserResponse>(ENDPOINTS.AUTH.CURRENT),
                 ]);
 
                 if (!mounted) return;
 
                 const detail = detailResponse.data;
+                const resolvedRole = toSafeValue(currentUserResponse.data?.role);
                 setNotarisDetail(detail);
-                setCurrentUserRole(detailUserResponse.data.detail_akun.role);
+                setCurrentUserRole(resolvedRole || null);
                 setEditedNotarisName(detail.notaris_name ?? '');
                 setEditedEmail(detail.email ?? '');
                 setEditedAlamat(detail.alamat ?? '');
@@ -451,7 +458,7 @@ export default function InstansiPage() {
 
         setIsCreatingMember(true);
         try {
-            await apiPost('/api/user/create', payload);
+            await apiPost(ENDPOINTS.USER.CREATE, payload);
             const usersResponse = await apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS);
             setTeamMembers(usersResponse.data || []);
             setIsCreateMemberModalOpen(false);
@@ -606,24 +613,26 @@ export default function InstansiPage() {
                             <section className="mt-9">
                                 <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                                     <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Member Team</h2>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={openCreateMemberModal}
-                                            className="rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-[#6E5F49] hover:border-[#D6CCBC] disabled:cursor-not-allowed disabled:opacity-60"
-                                            disabled={isLoading || isCreatingMember}
-                                        >
-                                            Tambah member baru
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => showToast({ message: 'Pengaturan member belum tersedia', variant: 'info' })}
-                                            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-[#6E5F49]"
-                                        >
-                                            <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-                                            setting
-                                        </button>
-                                    </div>
+                                    {canEditNotaris && (
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={openCreateMemberModal}
+                                                className="rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-[#6E5F49] hover:border-[#D6CCBC] disabled:cursor-not-allowed disabled:opacity-60"
+                                                disabled={isLoading || isCreatingMember}
+                                            >
+                                                Tambah member baru
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => showToast({ message: 'Pengaturan member belum tersedia', variant: 'info' })}
+                                                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 sm:px-6 py-2.5 text-sm sm:text-base text-[#6E5F49]"
+                                            >
+                                                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+                                                setting
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">

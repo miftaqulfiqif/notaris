@@ -55,7 +55,6 @@ interface ActivitySectionProps {
     dashboardActivities?: PaginatedActivities | null;
     isLoading?: boolean;
     error?: string | null;
-    clientHeaderLabel?: string;
 }
 
 interface FileSearchItem {
@@ -86,6 +85,19 @@ interface FavoriteLookupResponse {
 const ACTIVITY_ITEM_TYPES: ActivityItemType[] = ['FOLDER', 'DOCUMENT', 'LAYANAN', 'TIPE_LAYANAN'];
 
 type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+type ActivitySortField = 'companyName' | 'service' | 'author' | 'modifiedDate' | 'status' | null;
+type SortDirection = 'asc' | 'desc';
+
+const STATUS_SORT_PRIORITY: Record<string, number> = {
+    selesai: 0,
+    proses: 1,
+    tertunda: 2,
+    terjeda: 2,
+    terutunda: 2,
+};
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
 
 interface StatusOption {
     value: FolderStatusValue;
@@ -183,11 +195,30 @@ const resolveFolderIdFromActivity = (activity: Activity): string | null => {
 const normalizeFolderStatus = (status: string): string => {
     const normalizedStatus = status.toLowerCase().trim();
 
+    if (normalizedStatus === 'dalam_proses' || normalizedStatus === 'dalam proses') {
+        return 'proses';
+    }
+
     if (normalizedStatus === 'terutunda' || normalizedStatus === 'terjeda') {
         return 'tertunda';
     }
 
     return normalizedStatus;
+};
+
+const toActivityStatus = (
+    ...statuses: Array<string | null | undefined>
+): ActivityStatus => {
+    for (const status of statuses) {
+        if (!status) continue;
+
+        const normalizedStatus = normalizeFolderStatus(status);
+        if (normalizedStatus === 'selesai') return 'Selesai';
+        if (normalizedStatus === 'proses') return 'Proses';
+        if (normalizedStatus === 'tertunda') return 'Tertunda';
+    }
+
+    return 'Proses';
 };
 
 const toFolderStatusValue = (status: string): FolderStatusValue | null => {
@@ -325,7 +356,6 @@ export function ActivitySection({
     dashboardActivities,
     isLoading = false,
     error,
-    clientHeaderLabel = 'Nama Klien',
 }: ActivitySectionProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -373,6 +403,9 @@ export function ActivitySection({
                 const resolvedItemId = act.item_id || (itemType === 'DOCUMENT'
                     ? documentId || folderId
                     : folderId || documentId);
+                const detailStatus = typeof act.detail_status === 'string'
+                    ? act.detail_status
+                    : act.detail_status?.status;
 
                 const fallbackId = resolvedItemId || `fallback-id-${index}`;
 
@@ -388,7 +421,13 @@ export function ActivitySection({
                     typeName: act.tipe_layanan || null,
                     author: act.author || '-',
                     modifiedDate: String(act.updated_at || '-'),
-                    status: (act.status || act.object_status || 'Proses') as ActivityStatus,
+                    status: toActivityStatus(
+                        act.status,
+                        act.object_status,
+                        act.status_folder,
+                        act.folder_status,
+                        detailStatus,
+                    ),
                     isFavorite: Boolean(act.is_favorite),
                     itemType,
                     routePath: act.route_path || null,
@@ -412,6 +451,8 @@ export function ActivitySection({
     const [renameError, setRenameError] = useState<string | null>(null);
     const [isRenamingFolder, setIsRenamingFolder] = useState(false);
     const [detailSidebarFolder, setDetailSidebarFolder] = useState<{ id: string; name: string } | null>(null);
+    const [sortField, setSortField] = useState<ActivitySortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     const resolveFavoriteTarget = useCallback((activity: Activity) => {
         const itemType = activity.itemType ?? 'FOLDER';
@@ -500,6 +541,38 @@ export function ActivitySection({
         return localActivities;
     }, [activeTab, localActivities, resolveIsFavorite]);
 
+    const sortedActivities = useMemo(() => {
+        if (!sortField) return filteredActivities;
+
+        const sorted = [...filteredActivities].sort((left, right) => {
+            if (sortField === 'modifiedDate') {
+                const leftTime = Date.parse(left.modifiedDate);
+                const rightTime = Date.parse(right.modifiedDate);
+
+                if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+                    return leftTime - rightTime;
+                }
+            }
+
+            if (sortField === 'status') {
+                const leftStatus = (statusOverrides[left.id] ?? left.status).toLowerCase().trim();
+                const rightStatus = (statusOverrides[right.id] ?? right.status).toLowerCase().trim();
+                const leftPriority = STATUS_SORT_PRIORITY[leftStatus];
+                const rightPriority = STATUS_SORT_PRIORITY[rightStatus];
+
+                if (leftPriority !== undefined && rightPriority !== undefined && leftPriority !== rightPriority) {
+                    return leftPriority - rightPriority;
+                }
+
+                return compareText(leftStatus, rightStatus);
+            }
+
+            return compareText(left[sortField], right[sortField]);
+        });
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [filteredActivities, sortDirection, sortField, statusOverrides]);
+
     const {
         selectedItems,
         setSelectedItems,
@@ -507,11 +580,11 @@ export function ActivitySection({
         toggleSelectItem,
         isSelected,
         isAllSelected,
-    } = useSelection({ items: filteredActivities, itemIdKey: 'id' });
+    } = useSelection({ items: sortedActivities, itemIdKey: 'id' });
 
     const selectedActivities = useMemo(
-        () => filteredActivities.filter((activity) => selectedItems.includes(activity.id)),
-        [filteredActivities, selectedItems],
+        () => sortedActivities.filter((activity) => selectedItems.includes(activity.id)),
+        [selectedItems, sortedActivities],
     );
 
     const hasSelectedItems = selectedActivities.length > 0;
@@ -526,9 +599,9 @@ export function ActivitySection({
 
     useEffect(() => {
         setSelectedItems((prev) =>
-            prev.filter((selectedId) => filteredActivities.some((activity) => activity.id === selectedId)),
+            prev.filter((selectedId) => sortedActivities.some((activity) => activity.id === selectedId)),
         );
-    }, [filteredActivities, setSelectedItems]);
+    }, [setSelectedItems, sortedActivities]);
 
     useEffect(() => {
         if (!hasSelectedItems) {
@@ -557,21 +630,39 @@ export function ActivitySection({
         startIndex,
         endIndex,
         totalItems,
-    } = usePagination({ items: filteredActivities, itemsPerPage: 5 });
+    } = usePagination({ items: sortedActivities, itemsPerPage: 5 });
+
+    const handleSort = useCallback((field: Exclude<ActivitySortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+        setPage(1);
+    }, [setPage, sortDirection]);
 
     const activeActivity = useMemo(() => {
         if (!activeDropdown) return null;
         return paginatedItems.find((item) => item.id === activeDropdown.id)
-            || filteredActivities.find((item) => item.id === activeDropdown.id)
+            || sortedActivities.find((item) => item.id === activeDropdown.id)
             || null;
-    }, [activeDropdown, filteredActivities, paginatedItems]);
+    }, [activeDropdown, paginatedItems, sortedActivities]);
 
     const activeStatusActivity = useMemo(() => {
         if (!activeStatusDropdown) return null;
         return paginatedItems.find((item) => item.id === activeStatusDropdown.id)
-            || filteredActivities.find((item) => item.id === activeStatusDropdown.id)
+            || sortedActivities.find((item) => item.id === activeStatusDropdown.id)
             || null;
-    }, [activeStatusDropdown, filteredActivities, paginatedItems]);
+    }, [activeStatusDropdown, paginatedItems, sortedActivities]);
 
     const resolveActivityStatus = useCallback(
         (activity: Activity) => statusOverrides[activity.id] ?? activity.status,
@@ -1431,22 +1522,44 @@ export function ActivitySection({
                                         </div>
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label="Nama Perusahaan" />
+                                        <SortableHeader
+                                            label="Nama Perusahaan"
+                                            active={sortField === 'companyName'}
+                                            direction={sortField === 'companyName' ? sortDirection : null}
+                                            onClick={() => handleSort('companyName')}
+                                        />
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label={clientHeaderLabel} />
+                                        <SortableHeader
+                                            label="Layanan"
+                                            active={sortField === 'service'}
+                                            direction={sortField === 'service' ? sortDirection : null}
+                                            onClick={() => handleSort('service')}
+                                        />
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label="Layanan" />
+                                        <SortableHeader
+                                            label="Author"
+                                            active={sortField === 'author'}
+                                            direction={sortField === 'author' ? sortDirection : null}
+                                            onClick={() => handleSort('author')}
+                                        />
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label="Author" />
+                                        <SortableHeader
+                                            label="Dimodifikasi"
+                                            active={sortField === 'modifiedDate'}
+                                            direction={sortField === 'modifiedDate' ? sortDirection : null}
+                                            onClick={() => handleSort('modifiedDate')}
+                                        />
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label="Dimodifikasi" />
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                        <SortableHeader label="Status" />
+                                        <SortableHeader
+                                            label="Status"
+                                            active={sortField === 'status'}
+                                            direction={sortField === 'status' ? sortDirection : null}
+                                            onClick={() => handleSort('status')}
+                                        />
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Aksi</th>
                                 </tr>
@@ -1516,7 +1629,6 @@ export function ActivitySection({
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.clientName}</td>
                                             <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.service}</td>
                                             <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.author}</td>
                                             <td className="min-w-[200px] px-6 py-4 text-gray-600">{activity.modifiedDate}</td>

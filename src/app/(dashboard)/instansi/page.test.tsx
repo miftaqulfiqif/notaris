@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InstansiPage from './page';
 import { apiGet, apiPost } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
 
 jest.mock('@/layout/DashboardHeader', () => ({
   DashboardHeader: () => <div data-testid="dashboard-header" />,
@@ -13,31 +14,26 @@ jest.mock('@/shared/api/api-client', () => ({
 }));
 
 describe('InstansiPage', () => {
-  const mockedUserDetailResponse = {
-    message: 'Get detail user success',
+  const mockedCurrentUserResponse = {
+    message: 'Get current user success',
     data: {
-      informasi_user: {
-        profile_picture: null,
-        name: 'Johny Marteen',
-        gender: null,
-        phone: null,
-        jabatan: null,
-      },
-      detail_akun: {
-        username: 'johny',
-        email: 'example@mail.com',
-        password: '***',
-        role: 'KEPALA NOTARIS',
-        created_at: '2026-02-18T13:43:35.126Z',
-        last_login: null,
-        last_updated_password: null,
-      },
-      informasi_instansi: {
-        notaris_name: 'Johny Marteen SH. M.Kn',
-        email: 'example@mail.com',
-        phone: null,
-        paket: null,
-      },
+      notaris_name: 'Johny Marteen SH. M.Kn',
+      name: 'Johny Marteen',
+      profile_picture: null,
+      email: 'example@mail.com',
+      verified_at: null,
+      role: 'KEPALA NOTARIS',
+    },
+  };
+  const mockedCurrentUserStaffResponse = {
+    message: 'Get current user success',
+    data: {
+      notaris_name: 'Johny Marteen SH. M.Kn',
+      name: 'Johny Marteen',
+      profile_picture: null,
+      email: 'example@mail.com',
+      verified_at: null,
+      role: 'STAFF',
     },
   };
 
@@ -69,7 +65,7 @@ describe('InstansiPage', () => {
           },
         ],
       })
-      .mockResolvedValueOnce(mockedUserDetailResponse);
+      .mockResolvedValueOnce(mockedCurrentUserResponse);
 
     render(<InstansiPage />);
 
@@ -110,7 +106,7 @@ describe('InstansiPage', () => {
           },
         ],
       })
-      .mockResolvedValueOnce(mockedUserDetailResponse);
+      .mockResolvedValueOnce(mockedCurrentUserResponse);
 
     render(<InstansiPage />);
 
@@ -150,7 +146,7 @@ describe('InstansiPage', () => {
           },
         ],
       })
-      .mockResolvedValueOnce(mockedUserDetailResponse)
+      .mockResolvedValueOnce(mockedCurrentUserResponse)
       .mockResolvedValueOnce({
         message: 'Get users by notaris success',
         data: [
@@ -196,7 +192,7 @@ describe('InstansiPage', () => {
     await user.click(screen.getByRole('button', { name: 'Tambah member' }));
 
     await waitFor(() => {
-      expect(apiPost).toHaveBeenCalledWith('/api/user/create', {
+      expect(apiPost).toHaveBeenCalledWith(ENDPOINTS.USER.CREATE, {
         name: 'Staff Rosyam',
         email: 'staffrosyam@notarix.com',
         username: 'staffrosyam',
@@ -204,5 +200,43 @@ describe('InstansiPage', () => {
         confirm_password: 'password123',
       });
     });
+  });
+
+  it('hides action buttons for staff role', async () => {
+    (apiGet as jest.Mock)
+      .mockResolvedValueOnce({
+        message: 'Get info notaris success',
+        data: {
+          avatar: null,
+          notaris_name: 'Johny Marteen SH. M.Kn',
+          email: 'example@mail.com',
+          alamat: 'Jl. Contoh',
+          paket: 'basic',
+        },
+      })
+      .mockResolvedValueOnce({
+        message: 'Get users by notaris success',
+        data: [
+          {
+            id: '1',
+            role: 'STAFF',
+            name: 'Staff Rosyam',
+            profile_picture: null,
+            created_at: 'Maret, 1 2026',
+          },
+        ],
+      })
+      .mockResolvedValueOnce(mockedCurrentUserStaffResponse);
+
+    render(<InstansiPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Staff Rosyam')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Ubah avatar instansi' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tambah member baru' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'setting' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keluar' })).toBeInTheDocument();
   });
 });

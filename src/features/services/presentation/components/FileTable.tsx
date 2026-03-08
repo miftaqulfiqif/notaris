@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, useState, useEffect, type MouseEvent } from 'react';
-import { MoreVertical, Search, FileText, Star, Download, Pencil, Info, Trash2, StarOff, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, Search, FileText, Star, Download, Pencil, Info, Trash2, StarOff, X } from 'lucide-react';
 import { FileItem } from '@/features/services/types';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { DropdownMenu } from '@/shared/components/DropdownMenu';
@@ -19,6 +19,12 @@ interface FileTableProps {
     onRefresh?: () => void;
 }
 
+type FileSortField = 'file_name' | 'user' | 'updated_at' | null;
+type SortDirection = 'asc' | 'desc';
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
+
 export function FileTable({ items, onRefresh }: FileTableProps) {
     const { activeDropdown, openDropdown, closeDropdown, triggerClass, menuClass } = useDropdown<string>();
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFile();
@@ -29,26 +35,54 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
     const [renameFileName, setRenameFileName] = useState('');
     const [renameError, setRenameError] = useState<string | null>(null);
     const [isRenamingFile, setIsRenamingFile] = useState(false);
+    const [sortField, setSortField] = useState<FileSortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+    const sortedItems = useMemo(() => {
+        if (!sortField) return items;
+
+        const sorted = [...items].sort((left, right) => {
+            if (sortField === 'updated_at') {
+                const leftTime = Date.parse(left.updated_at);
+                const rightTime = Date.parse(right.updated_at);
+
+                if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+                    return leftTime - rightTime;
+                }
+
+                return compareText(left.updated_at, right.updated_at);
+            }
+
+            if (sortField === 'file_name') {
+                const leftName = fileNameOverrides[left.id] ?? left.file_name;
+                const rightName = fileNameOverrides[right.id] ?? right.file_name;
+                return compareText(leftName, rightName);
+            }
+
+            return compareText(left.user, right.user);
+        });
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [fileNameOverrides, items, sortDirection, sortField]);
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
-        items,
+        items: sortedItems,
         itemIdKey: 'id',
     });
 
     const activeFile = useMemo(() => {
         if (!activeDropdown) return null;
-        return items.find((item) => item.id === activeDropdown.id) ?? null;
-    }, [activeDropdown, items]);
+        return sortedItems.find((item) => item.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, sortedItems]);
 
     const selectedFiles = useMemo(
-        () => items.filter((item) => selectedItems.includes(item.id)),
-        [items, selectedItems],
+        () => sortedItems.filter((item) => selectedItems.includes(item.id)),
+        [selectedItems, sortedItems],
     );
 
     const hasSelectedItems = selectedFiles.length > 0;
 
     useEffect(() => {
-        setSelectedItems((prev) => prev.filter((selectedId) => items.some((item) => item.id === selectedId)));
-    }, [items, setSelectedItems]);
+        setSelectedItems((prev) => prev.filter((selectedId) => sortedItems.some((item) => item.id === selectedId)));
+    }, [setSelectedItems, sortedItems]);
 
     useEffect(() => {
         const existingIds = new Set(items.map((item) => item.id));
@@ -76,6 +110,33 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
         (file: Pick<FileItem, 'id' | 'file_name'>) => fileNameOverrides[file.id] ?? file.file_name,
         [fileNameOverrides],
     );
+
+    const handleSort = useCallback((field: Exclude<FileSortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+    }, [sortDirection]);
+
+    const renderSortIcon = useCallback((field: Exclude<FileSortField, null>) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4 text-gray-500" />;
+        }
+
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-4 w-4 text-[#8B7355]" />
+            : <ArrowDown className="h-4 w-4 text-[#8B7355]" />;
+    }, [sortDirection, sortField]);
 
     const handleToggleFavorite = useCallback(async (targetFile?: { id: string; is_favorite?: boolean } | null) => {
         const file = targetFile ?? activeFile;
@@ -257,14 +318,41 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                                     onChange={toggleSelectAll}
                                 />
                             </th>
-                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">Nama File</th>
-                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">Author</th>
-                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">Dimodifikasi</th>
+                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('file_name')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'file_name' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Nama File
+                                    {renderSortIcon('file_name')}
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('user')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'user' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Author
+                                    {renderSortIcon('user')}
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('updated_at')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'updated_at' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Dimodifikasi
+                                    {renderSortIcon('updated_at')}
+                                </button>
+                            </th>
                             <th className="px-6 py-4 font-semibold text-gray-900 group-hover:text-gray-900 text-xs text-right uppercase tracking-wider"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {items.length === 0 ? (
+                        {sortedItems.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center">
                                     <div className="flex flex-col justify-center items-center">
@@ -277,7 +365,7 @@ export function FileTable({ items, onRefresh }: FileTableProps) {
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item) => {
+                            sortedItems.map((item) => {
                                 const isFavorite = resolveIsFavorite(item);
 
                                 return (

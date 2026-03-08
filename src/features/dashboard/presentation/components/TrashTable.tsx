@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
-import { ArrowUpDown, MoreVertical, RotateCcw, Trash2, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, RotateCcw, Trash2, Search } from 'lucide-react';
 import { TrashItem } from '@/features/dashboard/hooks/useTrashItems';
 import { useDropdown } from '@/shared/hooks/useDropdown';
 import { DropdownMenu, DropdownMenuItem } from '@/shared/components/DropdownMenu';
@@ -21,6 +21,12 @@ interface TrashTableProps {
     onDeleteForeverMultiple?: (items: TrashItem[]) => Promise<void>;
 }
 
+type TrashSortField = 'name' | 'author' | 'deletedAt' | null;
+type SortDirection = 'asc' | 'desc';
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
+
 export function TrashTable({
     items,
     onRestore,
@@ -33,10 +39,65 @@ export function TrashTable({
     const [isBulkRestoring, setIsBulkRestoring] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [activeTooltip, setActiveTooltip] = useState<{ id: string; top: number; left: number } | null>(null);
+    const [sortField, setSortField] = useState<TrashSortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+    const sortedItems = useMemo(() => {
+        if (!sortField) return items;
+
+        const sorted = [...items].sort((left, right) => {
+            if (sortField === 'name') {
+                return compareText(left.detail.item_name, right.detail.item_name);
+            }
+
+            if (sortField === 'author') {
+                return compareText(left.detail.deleted_by, right.detail.deleted_by);
+            }
+
+            const leftTime = Date.parse(left.created_at);
+            const rightTime = Date.parse(right.created_at);
+
+            if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+                return leftTime - rightTime;
+            }
+
+            return compareText(left.created_at, right.created_at);
+        });
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [items, sortDirection, sortField]);
+
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
-        items,
+        items: sortedItems,
         itemIdKey: 'id',
     });
+
+    const handleSort = (field: Exclude<TrashSortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+    };
+
+    const renderSortIcon = (field: Exclude<TrashSortField, null>) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4 text-gray-500" />;
+        }
+
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-4 w-4 text-[#8B7355]" />
+            : <ArrowDown className="h-4 w-4 text-[#8B7355]" />;
+    };
 
     const getIcon = (type: string) => {
         if (type === 'DOCUMENT') return pdfIcon;
@@ -55,16 +116,16 @@ export function TrashTable({
     };
 
     const selectedTrashItems = useMemo(
-        () => items.filter((item) => selectedItems.includes(item.id)),
-        [items, selectedItems],
+        () => sortedItems.filter((item) => selectedItems.includes(item.id)),
+        [selectedItems, sortedItems],
     );
 
     const hasSelectedItems = selectedTrashItems.length > 0;
     const isBulkActionLoading = isBulkDeleting || isBulkRestoring;
 
     useEffect(() => {
-        setSelectedItems((prev) => prev.filter((selectedItemId) => items.some((item) => item.id === selectedItemId)));
-    }, [items, setSelectedItems]);
+        setSelectedItems((prev) => prev.filter((selectedItemId) => sortedItems.some((item) => item.id === selectedItemId)));
+    }, [setSelectedItems, sortedItems]);
 
     const handleBulkRestore = async () => {
         if (!onRestoreMultiple || !hasSelectedItems || isBulkActionLoading) return;
@@ -130,7 +191,7 @@ export function TrashTable({
     };
 
     const activeDropdownItem = activeDropdown
-        ? items.find((item) => item.id === activeDropdown.id) ?? null
+        ? sortedItems.find((item) => item.id === activeDropdown.id) ?? null
         : null;
 
     return (
@@ -148,21 +209,33 @@ export function TrashTable({
                                 />
                             </th>
                             <th className="px-6 py-4">
-                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('name')}
+                                    className={`flex items-center gap-2 font-semibold text-left transition-colors ${sortField === 'name' ? 'text-[#8B7355]' : 'text-gray-800 hover:text-gray-700'}`}
+                                >
                                     Nama File
-                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                    {renderSortIcon('name')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('author')}
+                                    className={`flex items-center gap-2 font-semibold text-left transition-colors ${sortField === 'author' ? 'text-[#8B7355]' : 'text-gray-800 hover:text-gray-700'}`}
+                                >
                                     Author
-                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                    {renderSortIcon('author')}
                                 </button>
                             </th>
                             <th className="px-6 py-4">
-                                <button className="flex items-center gap-2 font-semibold text-gray-800 text-left">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('deletedAt')}
+                                    className={`flex items-center gap-2 font-semibold text-left transition-colors ${sortField === 'deletedAt' ? 'text-[#8B7355]' : 'text-gray-800 hover:text-gray-700'}`}
+                                >
                                     Tanggal dihapus
-                                    <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                                    {renderSortIcon('deletedAt')}
                                 </button>
                             </th>
                             <th className="px-6 py-4 font-semibold text-gray-800 text-left">Lokasi awal</th>
@@ -172,7 +245,7 @@ export function TrashTable({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {items.length === 0 ? (
+                        {sortedItems.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="px-6 py-12 text-center">
                                     <div className="flex flex-col justify-center items-center">
@@ -185,7 +258,7 @@ export function TrashTable({
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item) => (
+                            sortedItems.map((item) => (
                                 <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
                                     <td className="px-6 py-4">
                                         <input

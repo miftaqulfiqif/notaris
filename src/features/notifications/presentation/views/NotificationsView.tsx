@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronRight, FileText, Folder } from 'lucide-react';
 import { getInitials } from '@/shared/utils/initials';
 import { Pagination } from '@/shared/components/Pagination';
+import { getStatusColor } from '@/features/dashboard/utils';
 import type { NotificationItem } from '@/features/notifications/types/notification.types';
 
 interface NotificationsViewProps {
@@ -24,7 +25,7 @@ interface NotificationsViewProps {
 }
 
 const formatStatusLabel = (value: string) =>
-    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    value.trim().charAt(0).toUpperCase() + value.trim().slice(1).toLowerCase();
 
 export function NotificationsView({
     notifications,
@@ -140,7 +141,9 @@ export function NotificationsView({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-4">
                                     {notification.actionKey === 'update_status' && notification.objectUpdated && (
-                                        <span className="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
+                                        <span
+                                            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${getStatusColor(notification.objectUpdated.trim())}`}
+                                        >
                                             {formatStatusLabel(notification.objectUpdated)}
                                         </span>
                                     )}

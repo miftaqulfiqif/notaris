@@ -10,7 +10,7 @@ import {
     useRef,
     type MouseEvent,
 } from 'react';
-import { MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2, Check, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, Search, Download, Edit3, Info, Star, StarOff, Trash2, Check, X } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import folderIcon from '@/assets/icons/folder.png';
@@ -30,6 +30,19 @@ import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 import type { DropdownState } from '@/shared/hooks/useDropdown';
 
 type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
+type FolderSortField = 'folder_name' | 'user' | 'updated_at' | 'status' | null;
+type SortDirection = 'asc' | 'desc';
+
+const STATUS_SORT_PRIORITY: Record<string, number> = {
+    selesai: 0,
+    proses: 1,
+    tertunda: 2,
+    terjeda: 2,
+    terutunda: 2,
+};
+
+const compareText = (left: string, right: string) =>
+    left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
 
 interface StatusOption {
     value: FolderStatusValue;
@@ -223,12 +236,45 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
     const [renameFolderName, setRenameFolderName] = useState('');
     const [renameError, setRenameError] = useState<string | null>(null);
     const [isRenamingFolder, setIsRenamingFolder] = useState(false);
+    const [sortField, setSortField] = useState<FolderSortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const [detailSidebarFolder, setDetailSidebarFolder] = useState<{
         id: string;
         name: string;
     } | null>(null);
+    const sortedItems = useMemo(() => {
+        if (!sortField) return items;
+
+        const sorted = [...items].sort((left, right) => {
+            if (sortField === 'updated_at') {
+                const leftTime = Date.parse(left.updated_at);
+                const rightTime = Date.parse(right.updated_at);
+
+                if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+                    return leftTime - rightTime;
+                }
+            }
+
+            if (sortField === 'status') {
+                const leftStatus = (statusOverrides[left.id] ?? left.status).toLowerCase().trim();
+                const rightStatus = (statusOverrides[right.id] ?? right.status).toLowerCase().trim();
+                const leftPriority = STATUS_SORT_PRIORITY[leftStatus];
+                const rightPriority = STATUS_SORT_PRIORITY[rightStatus];
+
+                if (leftPriority !== undefined && rightPriority !== undefined && leftPriority !== rightPriority) {
+                    return leftPriority - rightPriority;
+                }
+
+                return compareText(leftStatus, rightStatus);
+            }
+
+            return compareText(left[sortField], right[sortField]);
+        });
+
+        return sortDirection === 'asc' ? sorted : sorted.reverse();
+    }, [items, sortDirection, sortField, statusOverrides]);
     const { selectedItems, setSelectedItems, toggleSelectAll, toggleSelectItem, isSelected, isAllSelected } = useSelection({
-        items,
+        items: sortedItems,
         itemIdKey: 'id',
     });
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
@@ -258,8 +304,8 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
     });
 
     const selectedFolders = useMemo(
-        () => items.filter((item) => selectedItems.includes(item.id)),
-        [items, selectedItems],
+        () => sortedItems.filter((item) => selectedItems.includes(item.id)),
+        [selectedItems, sortedItems],
     );
 
     const hasSelectedItems = selectedFolders.length > 0;
@@ -291,8 +337,8 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
     }, [selectedFolders, statusOverrides]);
 
     useEffect(() => {
-        setSelectedItems((prev) => prev.filter((selectedId) => items.some((item) => item.id === selectedId)));
-    }, [items, setSelectedItems]);
+        setSelectedItems((prev) => prev.filter((selectedId) => sortedItems.some((item) => item.id === selectedId)));
+    }, [setSelectedItems, sortedItems]);
 
     useEffect(() => {
         if (!hasSelectedItems) {
@@ -315,13 +361,13 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
 
     const activeFolder = useMemo(() => {
         if (!activeDropdown) return null;
-        return items.find((item) => item.id === activeDropdown.id) ?? null;
-    }, [activeDropdown, items]);
+        return sortedItems.find((item) => item.id === activeDropdown.id) ?? null;
+    }, [activeDropdown, sortedItems]);
 
     const activeStatusFolder = useMemo(() => {
         if (!activeStatusDropdown) return null;
-        return items.find((item) => item.id === activeStatusDropdown.id) ?? null;
-    }, [activeStatusDropdown, items]);
+        return sortedItems.find((item) => item.id === activeStatusDropdown.id) ?? null;
+    }, [activeStatusDropdown, sortedItems]);
 
     const resolveIsFavorite = useCallback(
         (folder: { id: string; is_favorite?: boolean }) =>
@@ -344,6 +390,33 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
         if (!activeStatusFolder) return null;
         return toFolderStatusValue(resolveFolderStatus(activeStatusFolder));
     }, [activeStatusFolder, resolveFolderStatus]);
+
+    const handleSort = useCallback((field: Exclude<FolderSortField, null>) => {
+        setSortField((prev) => {
+            if (prev !== field) {
+                setSortDirection('asc');
+                return field;
+            }
+
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+                return field;
+            }
+
+            setSortDirection('asc');
+            return null;
+        });
+    }, [sortDirection]);
+
+    const renderSortIcon = useCallback((field: Exclude<FolderSortField, null>) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4 text-gray-500" />;
+        }
+
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-4 w-4 text-[#8B7355]" />
+            : <ArrowDown className="h-4 w-4 text-[#8B7355]" />;
+    }, [sortDirection, sortField]);
 
     const handleToggleFavorite = useCallback(async (targetFolder?: { id: string; is_favorite?: boolean } | null) => {
         const folder = targetFolder ?? activeFolder;
@@ -786,15 +859,51 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
                                     onChange={toggleSelectAll}
                                 />
                             </th>
-                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Nama</th>
-                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Author</th>
-                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Dimodifikasi</th>
-                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('folder_name')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'folder_name' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Nama
+                                    {renderSortIcon('folder_name')}
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('user')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'user' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Author
+                                    {renderSortIcon('user')}
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('updated_at')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'updated_at' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Dimodifikasi
+                                    {renderSortIcon('updated_at')}
+                                </button>
+                            </th>
+                            <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-left uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('status')}
+                                    className={`inline-flex items-center gap-2 transition-colors ${sortField === 'status' ? 'text-[#8B7355]' : 'hover:text-gray-700'}`}
+                                >
+                                    Status
+                                    {renderSortIcon('status')}
+                                </button>
+                            </th>
                             <th className="px-6 py-4 font-semibold text-gray-500 text-xs text-right uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {items.length === 0 ? (
+                        {sortedItems.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-12 text-center">
                                     <div className="flex flex-col justify-center items-center">
@@ -807,7 +916,7 @@ export function FolderTable({ items, onRefresh, resolveFolderHref }: FolderTable
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item) => {
+                            sortedItems.map((item) => {
                                 const isFavorite = resolveIsFavorite(item);
                                 const resolvedStatus = resolveFolderStatus(item);
                                 const isUpdatingStatus = updatingStatusFolderId === item.id;
