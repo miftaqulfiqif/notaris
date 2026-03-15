@@ -133,11 +133,6 @@ export function NotificationsView({
                                         )}
                                         <span className="truncate">{notification.objectName}</span>
                                     </div>
-                                    {notification.filePath && (
-                                        <p className="mt-2 truncate text-sm text-gray-500">
-                                            {notification.filePath}
-                                        </p>
-                                    )}
                                 </div>
                                 <div className="flex shrink-0 items-center gap-4">
                                     {notification.actionKey === 'update_status' && notification.objectUpdated && (

@@ -934,11 +934,6 @@ export function DashboardHeader() {
                                                         )}
                                                         <span className="truncate">{notification.objectName}</span>
                                                     </div>
-                                                    {notification.filePath && (
-                                                        <p className="mt-2 truncate text-sm text-gray-500">
-                                                            {notification.filePath}
-                                                        </p>
-                                                    )}
                                                     {notification.actionKey === 'update_status' && notification.objectUpdated && (
                                                         <div className="mt-2">
                                                             <span className={`rounded-lg px-2.5 py-1 text-xs font-medium ${getStatusColor(toStatusColorValue(notification.objectUpdated))}`}>
