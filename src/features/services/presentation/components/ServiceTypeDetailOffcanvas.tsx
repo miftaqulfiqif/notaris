@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Folder, X } from 'lucide-react';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
@@ -49,6 +50,11 @@ export function ServiceTypeDetailOffcanvas({
     const [detail, setDetail] = useState<ServiceTypeDetailData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (!serviceTypeId) return;
@@ -99,9 +105,9 @@ export function ServiceTypeDetailOffcanvas({
         [serviceTypeLabel],
     );
 
-    if (!serviceTypeId) return null;
+    if (!serviceTypeId || !mounted) return null;
 
-    return (
+    return createPortal(
         <>
             <div
                 className="fixed inset-0 z-40 bg-black/30 transition-opacity"
@@ -299,6 +305,7 @@ export function ServiceTypeDetailOffcanvas({
                     )}
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     );
 }

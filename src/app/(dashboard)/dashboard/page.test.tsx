@@ -17,12 +17,27 @@ jest.mock('@/features/dashboard/presentation/components/FolderGrid', () => ({
   FolderGrid: () => <div data-testid="folder-grid" />,
 }));
 
+jest.mock('@/features/dashboard/presentation/components/RecommendationSection', () => ({
+  RecommendationSection: () => <div data-testid="recommendation-section" />,
+}));
+
 jest.mock('@/features/dashboard/presentation/components/ActivitySection', () => ({
   ActivitySection: () => <div data-testid="activity-section" />,
 }));
 
 jest.mock('@/features/dashboard/presentation/components/ActivityDetailSidebar', () => ({
   ActivityDetailSidebar: () => <div data-testid="activity-detail" />,
+}));
+
+jest.mock('@/features/dashboard/hooks/useDashboard', () => ({
+  useDashboard: () => ({
+    activities: null,
+    recommendations: [],
+    isLoadingActivities: false,
+    isLoadingRecommendations: false,
+    error: null,
+    fetchRecommendations: jest.fn(),
+  }),
 }));
 
 describe('DashboardPage', () => {

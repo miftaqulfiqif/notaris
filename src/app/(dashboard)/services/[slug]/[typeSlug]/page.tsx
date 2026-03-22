@@ -26,6 +26,19 @@ const normalizeFolders = (response: FoldersResponse): FolderItem[] => {
     return [];
 };
 
+const isAccessDeniedError = (message?: string | null) => {
+    if (!message) return false;
+
+    const normalizedMessage = message.toLowerCase();
+    return (
+        normalizedMessage.includes('403')
+        || normalizedMessage.includes('forbidden')
+        || normalizedMessage.includes('unauthorized')
+        || normalizedMessage.includes('akses')
+        || normalizedMessage.includes('permission')
+    );
+};
+
 export default function ServiceTypeDetailPage({
     params
 }: {
@@ -34,8 +47,12 @@ export default function ServiceTypeDetailPage({
     const { slug, typeSlug } = use(params);
     const { openModal } = useUploadModal();
     const { setPreSelection } = useDragDropContext();
-    const { services } = useSidebar();
-    const { serviceTypes } = useServiceTypes();
+    const { services, isLoadingServices = false } = useSidebar();
+    const {
+        serviceTypes,
+        isLoading: isLoadingServiceTypes = false,
+        error: serviceTypesError = null,
+    } = useServiceTypes();
 
     const currentService = useMemo(() => {
         if (!services.length) return null;
@@ -57,22 +74,32 @@ export default function ServiceTypeDetailPage({
     const [activeTab, setActiveTab] = useState<'baru' | 'favorite'>('baru');
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [folderError, setFolderError] = useState<string | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
-    const serviceName = slug.replace(/-/g, ' ').toUpperCase();
+    const serviceName = currentService?.name || slug.replace(/-/g, ' ').toUpperCase();
     const typeName = currentServiceType?.name || typeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const isResolvingRoute = isLoadingServices || isLoadingServiceTypes;
 
     useEffect(() => {
         const fetchFolders = async () => {
-            if (!typeId) return;
+            if (!typeId) {
+                if (!isResolvingRoute) {
+                    setFolders([]);
+                    setIsLoading(false);
+                }
+                return;
+            }
 
             setIsLoading(true);
+            setFolderError(null);
             try {
                 const url = `${ENDPOINTS.USER.FOLDERS}?tipe_layanan_id=${typeId}`;
                 const data = await apiGet<FoldersResponse>(url);
                 setFolders(normalizeFolders(data));
             } catch (err) {
                 console.error('Failed to fetch folders', err);
+                setFolderError(err instanceof Error ? err.message : 'Gagal memuat folder');
             } finally {
                 setIsLoading(false);
             }
@@ -80,7 +107,7 @@ export default function ServiceTypeDetailPage({
 
         fetchFolders();
     },
-        [typeId, refreshKey]
+        [typeId, refreshKey, isResolvingRoute]
     );
 
     useEffect(() => {
@@ -108,6 +135,15 @@ export default function ServiceTypeDetailPage({
 
         return folders;
     }, [activeTab, folders]);
+
+    const isRouteUnavailable = !isResolvingRoute && (!currentService || !currentServiceType);
+    const isAccessDenied = isRouteUnavailable
+        || isAccessDeniedError(serviceTypesError)
+        || isAccessDeniedError(folderError);
+    const visibleError = isAccessDenied
+        ? 'Akses ke tipe layanan ini ditolak atau sudah tidak tersedia.'
+        : (folderError || serviceTypesError);
+    const isEmptyState = !isLoading && !visibleError && filteredFolders.length === 0;
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -165,6 +201,63 @@ export default function ServiceTypeDetailPage({
                                     <div key={i} className="bg-gray-100 rounded-xl h-16 animate-pulse" />
                                 ))}
                             </div>
+                        ) : visibleError ? (
+                            <section className={`rounded-2xl border px-6 py-8 text-center ${
+                                isAccessDenied
+                                    ? 'border-amber-200 bg-amber-50'
+                                    : 'border-red-200 bg-red-50'
+                            }`}>
+                                <h2 className={`text-lg font-semibold ${
+                                    isAccessDenied ? 'text-amber-900' : 'text-red-900'
+                                }`}>
+                                    {isAccessDenied ? 'Akses ditolak' : 'Gagal memuat data'}
+                                </h2>
+                                <p className={`mx-auto mt-2 max-w-xl text-sm ${
+                                    isAccessDenied ? 'text-amber-800' : 'text-red-700'
+                                }`}>
+                                    {visibleError}
+                                </p>
+                                {!isAccessDenied && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setRefreshKey((prev) => prev + 1)}
+                                        className="mt-5 inline-flex items-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                                    >
+                                        Coba lagi
+                                    </button>
+                                )}
+                            </section>
+                        ) : isEmptyState ? (
+                            <section className="rounded-2xl border border-gray-200 bg-white px-6 py-10 text-center">
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    Belum ada item untuk {typeName}
+                                </h2>
+                                <p className="mx-auto mt-2 max-w-xl text-sm text-gray-500">
+                                    Folder untuk tipe layanan ini belum memiliki item. Tambahkan
+                                    item baru untuk mulai bekerja lebih cepat dari konteks {typeName}.
+                                </p>
+                                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                                    <button
+                                        type="button"
+                                        onClick={() => openModal({
+                                            layananId: currentService?.id,
+                                            layananName: currentService?.name,
+                                            tipeLayananId: typeId || undefined,
+                                            tipeLayananName: typeName,
+                                            onSuccess: () => setRefreshKey(prev => prev + 1),
+                                        })}
+                                        className="inline-flex items-center justify-center rounded-xl bg-[#7A6A53] px-5 py-3 text-sm font-semibold text-white hover:bg-[#685942]"
+                                    >
+                                        Tambah Baru
+                                    </button>
+                                    <Link
+                                        href={`/services/${slug}`}
+                                        className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Kembali ke layanan
+                                    </Link>
+                                </div>
+                            </section>
                         ) : (
                             <FolderTable
                                 items={filteredFolders}

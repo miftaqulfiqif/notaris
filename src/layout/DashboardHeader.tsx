@@ -193,11 +193,13 @@ export function DashboardHeader() {
     const searchResultListRef = useRef<HTMLDivElement>(null);
     const searchRequestIdRef = useRef(0);
     const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
+    const searchScopeTypeIdCacheRef = useRef<Record<string, string | null>>({});
     const folderRouteCacheRef = useRef<Record<string, string>>({});
     const servicesCacheRef = useRef<Service[]>([]);
     const unreadCount = totalNotRead;
     const trimmedSearchQuery = searchQuery.trim();
     const isSearchOverlayVisible = isSearchFocused && trimmedSearchQuery.length > 0;
+    const activeServiceRoute = useMemo(() => parseActiveServiceRoute(pathname), [pathname]);
     const { navigatingNotificationId, openNotification } = useNotificationRedirect({
         services,
         showToast,
@@ -239,10 +241,14 @@ export function DashboardHeader() {
         const timeoutId = window.setTimeout(() => {
             void (async () => {
                 try {
+                    const scopedTypeId = await resolveScopedSearchTypeId();
                     const params = new URLSearchParams({
                         file_type: activeSearchFilter,
                         search: trimmedSearchQuery,
                     });
+                    if (scopedTypeId) {
+                        params.set('tipe_layanan_id', scopedTypeId);
+                    }
 
                     const response = await apiGet<GlobalSearchResponse>(
                         `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
@@ -287,7 +293,7 @@ export function DashboardHeader() {
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [activeSearchFilter, trimmedSearchQuery]);
+    }, [activeSearchFilter, activeServiceRoute, trimmedSearchQuery]);
 
     const filteredSearchItems = useMemo(() => {
         return searchResults.filter((item) => {
@@ -383,6 +389,36 @@ export function DashboardHeader() {
         const serviceTypes = getServiceTypesPayload(response.data as ServiceTypesResponse['data']);
         serviceTypesCacheRef.current[serviceId] = serviceTypes;
         return serviceTypes;
+    };
+
+    const resolveScopedSearchTypeId = async () => {
+        if (!activeServiceRoute) {
+            return null;
+        }
+
+        const cacheKey = `${activeServiceRoute.serviceSlug}/${activeServiceRoute.typeSlug}`;
+        if (cacheKey in searchScopeTypeIdCacheRef.current) {
+            return searchScopeTypeIdCacheRef.current[cacheKey];
+        }
+
+        const availableServices = await fetchAvailableServices();
+        const matchedService = availableServices.find(
+            (service) => toSlug(service.name) === activeServiceRoute.serviceSlug,
+        );
+
+        if (!matchedService) {
+            searchScopeTypeIdCacheRef.current[cacheKey] = null;
+            return null;
+        }
+
+        const serviceTypes = await fetchServiceTypesByService(matchedService.id);
+        const matchedType = serviceTypes.find(
+            (type) => toSlug(type.name) === activeServiceRoute.typeSlug,
+        );
+        const resolvedTypeId = matchedType ? getServiceTypeId(matchedType) || null : null;
+
+        searchScopeTypeIdCacheRef.current[cacheKey] = resolvedTypeId;
+        return resolvedTypeId;
     };
 
     const isTypeNameMatch = (sourceTypeName: string, candidateTypeName: string) => {
@@ -528,10 +564,14 @@ export function DashboardHeader() {
             return { folderId: null, parentTypeName: null as string | null };
         }
 
+        const scopedTypeId = await resolveScopedSearchTypeId();
         const params = new URLSearchParams({
             file_type: 'FOLDER',
             search: normalizedFolderName,
         });
+        if (scopedTypeId) {
+            params.set('tipe_layanan_id', scopedTypeId);
+        }
         const response = await apiGet<GlobalSearchResponse>(
             `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
         );
