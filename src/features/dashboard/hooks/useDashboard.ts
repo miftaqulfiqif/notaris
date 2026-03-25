@@ -16,6 +16,8 @@ export interface DashboardActivity {
     layanan?: string;
     tipe_layanan: string;
     tipe_layanan_id?: string;
+    layanan_slug?: string;
+    tipe_layanan_slug?: string;
     route_path?: string;
     author: string;
     updated_at: string;

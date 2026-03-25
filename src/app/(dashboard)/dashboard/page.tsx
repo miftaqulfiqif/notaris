@@ -88,7 +88,6 @@ export default function DashboardPage() {
                         />
 
                         <RecommendationSection
-                            onSelectActivity={setSelectedActivity}
                             dashboardActivities={activities}
                             isLoading={isLoadingActivities}
                         />
