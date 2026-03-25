@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Folder, MoreVertical, Download, Info, Star, StarOff, Trash2 } from 'lucide-react';
+import { buildServiceTypeHref, toSlug } from '@/features/dashboard/utils';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
 import { useFavoriteServiceType } from '@/features/services/presentation/hooks/useFavoriteServiceType';
 import { useDropdown } from '@/shared/hooks/useDropdown';
@@ -18,6 +19,7 @@ export function ServiceFolderGrid() {
     const { serviceTypes, isLoading } = useServiceTypes();
     const params = useParams();
     const serviceSlug = params?.slug as string;
+    const currentTypeSlug = params?.typeSlug as string | undefined;
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } =
         useFavoriteServiceType();
     const { toast, showToast, hideToast } = useToast();
@@ -219,20 +221,47 @@ export function ServiceFolderGrid() {
                 >
                     {serviceTypes.map((folder) => {
                         const isFavorite = resolveIsFavorite(folder);
-                        const typeSlug = folder.name.toLowerCase().replace(/\s+/g, '-');
+                        const typeSlug = toSlug(folder.name);
+                        const href = buildServiceTypeHref(serviceSlug, folder.name);
+                        const isActive = currentTypeSlug === typeSlug;
 
                         return (
                             <Link
                                 key={folder.id}
-                                href={`/services/${serviceSlug}/${typeSlug}`}
-                                className="group flex justify-between items-center bg-gray-100/60 hover:bg-gray-100 px-3 py-2 border border-gray-200 rounded-xl w-[210px] transition-all cursor-pointer shrink-0"
-                                title={folder.name}
+                                href={href}
+                                title={`Lihat semua item ${folder.name}`}
+                                aria-label={`Buka ${folder.name} - tipe layanan`}
+                                aria-current={isActive ? 'page' : undefined}
+                                onKeyDown={(event) => {
+                                    if (event.key !== ' ') return;
+                                    event.preventDefault();
+                                    event.currentTarget.click();
+                                }}
+                                className={`group flex w-[210px] shrink-0 items-center justify-between rounded-xl border px-3 py-2 transition-all cursor-pointer ${
+                                    isActive
+                                        ? 'border-[#B39B7D] bg-[#FDF7EF] shadow-sm'
+                                        : 'border-gray-200 bg-gray-100/60 hover:bg-gray-100'
+                                }`}
                             >
                                 <div className="flex flex-1 items-center gap-3 min-w-0">
-                                    <div className="bg-gray-50 group-hover:bg-[#FDF8F3] p-2 rounded-lg transition-colors shrink-0">
-                                        <Folder className="w-5 h-5 text-gray-600 group-hover:text-(--sidebar-primary)" />
+                                    <div
+                                        className={`rounded-lg p-2 transition-colors shrink-0 ${
+                                            isActive
+                                                ? 'bg-[#F6EBDD]'
+                                                : 'bg-gray-50 group-hover:bg-[#FDF8F3]'
+                                        }`}
+                                    >
+                                        <Folder className={`w-5 h-5 ${
+                                            isActive
+                                                ? 'text-(--sidebar-primary)'
+                                                : 'text-gray-600 group-hover:text-(--sidebar-primary)'
+                                        }`} />
                                     </div>
-                                    <span className="font-semibold text-gray-700 group-hover:text-gray-900 truncate">
+                                    <span className={`truncate font-semibold ${
+                                        isActive
+                                            ? 'text-gray-900'
+                                            : 'text-gray-700 group-hover:text-gray-900'
+                                    }`}>
                                         {folder.name}
                                     </span>
                                     {isFavorite && (
@@ -251,7 +280,12 @@ export function ServiceFolderGrid() {
                                     )}
                                 </div>
                                 <button
-                                    onClick={(e) => openDropdown(e, folder.id)}
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        openDropdown(event, folder.id);
+                                    }}
                                     className={`p-1 rounded-full cursor-pointer transition-all shrink-0 ${triggerClass} ${isOpen(folder.id) ? 'bg-gray-200 text-gray-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
                                 >
                                     <MoreVertical className="w-4 h-4" />

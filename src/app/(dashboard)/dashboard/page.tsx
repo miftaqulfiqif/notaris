@@ -16,7 +16,7 @@ export default function DashboardPage() {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const { openModal } = useUploadModal();
     const { user } = useAuthContext();
-    const { activities, recommendations, isLoadingActivities, isLoadingRecommendations, error } = useDashboard();
+    const { activities, recommendations, isLoadingActivities, isLoadingRecommendations, error, fetchRecommendations } = useDashboard();
     const [loginCount, setLoginCount] = useState<number>(0);
     const [isChecking, setIsChecking] = useState(true);
 
@@ -88,8 +88,9 @@ export default function DashboardPage() {
                         />
 
                         <RecommendationSection
-                            dashboardActivities={activities}
-                            isLoading={isLoadingActivities}
+                            recommendations={recommendations}
+                            isLoading={isLoadingRecommendations}
+                            onRefresh={fetchRecommendations}
                         />
 
                         <ActivitySection

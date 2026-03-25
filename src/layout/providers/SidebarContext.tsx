@@ -9,6 +9,7 @@ type SidebarContextType = {
     toggle: () => void;
     close: () => void;
     services: Service[];
+    isLoadingServices: boolean;
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -16,6 +17,7 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [services, setServices] = useState<Service[]>([]);
+    const [isLoadingServices, setIsLoadingServices] = useState(true);
 
     useEffect(() => {
         const fetchServices = async () => {
@@ -33,6 +35,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
                 }
             } catch (error) {
                 console.error("Failed to fetch services", error);
+            } finally {
+                setIsLoadingServices(false);
             }
         };
 
@@ -43,7 +47,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     const close = () => setIsOpen(false);
 
     return (
-        <SidebarContext.Provider value={{ isOpen, toggle, close, services }}>
+        <SidebarContext.Provider value={{ isOpen, toggle, close, services, isLoadingServices }}>
             {children}
         </SidebarContext.Provider>
     );

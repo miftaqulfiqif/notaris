@@ -37,7 +37,19 @@ jest.mock('@/features/services/presentation/components/FolderTable', () => ({
 
 describe('ServiceTypeDetailPage', () => {
   it('renders service type detail page', async () => {
-    (apiGet as jest.Mock).mockResolvedValue({ data: [] });
+    (apiGet as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'folder-1',
+          folder_name: 'Folder Akta',
+          tipe_layanan: 'Akta',
+          user: 'Rosyam',
+          is_favorite: false,
+          updated_at: '2026-03-20T00:00:00.000Z',
+          status: 'proses',
+        },
+      ],
+    });
 
     const params = {
       status: 'fulfilled',
@@ -55,5 +67,28 @@ describe('ServiceTypeDetailPage', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Akta' })).toBeInTheDocument();
+  });
+
+  it('renders an empty state when the selected service type has no items', async () => {
+    (apiGet as jest.Mock).mockResolvedValue({ data: [] });
+
+    const params = {
+      status: 'fulfilled',
+      value: { slug: 'pendirian', typeSlug: 'akta' },
+      then: () => {},
+    } as unknown as Promise<{ slug: string; typeSlug: string }>;
+
+    render(
+      <Suspense fallback={<div>loading</div>}>
+        <ServiceTypeDetailPage params={params} />
+      </Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Belum ada item untuk Akta')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByRole('button', { name: 'Tambah Baru' })).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Kembali ke layanan' })).toBeInTheDocument();
   });
 });

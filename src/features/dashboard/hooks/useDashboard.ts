@@ -5,6 +5,11 @@ export interface DashboardRecommendation {
     tipe_layanan_id: string;
     tipe_layanan: string;
     layanan: string;
+    is_favorite?: boolean;
+    item_count?: number | null;
+    total_items?: number | null;
+    estimated_count?: number | null;
+    count?: number | null;
 }
 
 export interface DashboardActivity {

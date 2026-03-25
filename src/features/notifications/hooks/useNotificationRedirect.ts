@@ -6,7 +6,7 @@ import { ApiResponse, apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import type { NotificationItem } from '@/features/notifications/types/notification.types';
 import type { Service } from '@/features/dashboard/types/service.types';
-import type { FolderSidebarResponse, ServiceType } from '@/features/services/types';
+import type { FolderDetailResponse, FolderSidebarResponse, ServiceType } from '@/features/services/types';
 
 interface UseNotificationRedirectOptions {
     services: Service[];
@@ -55,6 +55,19 @@ const parseActiveServiceRoute = (pathname: string) => {
     };
 };
 
+const buildFolderRoute = (folderId: string, serviceSlug: string, typeSlug: string) =>
+    `/services/${encodeURIComponent(serviceSlug)}/${encodeURIComponent(typeSlug)}/${encodeURIComponent(folderId)}`;
+
+const getFallbackFolderRoute = (pathname: string, folderId: string) => {
+    const activeRoute = parseActiveServiceRoute(pathname);
+    if (activeRoute) {
+        return buildFolderRoute(folderId, activeRoute.serviceSlug, activeRoute.typeSlug);
+    }
+
+    // Always land on the folder detail route; slugs are cosmetic and can be resolved later.
+    return buildFolderRoute(folderId, 'layanan', 'tipe-layanan');
+};
+
 const isTypeNameMatch = (sourceTypeName: string, candidateTypeName: string) => {
     const normalizedSource = normalizeText(sourceTypeName);
     const normalizedCandidate = normalizeText(candidateTypeName);
@@ -87,8 +100,11 @@ export function useNotificationRedirect({
     const [navigatingNotificationId, setNavigatingNotificationId] = useState<string | null>(null);
 
     const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
-    const folderRouteCacheRef = useRef<Record<string, string | null>>({});
+    // Cache only successful resolutions. Failed attempts are not cached so we can retry
+    // later after services/service-types contexts are loaded.
+    const folderRouteCacheRef = useRef<Record<string, string>>({});
     const folderTypeNameCacheRef = useRef<Record<string, string | null>>({});
+    const folderNameCacheRef = useRef<Record<string, string | null>>({});
 
     const fetchServiceTypesByService = useCallback(async (serviceId: string) => {
         const cached = serviceTypesCacheRef.current[serviceId];
@@ -178,6 +194,24 @@ export function useNotificationRedirect({
         };
     }, []);
 
+    const fetchFolderNameById = useCallback(async (folderId: string) => {
+        const cached = folderNameCacheRef.current[folderId];
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        try {
+            const url = ENDPOINTS.USER.FOLDER_DETAIL.replace(':folderId', folderId);
+            const response = await apiGet<FolderDetailResponse>(url);
+            const resolved = response?.data?.folder_name?.trim() || null;
+            folderNameCacheRef.current[folderId] = resolved;
+            return resolved;
+        } catch {
+            folderNameCacheRef.current[folderId] = null;
+            return null;
+        }
+    }, []);
+
     const resolveTypeNameByFolderId = useCallback(async (folderId: string) => {
         const cached = folderTypeNameCacheRef.current[folderId];
         if (cached !== undefined) {
@@ -207,13 +241,13 @@ export function useNotificationRedirect({
     const resolveFolderRoute = useCallback(
         async (folderId: string, typeNameCandidate?: string | null, folderName?: string | null) => {
             const cachedRoute = folderRouteCacheRef.current[folderId];
-            if (cachedRoute !== undefined) {
+            if (cachedRoute) {
                 return cachedRoute;
             }
 
             const activeRoute = parseActiveServiceRoute(pathname);
             if (activeRoute && typeNameCandidate && toSlug(typeNameCandidate) === activeRoute.typeSlug) {
-                const contextualRoute = `/services/${activeRoute.serviceSlug}/${activeRoute.typeSlug}/${folderId}`;
+                const contextualRoute = buildFolderRoute(folderId, activeRoute.serviceSlug, activeRoute.typeSlug);
                 folderRouteCacheRef.current[folderId] = contextualRoute;
                 return contextualRoute;
             }
@@ -228,35 +262,53 @@ export function useNotificationRedirect({
                 typeNameCandidates.push(typeNameFromDetail);
             }
 
+            // Prefer resolving the type name via folder search because it returns the service-type name.
+            // If the notification payload contains a stale/incorrect folder name (or none at all),
+            // fetch the current folder name by id and retry the search.
+            let resolvedParentTypeName: string | null = null;
+
             if (folderName?.trim()) {
                 try {
                     const searchedFolder = await searchFolderByName(folderName.trim(), folderId);
-                    if (searchedFolder?.parentTypeName) {
-                        typeNameCandidates.push(searchedFolder.parentTypeName);
-                    }
+                    resolvedParentTypeName = searchedFolder?.parentTypeName || null;
                 } catch {
                     // Ignore search errors for route resolution fallback.
                 }
             }
 
+            if (!resolvedParentTypeName) {
+                const fetchedFolderName = await fetchFolderNameById(folderId);
+                if (fetchedFolderName) {
+                    try {
+                        const searchedFolder = await searchFolderByName(fetchedFolderName, folderId);
+                        resolvedParentTypeName = searchedFolder?.parentTypeName || null;
+                    } catch {
+                        // Ignore search errors for route resolution fallback.
+                    }
+                }
+            }
+
+            if (resolvedParentTypeName) {
+                typeNameCandidates.push(resolvedParentTypeName);
+            }
+
             const resolvedSlugs = await resolveServiceAndTypeSlugs(typeNameCandidates);
 
             if (resolvedSlugs) {
-                const route = `/services/${resolvedSlugs.serviceSlug}/${resolvedSlugs.typeSlug}/${folderId}`;
+                const route = buildFolderRoute(folderId, resolvedSlugs.serviceSlug, resolvedSlugs.typeSlug);
                 folderRouteCacheRef.current[folderId] = route;
                 return route;
             }
 
             if (activeRoute) {
-                const contextualRoute = `/services/${activeRoute.serviceSlug}/${activeRoute.typeSlug}/${folderId}`;
+                const contextualRoute = buildFolderRoute(folderId, activeRoute.serviceSlug, activeRoute.typeSlug);
                 folderRouteCacheRef.current[folderId] = contextualRoute;
                 return contextualRoute;
             }
 
-            folderRouteCacheRef.current[folderId] = null;
-            return null;
+            return getFallbackFolderRoute(pathname, folderId);
         },
-        [pathname, resolveServiceAndTypeSlugs, resolveTypeNameByFolderId, searchFolderByName],
+        [fetchFolderNameById, pathname, resolveServiceAndTypeSlugs, resolveTypeNameByFolderId, searchFolderByName],
     );
 
     const resolveDocumentTarget = useCallback(async (notification: NotificationItem): Promise<ResolvedDocumentTarget> => {
@@ -277,9 +329,15 @@ export function useNotificationRedirect({
                 search: candidate,
             });
 
-            const response = await apiGet<FileSearchResponse>(
-                `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
-            );
+            let response: FileSearchResponse;
+            try {
+                response = await apiGet<FileSearchResponse>(
+                    `${ENDPOINTS.NOTARIS.FILE_SEARCH}?${params.toString()}`,
+                );
+            } catch {
+                // Search failures should not break notification navigation.
+                continue;
+            }
 
             const items = response.data || [];
             if (items.length === 0) {
@@ -340,61 +398,60 @@ export function useNotificationRedirect({
             return;
         }
 
+        const objectType = (notification.objectType || '').toUpperCase();
+        const hasLikelyFileName = /\.[a-z0-9]{2,5}$/i.test(notification.objectName || '');
+        const shouldResolveDocumentPreview = objectType === 'DOCUMENT'
+            && (Boolean(notification.filePath) || hasLikelyFileName);
+
         setNavigatingNotificationId(notification.id);
 
         try {
             if (notification.unread && markAsRead) {
-                try {
-                    await markAsRead(notification.id);
-                } catch {
+                markAsRead(notification.id).catch(() => {
                     showToast({ message: 'Gagal menandai notifikasi sebagai dibaca', variant: 'error' });
-                }
+                });
             }
 
-            const objectType = (notification.objectType || '').toUpperCase();
-
             if (objectType === 'DOCUMENT') {
-                const hasLikelyFileName = /\.[a-z0-9]{2,5}$/i.test(notification.objectName || '');
-                const shouldResolveDocumentPreview = Boolean(notification.filePath) || hasLikelyFileName;
+                let resolvedDocument: ResolvedDocumentTarget = {
+                    documentId: null,
+                    folderId: notification.objectId || null,
+                    parentTypeName: null,
+                };
 
-                const resolvedDocument = shouldResolveDocumentPreview
-                    ? await resolveDocumentTarget(notification)
-                    : {
-                        documentId: null,
-                        folderId: notification.objectId || null,
-                        parentTypeName: null,
-                    };
+                if (shouldResolveDocumentPreview) {
+                    try {
+                        resolvedDocument = await resolveDocumentTarget(notification);
+                    } catch {
+                        resolvedDocument = {
+                            documentId: null,
+                            folderId: notification.objectId || null,
+                            parentTypeName: null,
+                        };
+                    }
+                }
 
                 if (resolvedDocument.documentId) {
                     const previewUrl = ENDPOINTS.USER.DOCUMENT_VIEW.replace(':documentId', resolvedDocument.documentId);
-                    const previewWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
-
-                    if (!previewWindow) {
-                        showToast({ message: 'Gagal membuka preview dokumen', variant: 'error' });
-                        return;
-                    }
-
+                    // Open in the same tab (user requested no _blank behavior).
+                    window.location.assign(previewUrl);
                     return;
                 }
 
-                if (resolvedDocument.folderId) {
-                    const route = await resolveFolderRoute(
-                        resolvedDocument.folderId,
-                        resolvedDocument.parentTypeName,
-                        notification.objectName,
-                    );
-
-                    if (route) {
-                        showToast({
-                            message: 'Preview dokumen tidak ditemukan, membuka folder terkait',
-                            variant: 'info',
-                        });
-                        router.push(route);
-                        return;
-                    }
+                const fallbackFolderId = notification.objectId || null;
+                const targetFolderId = resolvedDocument.folderId || fallbackFolderId;
+                if (!targetFolderId) {
+                    showToast({ message: 'Dokumen pada notifikasi tidak ditemukan', variant: 'error' });
+                    return;
                 }
 
-                showToast({ message: 'Dokumen pada notifikasi tidak ditemukan', variant: 'error' });
+                const route = await resolveFolderRoute(
+                    targetFolderId,
+                    resolvedDocument.parentTypeName,
+                    notification.objectName,
+                );
+
+                router.push(route);
                 return;
             }
 
@@ -406,11 +463,6 @@ export function useNotificationRedirect({
                 }
 
                 const route = await resolveFolderRoute(folderId, null, notification.objectName);
-
-                if (!route) {
-                    showToast({ message: 'Rute folder belum tersedia', variant: 'error' });
-                    return;
-                }
 
                 router.push(route);
                 return;
