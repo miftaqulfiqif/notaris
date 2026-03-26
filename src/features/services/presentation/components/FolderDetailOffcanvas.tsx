@@ -2,15 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { FileText, FolderArchive, FolderClosed, X } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import { useSidebar } from '@/layout/providers/SidebarContext';
 import type {
     FolderActivityItem,
     FolderActivitiesResponse,
     FolderSidebarData,
     FolderSidebarResponse,
+    ServiceType,
 } from '@/features/services/types';
 import { getInitials } from '@/shared/utils/initials';
+import { ApiResponse } from '@/shared/api/api-client';
 
 type DetailTab = 'detail' | 'aktivitas';
 type ActivityGroup = 'Hari ini' | 'Kemarin' | 'Sebelumnya';
@@ -270,7 +275,28 @@ function ActivitySection({
     );
 }
 
+const toSlug = (value: string) =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+const normalizeText = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const isTypeNameMatch = (sourceTypeName: string, candidateTypeName: string) => {
+    const normalizedSource = normalizeText(sourceTypeName);
+    const normalizedCandidate = normalizeText(candidateTypeName);
+    return normalizedSource === normalizedCandidate
+        || normalizedSource.includes(normalizedCandidate)
+        || normalizedCandidate.includes(normalizedSource)
+        || toSlug(sourceTypeName) === toSlug(candidateTypeName);
+};
+
 export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderDetailOffcanvasProps) {
+    const router = useRouter();
+    const { services } = useSidebar();
     const [activeTab, setActiveTab] = useState<DetailTab>('detail');
     const [detail, setDetail] = useState<FolderSidebarData | null>(null);
     const [activities, setActivities] = useState<FolderActivityItem[]>([]);
@@ -285,6 +311,7 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
     const [activitiesLoadMoreError, setActivitiesLoadMoreError] = useState<string | null>(null);
     const contentContainerRef = useRef<HTMLDivElement | null>(null);
     const activitiesRequestIdRef = useRef(0);
+    const serviceTypesCacheRef = useRef<Record<string, ServiceType[]>>({});
 
     const hasMoreActivities = activitiesPage < activitiesTotalPages;
 
@@ -457,6 +484,36 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
     const accessUsers = detail?.have_access ?? [];
     const statusMeta = resolveStatusMeta(detail?.detail_status.status);
     const avatarInitials = getInitials(accessUsers[0]?.name || 'Saya');
+    const tipeLayananName = detail?.detail_folder?.tipe_layanan;
+
+    const handleLocationClick = useCallback(async () => {
+        if (!tipeLayananName?.trim()) return;
+
+        for (const service of services) {
+            try {
+                const cached = serviceTypesCacheRef.current[service.id];
+                const serviceTypes = cached ?? await (async () => {
+                    const url = ENDPOINTS.USER.SERVICE_TYPES.replace(':serviceId', service.id);
+                    const response = await apiGet<ApiResponse<ServiceType[]>>(url);
+                    const types = response.data || [];
+                    serviceTypesCacheRef.current[service.id] = types;
+                    return types;
+                })();
+
+                const matchedType = serviceTypes.find((type) =>
+                    isTypeNameMatch(type.name, tipeLayananName),
+                );
+
+                if (matchedType) {
+                    onClose();
+                    router.push(`/services/${toSlug(service.name)}/${toSlug(matchedType.name)}`);
+                    return;
+                }
+            } catch {
+                continue;
+            }
+        }
+    }, [onClose, router, services, tipeLayananName]);
 
     const groupedActivities = useMemo(
         () => ({
@@ -479,7 +536,17 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                 <div className="flex flex-col items-center justify-center gap-3">
                     <FolderArchive className="h-24 w-24 text-gray-700" />
                     <p className="text-[18px] font-medium text-gray-900 text-center">{folderLabel}</p>
-                    <p className="text-sm text-gray-500">{detail?.detail_folder?.tipe_layanan || 'Detail Folder Layanan'}</p>
+                    {tipeLayananName ? (
+                        <button
+                            type="button"
+                            onClick={() => void handleLocationClick()}
+                            className="text-sm text-[#7A6A53] hover:text-[#5b4d39] hover:underline transition-colors cursor-pointer"
+                        >
+                            {tipeLayananName}
+                        </button>
+                    ) : (
+                        <p className="text-sm text-gray-500">Detail Folder Layanan</p>
+                    )}
                 </div>
 
                 <div className="space-y-4">
@@ -504,7 +571,7 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                                         title={item.name}
                                     >
                                         {item.profile_picture ? (
-                                            <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                            <Image src={item.profile_picture} alt={item.name} width={48} height={48} className="h-full w-full object-cover" unoptimized />
                                         ) : (
                                             getInitials(item.name)
                                         )}
@@ -521,7 +588,7 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                                     <li key={`${item.name}-${index}`} className="flex items-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-xs text-white">
                                             {item.profile_picture ? (
-                                                <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                                <Image src={item.profile_picture} alt={item.name} width={40} height={40} className="h-full w-full object-cover" unoptimized />
                                             ) : (
                                                 getInitials(item.name)
                                             )}
@@ -565,16 +632,6 @@ export function FolderDetailOffcanvas({ folderId, folderName, onClose }: FolderD
                             {formatValueWithActor(
                                 detail?.detail_folder.created_at,
                                 detail?.detail_folder.created_by,
-                            )}
-                        </p>
-                    </div>
-
-                    <div>
-                        <p className="text-[17px] font-medium text-gray-800">Dibuka</p>
-                        <p className="mt-1 text-base text-gray-700">
-                            {formatValueWithActor(
-                                detail?.detail_folder.opened_at,
-                                detail?.detail_folder.opened_by,
                             )}
                         </p>
                     </div>

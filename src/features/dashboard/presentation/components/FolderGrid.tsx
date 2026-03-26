@@ -3,7 +3,8 @@
 import { useMemo, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Folder } from 'lucide-react';
+import FolderIcon from '@/assets/icons/folders Icons.svg';
+import Image from 'next/image';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { DashboardRecommendation } from '@/features/dashboard/hooks/useDashboard';
 import {
@@ -138,7 +139,7 @@ export function FolderGrid({ recommendations = [], isLoading = false }: FolderGr
                                     : 'bg-[#F7F7F7] text-gray-800 hover:bg-[#F1F1F1]'
                                 }`}
                         >
-                            <Folder className="h-5 w-5 shrink-0 fill-[#FFC928] text-[#FFB300]" strokeWidth={1.8} />
+                            <Image src={FolderIcon} alt="Folder" width={20} height={20} className="shrink-0" />
 
                             <span className="truncate text-base font-semibold leading-none">
                                 {folder.layanan}

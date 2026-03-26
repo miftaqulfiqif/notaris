@@ -1,13 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Folder, X } from 'lucide-react';
+import Image from 'next/image';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import type { ServiceTypeDetailData, ServiceTypeDetailResponse } from '@/features/services/types';
 import { getInitials } from '@/shared/utils/initials';
-import { serviceActivities } from '@/features/services/data/mock';
+
+interface ServiceTypeActivity {
+    id: string;
+    description: string;
+    folder_name: string;
+    object: string;
+    object_status: string | null;
+    created_at: string;
+}
+
+interface ServiceTypeActivitiesResponse {
+    message: string;
+    data: ServiceTypeActivity[] | {
+        current_page: number;
+        total_items: number;
+        total_pages: number;
+        data: ServiceTypeActivity[];
+    };
+}
 
 type DetailTab = 'detail' | 'aktivitas';
 
@@ -96,14 +115,29 @@ export function ServiceTypeDetailOffcanvas({
 
     const accessUsers = detail?.have_access ?? [];
 
-    const filteredActivities = useMemo(
-        () =>
-            serviceActivities.filter(
-                (activity) =>
-                    activity.service.toLowerCase() === serviceTypeLabel.toLowerCase(),
-            ),
-        [serviceTypeLabel],
-    );
+    const [typeActivities, setTypeActivities] = useState<ServiceTypeActivity[]>([]);
+    const [isActivitiesLoading, setIsActivitiesLoading] = useState(false);
+
+    const fetchActivities = useCallback(async (typeId: string) => {
+        setIsActivitiesLoading(true);
+        try {
+            const url = `${ENDPOINTS.DASHBOARD.ACTIVITIES}?tipe_layanan_id=${typeId}&limit=10`;
+            const response = await apiGet<ServiceTypeActivitiesResponse>(url);
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.data ?? []);
+            setTypeActivities(items);
+        } catch {
+            setTypeActivities([]);
+        } finally {
+            setIsActivitiesLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (serviceTypeId && activeTab === 'aktivitas') {
+            void fetchActivities(serviceTypeId);
+        }
+    }, [activeTab, fetchActivities, serviceTypeId]);
 
     if (!serviceTypeId || !mounted) return null;
 
@@ -187,7 +221,7 @@ export function ServiceTypeDetailOffcanvas({
                                                     title={item.name}
                                                 >
                                                     {item.profile_picture ? (
-                                                        <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                                        <Image src={item.profile_picture} alt={item.name} width={48} height={48} className="h-full w-full object-cover" unoptimized />
                                                     ) : (
                                                         getInitials(item.name)
                                                     )}
@@ -204,7 +238,7 @@ export function ServiceTypeDetailOffcanvas({
                                                 <li key={`${item.name}-${index}`} className="flex items-center gap-3">
                                                     <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-xs text-white">
                                                         {item.profile_picture ? (
-                                                            <img src={item.profile_picture} alt={item.name} className="h-full w-full object-cover" />
+                                                            <Image src={item.profile_picture} alt={item.name} width={40} height={40} className="h-full w-full object-cover" unoptimized />
                                                         ) : (
                                                             getInitials(item.name)
                                                         )}
@@ -239,15 +273,7 @@ export function ServiceTypeDetailOffcanvas({
                                                 : ''}
                                         </p>
                                     </div>
-                                    <div>
-                                        <p className="text-base text-gray-700">Dibuka</p>
-                                        <p className="text-xl font-medium text-gray-900">
-                                            {formatDisplayValue(detail?.detail_folder_tipe_layanan.opened_at)}
-                                            {detail?.detail_folder_tipe_layanan.opened_by
-                                                ? ` oleh ${detail.detail_folder_tipe_layanan.opened_by}`
-                                                : ''}
-                                        </p>
-                                    </div>
+
                                     <div>
                                         <p className="text-base text-gray-700">Dimodifikasi</p>
                                         <p className="text-xl font-medium text-gray-900">
@@ -279,23 +305,29 @@ export function ServiceTypeDetailOffcanvas({
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <h3 className="text-2xl font-semibold text-gray-900">Hari ini</h3>
-                            {filteredActivities.length === 0 ? (
+                            <h3 className="text-2xl font-semibold text-gray-900">Aktivitas</h3>
+                            {isActivitiesLoading ? (
+                                <div className="space-y-3">
+                                    {[1, 2, 3].map((item) => (
+                                        <div key={item} className="h-14 rounded-xl bg-gray-100 animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : typeActivities.length === 0 ? (
                                 <p className="text-base text-gray-500">Belum ada aktivitas pada tipe layanan ini.</p>
                             ) : (
-                                filteredActivities.slice(0, 4).map((item) => (
+                                typeActivities.map((item) => (
                                     <div key={item.id} className="flex items-start gap-4">
                                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#89A1B5] to-[#3D4957] font-semibold text-sm text-white">
-                                            {getInitials(item.author)}
+                                            {getInitials(item.description.split(' ')[0] || 'U')}
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-xl font-medium text-gray-800">
-                                                {item.author} memperbarui {item.companyName}
+                                                {item.description}
                                             </p>
-                                            <p className="mt-1 text-sm text-gray-500">{item.modifiedDate}</p>
+                                            <p className="mt-1 text-sm text-gray-500">{item.created_at}</p>
                                             <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-lg text-gray-700">
                                                 <Folder className="h-5 w-5" />
-                                                {item.companyName}
+                                                {item.folder_name}
                                             </div>
                                         </div>
                                     </div>

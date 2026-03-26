@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Folder, MoreVertical, Download, Info, Star, StarOff, Trash2 } from 'lucide-react';
+import { Folder, MoreVertical, Download, Info, Star, StarOff } from 'lucide-react';
 import { buildServiceTypeHref, toSlug } from '@/features/dashboard/utils';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
 import { useFavoriteServiceType } from '@/features/services/presentation/hooks/useFavoriteServiceType';
@@ -91,13 +91,6 @@ export function ServiceFolderGrid() {
         [handleToggleFavorite, resolveIsFavorite],
     );
 
-    const handleMoveToTrash = useCallback(async () => {
-        if (!activeFolder) return;
-        showToast({
-            message: 'Tipe layanan belum mendukung aksi pindah ke sampah',
-            variant: 'error',
-        });
-    }, [activeFolder, showToast]);
 
     const downloadFolderByServiceType = useCallback(async (folder: { id: string; name: string }) => {
         const downloadUrl = ENDPOINTS.USER.SERVICE_TYPE_DOWNLOAD.replace(':tipe_layanan_id', folder.id);
@@ -186,22 +179,15 @@ export function ServiceFolderGrid() {
                 ) : (
                     <Star className="w-4 h-4" />
                 ),
-                hasDivider: true,
                 onClick: () => {
                     void handleToggleFavorite();
                 },
                 className: isFavoriteLoading ? 'pointer-events-none opacity-60' : '',
             },
-            {
-                label: 'Tambahkan ke Sampah',
-                icon: <Trash2 className="w-4 h-4" />,
-                onClick: handleMoveToTrash,
-            },
         ],
         [
             activeFolderIsFavorite,
             handleDownloadFolder,
-            handleMoveToTrash,
             handleOpenDetailSidebar,
             handleToggleFavorite,
             isFavoriteLoading,

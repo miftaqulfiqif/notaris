@@ -6,6 +6,7 @@ import {
     Folder
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
 import { BrandLogo } from '@/shared/components';
@@ -55,10 +56,13 @@ export function Sidebar() {
                     >
                         <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
                             {currentUser.avatar ? (
-                                <img
+                                <Image
                                     src={currentUser.avatar}
                                     alt={currentUser.name}
+                                    width={40}
+                                    height={40}
                                     className="w-full h-full object-cover"
+                                    unoptimized
                                 />
                             ) : (
                                 <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">

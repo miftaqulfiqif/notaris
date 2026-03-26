@@ -2,6 +2,7 @@
 
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Settings, UserRound, X } from 'lucide-react';
+import Image from 'next/image';
 import Cropper, { type Area } from 'react-easy-crop';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { getInitials } from '@/shared/utils/initials';
@@ -91,7 +92,7 @@ const resolveAvatarUrl = (avatar?: string | null) => {
 
 const createImageElement = (src: string) =>
     new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
+        const image = new globalThis.Image();
         image.onload = () => resolve(image);
         image.onerror = () => reject(new Error('Gagal memuat gambar untuk dipotong'));
         image.src = src;
@@ -509,10 +510,13 @@ export default function InstansiPage() {
                                                 >
                                                     <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500 transition-colors group-hover:border-[#8B7355]">
                                                         {displayedAvatar ? (
-                                                            <img
+                                                            <Image
                                                                 src={displayedAvatar}
                                                                 alt="Avatar instansi"
+                                                                width={48}
+                                                                height={48}
                                                                 className="h-full w-full object-cover"
+                                                                unoptimized
                                                             />
                                                         ) : (
                                                             getInitials(notarisDetail?.notaris_name || 'Instansi')
@@ -522,10 +526,13 @@ export default function InstansiPage() {
                                             ) : (
                                                 <div className="h-12 w-12 rounded-xl border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden text-sm font-semibold text-gray-500">
                                                     {displayedAvatar ? (
-                                                        <img
+                                                        <Image
                                                             src={displayedAvatar}
                                                             alt="Avatar instansi"
+                                                            width={48}
+                                                            height={48}
                                                             className="h-full w-full object-cover"
+                                                            unoptimized
                                                         />
                                                     ) : (
                                                         getInitials(notarisDetail?.notaris_name || 'Instansi')

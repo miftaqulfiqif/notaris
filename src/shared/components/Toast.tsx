@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
 export type ToastVariant = 'success' | 'error' | 'info';
@@ -23,12 +23,12 @@ const POSITION_CLASS: Record<NonNullable<ToastProps['position']>, string> = {
     'top-right': 'top-4 right-4',
 };
 
-export function Toast({ toast, onClose, position = 'bottom-left' }: ToastProps) {
-    const [mounted, setMounted] = useState(false);
+const emptySubscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+export function Toast({ toast, onClose, position = 'bottom-left' }: ToastProps) {
+    const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot);
 
     if (!toast || !mounted) return null;
 

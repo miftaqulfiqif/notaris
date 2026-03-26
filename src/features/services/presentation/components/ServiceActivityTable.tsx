@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
     Star,
     StarOff,
@@ -11,7 +11,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Activity } from '@/features/dashboard/types';
-import { serviceActivities } from '@/features/services/data/mock';
 import { SortableHeader } from '@/shared/components/SortableHeader';
 import { FilterTabs } from '@/shared/components/FilterTabs';
 import { StatusBadge } from '@/shared/components/StatusBadge';
@@ -27,6 +26,8 @@ import type { DropdownMenuItem } from '@/shared/components/DropdownMenu';
 
 interface ServiceActivityTableProps {
     onSelectActivity?: (activity: Activity) => void;
+    activities?: Activity[];
+    isLoading?: boolean;
 }
 
 type ActivitySortField = 'companyName' | 'service' | 'author' | 'modifiedDate' | 'status' | null;
@@ -67,10 +68,11 @@ const toStatusBadgeLabel = (status: string): string => {
     return status;
 };
 
-export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableProps) {
+export function ServiceActivityTable({ onSelectActivity, activities = [], isLoading = false }: ServiceActivityTableProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
     const { toast, showToast, hideToast } = useToast();
-    const [localActivities, setLocalActivities] = useState<Activity[]>(serviceActivities);
+    const [localActivities, setLocalActivities] = useState<Activity[]>(activities);
+
     const [sortField, setSortField] = useState<ActivitySortField>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
@@ -78,6 +80,10 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
             triggerClass: 'service-activity-dropdown-trigger',
             menuClass: 'service-activity-dropdown-menu',
         });
+
+    useEffect(() => {
+        setLocalActivities(activities);
+    }, [activities]);
 
     const filteredActivities = useMemo(() => {
         if (activeTab === 'favorite') {
@@ -225,6 +231,19 @@ export function ServiceActivityTable({ onSelectActivity }: ServiceActivityTableP
         ],
         [activeActivity, handleMoveToTrash, handleToggleFavorite, onSelectActivity],
     );
+
+    if (isLoading) {
+        return (
+            <div className="mt-8">
+                <h3 className="mb-4 text-lg font-bold text-gray-800">Aktivitas</h3>
+                <div className="space-y-3">
+                    {[1, 2, 3].map((item) => (
+                        <div key={item} className="h-14 rounded-xl bg-gray-100 animate-pulse" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="mt-8">
