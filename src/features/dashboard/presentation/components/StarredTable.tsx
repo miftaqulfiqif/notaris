@@ -20,6 +20,7 @@ import type { FolderSidebarResponse, ServiceType } from '@/features/services/typ
 import PDFIcon from '@/assets/icons/PDF.svg';
 import FolderIcon from '@/assets/icons/folder.png';
 import ServiceIcon from '@/assets/icons/service.png';
+import { createPortal } from 'react-dom';
 
 type SortField = 'name' | 'author' | 'date' | null;
 type SortDirection = 'asc' | 'desc';
@@ -111,6 +112,9 @@ export function StarredTable({
             triggerClass: 'starred-table-dropdown-trigger',
             menuClass: 'starred-table-dropdown-menu',
         });
+
+    const [activeTooltip, setActiveTooltip] = useState<{ id: string; top: number; left: number } | null>(null);
+        
 
     const sortedItems = useMemo(() => {
         if (!sortField) return items;
@@ -728,6 +732,27 @@ export function StarredTable({
         });
     };
 
+    const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    
+    
+    const handleMouseEnter = (id: string, rect: DOMRect) => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+        }
+        setActiveTooltip({
+            id,
+            top: rect.top,
+            left: rect.left
+        });
+    };
+
+    const handleMouseLeave = () => {
+        hoverTimeoutRef.current = setTimeout(() => {
+            setActiveTooltip(null);
+        }, 100);
+    };
+
     if (isLoading) {
         return (
             <div className="w-full bg-white p-8 text-center">
@@ -872,7 +897,7 @@ export function StarredTable({
                                 {formatDate(item.created_at)}
                             </td>
                             <td className="px-6 py-4 text-gray-500">
-                                <div className="flex items-center gap-2 text-gray-500">
+                                <div onMouseEnter={(e) => handleMouseEnter(item.id, e.currentTarget.getBoundingClientRect())} onMouseLeave={handleMouseLeave} className="inline-flex items-center gap-1 text-gray-600 text-sm hover:text-gray-900 transition-colors cursor-default py-1">
                                     <Folder className="w-4 h-4" />
                                     <span>{item.detail.location}</span>
                                 </div>
@@ -1110,6 +1135,50 @@ export function StarredTable({
                 endIndex={endIndex}
                 totalItems={totalItems}
             />
+            {activeTooltip && typeof document !== 'undefined' && createPortal(
+                            (() => {
+                                const item = items.find((i) => i.id === activeTooltip.id);
+                                if (!item || !item.detail.hover) return null;
+            
+                                return (
+                                    <div
+                                        className="fixed z-50 bg-white shadow-lg border border-gray-100 rounded-lg px-3 py-2 min-w-[200px] animate-in fade-in zoom-in-95 duration-200"
+                                        style={{
+                                            top: activeTooltip.top - 8, // Adjust for padding
+                                            left: activeTooltip.left - 12, // Adjust for padding
+                                        }}
+                                        onMouseEnter={() => {
+                                            if (hoverTimeoutRef.current) {
+                                                clearTimeout(hoverTimeoutRef.current);
+                                                hoverTimeoutRef.current = null;
+                                            }
+                                        }}
+                                        onMouseLeave={handleMouseLeave}
+                                    >
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <Image
+                                                src={FolderIcon}
+                                                alt="Folder"
+                                                width={20}
+                                                height={20}
+                                                className="w-5 h-5"
+                                            />
+                                            <div className="flex items-center flex-wrap gap-1">
+                                                {item.detail.hover.map((path, index) => (
+                                                    <React.Fragment key={index}>
+                                                        {index > 0 && <span className="text-gray-400">/</span>}
+                                                        <span className={index === item.detail.hover.length - 1 ? 'font-medium text-gray-900' : ''}>
+                                                            {path}
+                                                        </span>
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })(),
+                            document.body
+                        )}
         </div>
     );
 }
