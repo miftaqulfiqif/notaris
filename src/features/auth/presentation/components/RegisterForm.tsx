@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 
 interface RegisterFormData {
     instanceName: string;
@@ -19,6 +20,7 @@ interface RegisterFormData {
 
 export const RegisterForm = () => {
     const router = useRouter();
+    const { checkAuth } = useAuthContext();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState<RegisterFormData>({
@@ -56,7 +58,7 @@ export const RegisterForm = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(ENDPOINTS.AUTH.REGISTER, {
+            const response = await fetch(ENDPOINTS.AUTH.CREATE_NOTARIS, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -64,7 +66,7 @@ export const RegisterForm = () => {
                 credentials: 'include',
                 body: JSON.stringify({
                     notaris_name: formData.instanceName,
-                    name: formData.fullName,
+                    user_name: formData.fullName,
                     username: formData.username,
                     email: formData.email,
                     phone: formData.phone,
@@ -76,10 +78,11 @@ export const RegisterForm = () => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Registrasi gagal');
+                throw new Error(data.errors || data.message || 'Registrasi gagal');
             }
 
-            router.push('/login');
+            await checkAuth();
+            router.push('/verify-email');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registrasi gagal');
         } finally {
@@ -89,9 +92,9 @@ export const RegisterForm = () => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : value
+            [name]: type === 'checkbox' ? checked : value,
         }));
     };
 

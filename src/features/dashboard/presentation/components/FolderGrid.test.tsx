@@ -32,13 +32,15 @@ describe('FolderGrid', () => {
         useAuthContext.mockReturnValue({
             user: {
                 id: 'user-1',
-                role: {
-                    role_name: 'Staff',
-                },
+                role: 'Staff',
             },
         });
         useSidebar.mockReturnValue({
-            services: [{ id: 'service-1', name: 'PT' }],
+            services: [
+                { id: 'service-1', name: 'PT', item_count: 4 },
+                { id: 'service-2', name: 'Fidusia', item_count: null },
+                { id: 'service-3', name: 'PT', item_count: 99 },
+            ],
             isLoadingServices: false,
         });
     });
@@ -53,27 +55,7 @@ describe('FolderGrid', () => {
 
         window.addEventListener('notarix:analytics', handleAnalytics as EventListener);
 
-        render(
-            <FolderGrid
-                recommendations={[
-                    {
-                        tipe_layanan_id: 'type-1',
-                        tipe_layanan: 'Pendirian',
-                        layanan: 'PT',
-                    },
-                    {
-                        tipe_layanan_id: 'type-3',
-                        tipe_layanan: 'Perubahan',
-                        layanan: 'PT',
-                    },
-                    {
-                        tipe_layanan_id: 'type-2',
-                        tipe_layanan: 'Perubahan',
-                        layanan: 'CV',
-                    },
-                ]}
-            />,
-        );
+        render(<FolderGrid />);
 
         const link = screen.getByRole('link', {
             name: 'Buka PT - layanan',
@@ -81,8 +63,10 @@ describe('FolderGrid', () => {
 
         expect(link).toHaveAttribute('href', '/services/pt');
         expect(screen.getByText('PT')).toBeInTheDocument();
+        expect(screen.getByText('Fidusia')).toBeInTheDocument();
         expect(screen.queryAllByRole('link', { name: 'Buka PT - layanan' })).toHaveLength(1);
-        expect(screen.queryByText('Perubahan')).not.toBeInTheDocument();
+        expect(screen.queryByText('4')).not.toBeInTheDocument();
+        expect(screen.queryByText('99')).not.toBeInTheDocument();
 
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         await user.click(link);
@@ -93,7 +77,7 @@ describe('FolderGrid', () => {
                 event: 'dashboard_suggested_open',
                 origin: 'dashboard_suggested',
                 layanan: 'PT',
-                tipe_layanan: 'Pendirian',
+                tipe_layanan: 'PT',
                 user_id: 'user-1',
                 user_role: 'Staff',
             }),
@@ -103,19 +87,9 @@ describe('FolderGrid', () => {
     });
 
     it('marks the matching tile as active when the current path matches the target route', () => {
-        usePathname.mockReturnValue('/services/pt');
+        usePathname.mockReturnValue('/services/pt/perubahan');
 
-        render(
-            <FolderGrid
-                recommendations={[
-                    {
-                        tipe_layanan_id: 'type-1',
-                        tipe_layanan: 'Pendirian',
-                        layanan: 'PT',
-                    },
-                ]}
-            />,
-        );
+        render(<FolderGrid />);
 
         expect(
             screen.getByRole('link', {

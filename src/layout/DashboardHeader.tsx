@@ -5,6 +5,7 @@ import { Search, Bell, Menu, LogOut, Settings, X, ChevronRight, FileText, Folder
 import { usePathname, useRouter } from 'next/navigation';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { getUserRoleName } from '@/features/auth/utils/user';
 import { useClickOutside } from '@/shared/hooks/useClickOutside';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { useNotificationRedirect } from '@/features/notifications/hooks/useNotificationRedirect';
@@ -1030,7 +1031,7 @@ export function DashboardHeader() {
                                 className="w-full px-4 py-3 border-b border-gray-100 text-left hover:bg-gray-50 transition-colors"
                             >
                                 <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'User'}</p>
-                                <p className="text-xs text-gray-500 truncate">{user?.role?.role_name || 'User'}</p>
+                                <p className="text-xs text-gray-500 truncate">{getUserRoleName(user) || 'User'}</p>
                                 <p className="text-xs text-gray-400 truncate">{user?.email || 'email@example.com'}</p>
                             </button>
                             <button

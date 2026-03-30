@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronRight, EyeOff, Pencil, LogOut } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { getUserRoleName } from '@/features/auth/utils/user';
 import type { UserDetailData, UserDetailResponse } from '@/features/auth/types';
 import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
@@ -118,7 +119,7 @@ export default function ProfilePage() {
     const instansiEmail = getDisplayValue(profileDetail?.informasi_instansi.email);
     const instansiPhone = getDisplayValue(profileDetail?.informasi_instansi.phone);
     const instansiPaket = getDisplayValue(profileDetail?.informasi_instansi.paket);
-    const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? user?.role?.role_name);
+    const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? getUserRoleName(user));
     const lastLogin = formatDate(profileDetail?.detail_akun.last_login);
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
 

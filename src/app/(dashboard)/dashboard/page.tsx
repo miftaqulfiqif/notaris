@@ -82,10 +82,7 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        <FolderGrid
-                            recommendations={recommendations}
-                            isLoading={isLoadingRecommendations}
-                        />
+                        <FolderGrid />
 
                         <RecommendationSection
                             recommendations={recommendations}

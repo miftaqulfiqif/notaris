@@ -1,34 +1,36 @@
 export interface Role {
-    id: string;
+    id?: string;
     role_name: string;
-    role_code: string;
-    created_at: string;
-    updated_at: string;
+    role_code?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Notaris {
-    id: string;
+    id?: string;
     notaris_name: string;
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
+export type UserRole = Role | string;
+
 export interface User {
-    id: string;
+    id?: string;
     email: string;
-    username: string;
+    username?: string;
     name: string;
-    role_id: string;
-    notaris_id: string;
-    notaris_name: string;
-    profile_picture: string | null;
-    verified_at: string | null;
-    created_at: string;
-    updated_at: string;
-    role: Role;
-    notaris: Notaris;
-    favorites: unknown[];
-    folder: unknown[];
+    role_id?: string;
+    notaris_id?: string;
+    notaris_name?: string | null;
+    profile_picture?: string | null;
+    verified_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+    role?: UserRole | null;
+    notaris?: Notaris | null;
+    favorites?: unknown[];
+    folder?: unknown[];
 }
 
 export interface UserResponse {
