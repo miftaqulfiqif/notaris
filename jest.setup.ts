@@ -4,10 +4,19 @@ import React from 'react';
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: { src: string | { src: string }; alt?: string }) => {
-    const { src, alt, ...rest } = props as {
+    const { src, alt, ...rawRest } = props as {
       src: string | { src: string };
       alt?: string;
+      fill?: boolean;
+      priority?: boolean;
+      blurDataURL?: string;
+      placeholder?: string;
     };
+    const rest = { ...rawRest } as Record<string, unknown>;
+    delete rest.fill;
+    delete rest.priority;
+    delete rest.blurDataURL;
+    delete rest.placeholder;
     const resolvedSrc = typeof src === 'string' ? src : src?.src || '';
     return React.createElement('img', { src: resolvedSrc, alt, ...rest });
   },

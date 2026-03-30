@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { FolderDetailOffcanvas } from './FolderDetailOffcanvas';
 
@@ -10,8 +11,13 @@ jest.mock('next/navigation', () => ({
 jest.mock('next/image', () => ({
     __esModule: true,
     default: (props: Record<string, unknown>) => {
-        const { fill, priority, ...rest } = props;
-        return <img {...rest} data-fill={fill ? 'true' : undefined} data-priority={priority ? 'true' : undefined} />;
+        const { fill, priority, alt, ...rest } = props;
+        return React.createElement('img', {
+            ...rest,
+            alt: typeof alt === 'string' ? alt : '',
+            'data-fill': fill ? 'true' : undefined,
+            'data-priority': priority ? 'true' : undefined,
+        });
     },
 }));
 
@@ -67,7 +73,7 @@ describe('FolderDetailOffcanvas', () => {
             />,
         );
 
-        expect(screen.getByText('PT ABC Corp')).toBeInTheDocument();
+        expect(await screen.findByText('PT ABC Corp')).toBeInTheDocument();
     });
 
     it('does NOT render a Dibuka field in the detail tab', async () => {
@@ -96,6 +102,7 @@ describe('FolderDetailOffcanvas', () => {
             />,
         );
 
+        expect(await screen.findByText('Test Folder')).toBeInTheDocument();
         expect(screen.queryByText('Dibuka')).not.toBeInTheDocument();
     });
 

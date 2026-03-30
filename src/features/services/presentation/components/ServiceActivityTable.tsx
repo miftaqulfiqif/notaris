@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import {
     Star,
     StarOff,
@@ -205,6 +205,16 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
         showToast({ message: 'Berhasil dipindahkan ke sampah', variant: 'success' });
     }, [activeActivity, showToast]);
 
+    const handleOpenActivity = useCallback((activity: Activity) => {
+        onSelectActivity?.(activity);
+    }, [onSelectActivity]);
+
+    const handleOpenActivityKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, activity: Activity) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        handleOpenActivity(activity);
+    }, [handleOpenActivity]);
+
     const moreActions = useMemo<DropdownMenuItem[]>(
         () => [
             {
@@ -344,9 +354,12 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
                                             </div>
                                         </td>
                                         <td className="min-w-70 px-6 py-4">
-                                            <button
-                                                onClick={() => onSelectActivity?.(activity)}
-                                                className="flex w-full items-center gap-3 text-left transition-opacity hover:opacity-70"
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => handleOpenActivity(activity)}
+                                                onKeyDown={(event) => handleOpenActivityKeyDown(event, activity)}
+                                                className="flex w-full items-center gap-3 text-left transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B7355] focus-visible:ring-offset-2"
                                             >
                                                 <div className="shrink-0 rounded-lg bg-gray-100 p-2 text-gray-600">
                                                     <Folder className="h-5 w-5" />
@@ -365,7 +378,7 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
                                                         </button>
                                                     )}
                                                 </div>
-                                            </button>
+                                            </div>
                                         </td>
                                         <td className="min-w-[150px] truncate px-6 py-4 text-gray-600">
                                             {activity.service}

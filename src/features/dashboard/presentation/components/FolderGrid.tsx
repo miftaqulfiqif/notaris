@@ -6,19 +6,13 @@ import { usePathname } from 'next/navigation';
 import FolderIcon from '@/assets/icons/folders Icons.svg';
 import Image from 'next/image';
 import { useAuthContext } from '@/features/auth/context/auth.context';
-import { DashboardRecommendation } from '@/features/dashboard/hooks/useDashboard';
 import {
     buildServiceHref,
-    isRecommendationVisible,
     trackDashboardSuggestedFolderClick,
     toSlug,
 } from '@/features/dashboard/utils';
+import { getUserRoleName } from '@/features/auth/utils/user';
 import { useSidebar } from '@/layout/providers/SidebarContext';
-
-interface FolderGridProps {
-    recommendations?: DashboardRecommendation[];
-    isLoading?: boolean;
-}
 
 interface DisplayFolder {
     id: string;
@@ -27,40 +21,37 @@ interface DisplayFolder {
     href: string;
 }
 
-export function FolderGrid({ recommendations = [], isLoading = false }: FolderGridProps) {
+export function FolderGrid() {
     const pathname = usePathname();
     const { user } = useAuthContext();
     const { services, isLoadingServices = false } = useSidebar();
 
     const displayFolders = useMemo<DisplayFolder[]>(() => {
-        if (isLoading || isLoadingServices || recommendations.length === 0) {
+        if (isLoadingServices || services.length === 0) {
             return [];
         }
 
-        const visibleFolders = recommendations.filter((recommendation) =>
-            isRecommendationVisible(recommendation, services),
-        );
-
         const deduplicatedFolders = new Map<string, DisplayFolder>();
 
-        visibleFolders.forEach((recommendation, index) => {
-            const href = buildServiceHref(recommendation.layanan);
+        services.forEach((service, index) => {
+            if (!service.name?.trim()) return;
 
-            const key = toSlug(recommendation.layanan) || recommendation.tipe_layanan_id || `${href}-${index}`;
+            const href = buildServiceHref(service.name);
+            const key = toSlug(service.name) || service.id || `${href}-${index}`;
             if (deduplicatedFolders.has(key)) {
                 return;
             }
 
             deduplicatedFolders.set(key, {
                 id: key,
-                layanan: recommendation.layanan.trim(),
-                typeName: recommendation.tipe_layanan.trim(),
+                layanan: service.name.trim(),
+                typeName: service.name.trim(),
                 href,
             });
         });
 
         return Array.from(deduplicatedFolders.values());
-    }, [isLoading, isLoadingServices, recommendations, services]);
+    }, [isLoadingServices, services]);
 
     const handleTrackOpen = (folder: DisplayFolder) => {
         trackDashboardSuggestedFolderClick({
@@ -68,7 +59,7 @@ export function FolderGrid({ recommendations = [], isLoading = false }: FolderGr
             tipe_layanan: folder.typeName,
             timestamp: new Date().toISOString(),
             user_id: user?.id,
-            user_role: user?.role?.role_name,
+            user_role: getUserRoleName(user),
         });
     };
 
@@ -94,7 +85,7 @@ export function FolderGrid({ recommendations = [], isLoading = false }: FolderGr
         event.currentTarget.click();
     };
 
-    if (isLoading || isLoadingServices) {
+    if (isLoadingServices) {
         return (
             <div className="mb-10 w-full">
                 <h3 className="mb-4 text-lg font-bold text-gray-800">Folder yang disarankan</h3>

@@ -23,6 +23,13 @@ jest.mock('@/features/dashboard/context/UploadModalContext', () => ({
     }),
 }));
 
+jest.mock('@/layout/providers/SidebarContext', () => ({
+    useSidebar: () => ({
+        services: [],
+        isLoadingServices: false,
+    }),
+}));
+
 jest.mock('@/shared/api/api-client', () => ({
     apiGet: jest.fn(),
     apiPatch: jest.fn(),
