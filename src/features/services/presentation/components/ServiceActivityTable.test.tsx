@@ -1,6 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { ServiceActivityTable } from './ServiceActivityTable';
 import type { Activity } from '@/features/dashboard/types';
+import { apiGet } from '@/shared/api/api-client';
+
+jest.mock('@/shared/api/api-client', () => ({
+    apiGet: jest.fn(),
+}));
 
 jest.mock('@/shared/components/SortableHeader', () => ({
     SortableHeader: ({ label }: { label: string }) => <span>{label}</span>,
@@ -56,7 +61,13 @@ const mockActivities: Activity[] = [
     },
 ];
 
+const mockedApiGet = jest.mocked(apiGet);
+
 describe('ServiceActivityTable', () => {
+    beforeEach(() => {
+        mockedApiGet.mockReset();
+    });
+
     it('renders activities from props', () => {
         render(<ServiceActivityTable activities={mockActivities} />);
 
@@ -96,9 +107,52 @@ describe('ServiceActivityTable', () => {
         expect(skeletons.length).toBeGreaterThan(0);
     });
 
-    it('renders without activities by default', () => {
+    it('fetches folder activities from the list endpoint by default', async () => {
+        mockedApiGet.mockResolvedValueOnce({
+            message: 'success',
+            data: {
+                current_page: 1,
+                total_items: 1,
+                total_pages: 1,
+                data: [
+                    {
+                        id: 'remote-1',
+                        folder_id: 'folder-1',
+                        folder_name: 'PT. Remote Corp',
+                        tipe_layanan: 'Pendirian',
+                        author: 'Admin API',
+                        updated_at: '2026-03-31 09:00:00',
+                        status: 'selesai',
+                        is_favorite: false,
+                    },
+                ],
+            },
+        });
+
         render(<ServiceActivityTable />);
 
-        expect(screen.getByText('Belum ada aktivitas')).toBeInTheDocument();
+        expect(await screen.findByText('PT. Remote Corp')).toBeInTheDocument();
+
+        await waitFor(() => {
+            expect(mockedApiGet).toHaveBeenCalledWith(
+                expect.stringContaining('/aktifitas/folder?page=1&limit=10&search='),
+            );
+        });
+    });
+
+    it('renders empty state when remote activities are empty', async () => {
+        mockedApiGet.mockResolvedValueOnce({
+            message: 'success',
+            data: {
+                current_page: 1,
+                total_items: 0,
+                total_pages: 0,
+                data: [],
+            },
+        });
+
+        render(<ServiceActivityTable />);
+
+        expect(await screen.findByText('Belum ada aktivitas')).toBeInTheDocument();
     });
 });

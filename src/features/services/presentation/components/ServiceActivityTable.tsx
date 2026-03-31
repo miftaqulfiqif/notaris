@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import {
     Star,
     StarOff,
@@ -9,14 +9,16 @@ import {
     Clock,
     Eye,
     Trash2,
+    Search,
 } from 'lucide-react';
-import { Activity } from '@/features/dashboard/types';
+import { apiGet } from '@/shared/api/api-client';
+import { ENDPOINTS } from '@/shared/api/endpoints';
+import type { Activity, ActivityItemType } from '@/features/dashboard/types';
 import { SortableHeader } from '@/shared/components/SortableHeader';
 import { FilterTabs } from '@/shared/components/FilterTabs';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { useActivityTabs } from '@/features/dashboard/presentation/hooks/useActivityTabs';
 import { useSelection } from '@/shared/hooks/useSelection';
-import { usePagination } from '@/shared/hooks/usePagination';
 import { Pagination } from '@/shared/components/Pagination';
 import { useToast } from '@/shared/hooks/useToast';
 import { Toast } from '@/shared/components/Toast';
@@ -30,8 +32,52 @@ interface ServiceActivityTableProps {
     isLoading?: boolean;
 }
 
+interface ServiceActivityApiItem {
+    id?: string;
+    item_id?: string;
+    item_type?: ActivityItemType | string;
+    folder_id?: string | null;
+    document_id?: string | null;
+    folder_name?: string | null;
+    object?: string | null;
+    layanan?: string | null;
+    tipe_layanan?: string | null;
+    service?: string | null;
+    companyName?: string | null;
+    author?: string | null;
+    updated_at?: string | null;
+    modifiedDate?: string | null;
+    created_at?: string | null;
+    status?: string | null;
+    object_status?: string | null;
+    status_folder?: string | null;
+    folder_status?: string | null;
+    detail_status?: { status?: string | null } | string | null;
+    is_favorite?: boolean;
+    isFavorite?: boolean;
+    route_path?: string | null;
+}
+
+interface ServiceActivitiesPagination {
+    current_page?: number;
+    total_items?: number;
+    total_pages?: number;
+    data?: ServiceActivityApiItem[];
+}
+
+interface ServiceActivitiesResponse {
+    message?: string;
+    data:
+        | ServiceActivityApiItem[]
+        | ServiceActivitiesPagination
+        | ServiceActivitiesPagination[];
+}
+
 type ActivitySortField = 'companyName' | 'service' | 'author' | 'modifiedDate' | 'status' | null;
 type SortDirection = 'asc' | 'desc';
+
+const ACTIVITY_ITEM_TYPES: ActivityItemType[] = ['FOLDER', 'DOCUMENT', 'LAYANAN', 'TIPE_LAYANAN'];
+const ACTIVITIES_PAGE_LIMIT = 10;
 
 const STATUS_SORT_PRIORITY: Record<string, number> = {
     selesai: 0,
@@ -43,6 +89,17 @@ const STATUS_SORT_PRIORITY: Record<string, number> = {
 
 const compareText = (left: string, right: string) =>
     left.localeCompare(right, 'id', { sensitivity: 'base', numeric: true });
+
+const normalizeActivityItemType = (value?: string | null): ActivityItemType => {
+    if (!value) return 'FOLDER';
+
+    const normalized = value.trim().toUpperCase();
+    if (ACTIVITY_ITEM_TYPES.includes(normalized as ActivityItemType)) {
+        return normalized as ActivityItemType;
+    }
+
+    return 'FOLDER';
+};
 
 const normalizeActivityStatus = (status: string): string => {
     const normalizedStatus = status.toLowerCase().trim();
@@ -68,10 +125,109 @@ const toStatusBadgeLabel = (status: string): string => {
     return status;
 };
 
-export function ServiceActivityTable({ onSelectActivity, activities = [], isLoading = false }: ServiceActivityTableProps) {
+const isPaginatedActivitiesPayload = (payload: unknown): payload is ServiceActivitiesPagination => {
+    return typeof payload === 'object' && payload !== null && 'data' in payload;
+};
+
+const parseServiceActivitiesResponse = (payload: ServiceActivitiesResponse['data']) => {
+    if (Array.isArray(payload)) {
+        const [firstItem] = payload;
+
+        if (firstItem && isPaginatedActivitiesPayload(firstItem)) {
+            const items = Array.isArray(firstItem.data) ? firstItem.data : [];
+            return {
+                items,
+                currentPage: firstItem.current_page ?? 1,
+                totalItems: firstItem.total_items ?? items.length,
+                totalPages: firstItem.total_pages ?? (items.length > 0 ? 1 : 0),
+            };
+        }
+
+        return {
+            items: payload,
+            currentPage: 1,
+            totalItems: payload.length,
+            totalPages: payload.length > 0 ? 1 : 0,
+        };
+    }
+
+    if (isPaginatedActivitiesPayload(payload)) {
+        const items = Array.isArray(payload.data) ? payload.data : [];
+
+        return {
+            items,
+            currentPage: payload.current_page ?? 1,
+            totalItems: payload.total_items ?? items.length,
+            totalPages: payload.total_pages ?? (items.length > 0 ? 1 : 0),
+        };
+    }
+
+    return {
+        items: [],
+        currentPage: 1,
+        totalItems: 0,
+        totalPages: 0,
+    };
+};
+
+const mapApiActivityToActivity = (activity: ServiceActivityApiItem, index: number): Activity => {
+    const itemType = normalizeActivityItemType(activity.item_type ?? (activity.folder_id ? 'FOLDER' : 'DOCUMENT'));
+    const folderId = activity.folder_id ?? null;
+    const documentId = activity.document_id ?? null;
+    const resolvedItemId =
+        activity.item_id
+        || (itemType === 'DOCUMENT' ? documentId || folderId : folderId || documentId)
+        || activity.id
+        || `folder-activity-${index}`;
+    const detailStatus =
+        typeof activity.detail_status === 'string'
+            ? activity.detail_status
+            : activity.detail_status?.status;
+    const rawStatus =
+        detailStatus
+        || activity.status
+        || activity.object_status
+        || activity.status_folder
+        || activity.folder_status
+        || 'Proses';
+
+    return {
+        id: String(activity.id ?? resolvedItemId),
+        itemId: String(resolvedItemId),
+        folderId,
+        documentId,
+        companyName: activity.folder_name?.trim() || activity.companyName?.trim() || '-',
+        clientName: '-',
+        service:
+            activity.tipe_layanan?.trim()
+            || activity.layanan?.trim()
+            || activity.service?.trim()
+            || activity.object?.trim()
+            || '-',
+        author: activity.author?.trim() || '-',
+        modifiedDate: String(activity.updated_at || activity.modifiedDate || activity.created_at || '-'),
+        status: toStatusBadgeLabel(rawStatus) as Activity['status'],
+        isFavorite: Boolean(activity.is_favorite ?? activity.isFavorite),
+        itemType,
+        routePath: activity.route_path || null,
+        createdAt: activity.created_at || null,
+    };
+};
+
+export function ServiceActivityTable({ onSelectActivity, activities, isLoading = false }: ServiceActivityTableProps) {
     const { activeTab, setActiveTab } = useActivityTabs();
     const { toast, showToast, hideToast } = useToast();
-    const [localActivities, setLocalActivities] = useState<Activity[]>(activities);
+    const usesRemoteData = activities === undefined;
+    const [remoteActivities, setRemoteActivities] = useState<Activity[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [remoteTotalPages, setRemoteTotalPages] = useState(0);
+    const [remoteTotalItems, setRemoteTotalItems] = useState(0);
+    const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+    const [hiddenActivityIds, setHiddenActivityIds] = useState<string[]>([]);
+    const [loadedRemoteQueryKey, setLoadedRemoteQueryKey] = useState<string | null>(null);
+    const [remoteErrorState, setRemoteErrorState] = useState<{ key: string; message: string } | null>(null);
+    const requestIdRef = useRef(0);
 
     const [sortField, setSortField] = useState<ActivitySortField>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -80,10 +236,64 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
             triggerClass: 'service-activity-dropdown-trigger',
             menuClass: 'service-activity-dropdown-menu',
         });
+    const remoteQueryKey = `${currentPage}:${searchQuery}`;
+    const isRemoteLoading = usesRemoteData && !isLoading && loadedRemoteQueryKey !== remoteQueryKey;
+    const remoteError =
+        remoteErrorState?.key === remoteQueryKey ? remoteErrorState.message : null;
 
     useEffect(() => {
-        setLocalActivities(activities);
-    }, [activities]);
+        if (!usesRemoteData || isLoading) return;
+
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
+
+        const params = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: ACTIVITIES_PAGE_LIMIT.toString(),
+            search: searchQuery,
+        });
+
+        void apiGet<ServiceActivitiesResponse>(
+            `${ENDPOINTS.USER.FOLDER_ACTIVITIES_LIST}?${params.toString()}`,
+        )
+            .then((response) => {
+                if (requestId !== requestIdRef.current) return;
+
+                const parsed = parseServiceActivitiesResponse(response.data);
+                setRemoteActivities(parsed.items.map(mapApiActivityToActivity));
+                setRemoteTotalItems(parsed.totalItems);
+                setRemoteTotalPages(parsed.totalPages);
+                setRemoteErrorState(null);
+                setLoadedRemoteQueryKey(remoteQueryKey);
+
+                if (parsed.totalPages > 0 && currentPage > parsed.totalPages) {
+                    setCurrentPage(parsed.totalPages);
+                }
+            })
+            .catch((error: unknown) => {
+                if (requestId !== requestIdRef.current) return;
+
+                setRemoteActivities([]);
+                setRemoteTotalItems(0);
+                setRemoteTotalPages(0);
+                setRemoteErrorState({
+                    key: remoteQueryKey,
+                    message: error instanceof Error ? error.message : 'Gagal memuat aktivitas folder',
+                });
+                setLoadedRemoteQueryKey(remoteQueryKey);
+            });
+    }, [currentPage, isLoading, remoteQueryKey, searchQuery, usesRemoteData]);
+
+    const localActivities = useMemo(
+        () =>
+            (usesRemoteData ? remoteActivities : (activities ?? []))
+                .filter((activity) => !hiddenActivityIds.includes(activity.id))
+                .map((activity) => ({
+                    ...activity,
+                    isFavorite: favoriteOverrides[activity.id] ?? activity.isFavorite,
+                })),
+        [activities, favoriteOverrides, hiddenActivityIds, remoteActivities, usesRemoteData],
+    );
 
     const filteredActivities = useMemo(() => {
         if (activeTab === 'favorite') {
@@ -125,22 +335,42 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
         return sortDirection === 'asc' ? sorted : sorted.reverse();
     }, [filteredActivities, sortDirection, sortField]);
 
+    const usesServerPagination = usesRemoteData && activeTab !== 'favorite';
+
+    const paginatedItems = useMemo(() => {
+        if (usesServerPagination) {
+            return sortedActivities;
+        }
+
+        const start = (currentPage - 1) * ACTIVITIES_PAGE_LIMIT;
+        return sortedActivities.slice(start, start + ACTIVITIES_PAGE_LIMIT);
+    }, [currentPage, sortedActivities, usesServerPagination]);
+
+    const totalItems = usesServerPagination ? remoteTotalItems : sortedActivities.length;
+    const totalPages = totalItems === 0
+        ? 0
+        : usesServerPagination
+            ? Math.max(remoteTotalPages, 1)
+            : Math.ceil(sortedActivities.length / ACTIVITIES_PAGE_LIMIT);
+    const effectiveCurrentPage = totalPages === 0 ? 1 : Math.min(currentPage, totalPages);
+    const startIndex = totalItems === 0 ? 0 : (effectiveCurrentPage - 1) * ACTIVITIES_PAGE_LIMIT;
+    const endIndex = totalItems === 0 ? 0 : Math.min(startIndex + paginatedItems.length, totalItems);
+
     const {
+        setSelectedItems,
         toggleSelectAll,
         toggleSelectItem,
         isSelected,
         isAllSelected,
     } = useSelection({ items: sortedActivities, itemIdKey: 'id' });
 
-    const {
-        currentPage,
-        totalPages,
-        paginatedItems,
-        setPage,
-        startIndex,
-        endIndex,
-        totalItems,
-    } = usePagination({ items: sortedActivities, itemsPerPage: 5 });
+    useEffect(() => {
+        setSelectedItems((prev) =>
+            prev.filter((selectedId) =>
+                sortedActivities.some((activity) => activity.id === selectedId),
+            ),
+        );
+    }, [setSelectedItems, sortedActivities]);
 
     const handleSort = useCallback((field: Exclude<ActivitySortField, null>) => {
         setSortField((prev) => {
@@ -157,8 +387,8 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
             setSortDirection('asc');
             return null;
         });
-        setPage(1);
-    }, [setPage, sortDirection]);
+        setCurrentPage(1);
+    }, [sortDirection]);
 
     const activeActivity = useMemo(() => {
         if (!activeDropdown) return null;
@@ -169,24 +399,19 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
         const activity = targetActivity ?? activeActivity;
         if (!activity) return;
 
-        setLocalActivities((prev) =>
-            prev.map((item) =>
-                item.id === activity.id
-                    ? {
-                        ...item,
-                        isFavorite: !item.isFavorite,
-                    }
-                    : item,
-            ),
-        );
+        const currentFavorite = favoriteOverrides[activity.id] ?? activity.isFavorite;
+        setFavoriteOverrides((prev) => ({
+            ...prev,
+            [activity.id]: !currentFavorite,
+        }));
 
         showToast({
-            message: activity.isFavorite
+            message: currentFavorite
                 ? 'Berhasil dihapus dari Berbintang'
                 : 'Berhasil ditambahkan ke Berbintang',
             variant: 'success',
         });
-    }, [activeActivity, showToast]);
+    }, [activeActivity, favoriteOverrides, showToast]);
 
     const handleFavoriteIconClick = useCallback(
         (event: MouseEvent<HTMLButtonElement>, activity: Activity) => {
@@ -201,7 +426,9 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
     const handleMoveToTrash = useCallback(() => {
         if (!activeActivity) return;
 
-        setLocalActivities((prev) => prev.filter((activity) => activity.id !== activeActivity.id));
+        setHiddenActivityIds((prev) =>
+            prev.includes(activeActivity.id) ? prev : [...prev, activeActivity.id],
+        );
         showToast({ message: 'Berhasil dipindahkan ke sampah', variant: 'success' });
     }, [activeActivity, showToast]);
 
@@ -242,7 +469,7 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
         [activeActivity, handleMoveToTrash, handleToggleFavorite, onSelectActivity],
     );
 
-    if (isLoading) {
+    if (isLoading || (usesRemoteData && isRemoteLoading && localActivities.length === 0)) {
         return (
             <div className="mt-8">
                 <h3 className="mb-4 text-lg font-bold text-gray-800">Aktivitas</h3>
@@ -255,9 +482,30 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
         );
     }
 
+    const emptyStateMessage = remoteError
+        || (activeTab === 'favorite' ? 'Belum ada aktivitas berbintang' : 'Belum ada aktivitas');
+
     return (
         <div className="mt-8">
-            <h3 className="mb-4 text-lg font-bold text-gray-800">Aktivitas</h3>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-lg font-bold text-gray-800">Aktivitas</h3>
+
+                {usesRemoteData && (
+                    <label className="relative block w-full sm:max-w-xs">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="search"
+                            value={searchQuery}
+                            onChange={(event) => {
+                                setSearchQuery(event.target.value);
+                                setCurrentPage(1);
+                            }}
+                            placeholder="Cari aktivitas folder"
+                            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-700 shadow-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#8B7355] focus:ring-2 focus:ring-[#8B7355]/15"
+                        />
+                    </label>
+                )}
+            </div>
 
             <FilterTabs
                 tabs={[
@@ -266,7 +514,7 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
                 ]}
                 activeTab={activeTab}
                 onChange={(id) => {
-                    setPage(1);
+                    setCurrentPage(1);
                     setActiveTab(id as 'recent' | 'favorite');
                 }}
             />
@@ -335,9 +583,7 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
                             {paginatedItems.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">
-                                        {activeTab === 'favorite'
-                                            ? 'Belum ada aktivitas berbintang'
-                                            : 'Belum ada aktivitas'}
+                                        {emptyStateMessage}
                                     </td>
                                 </tr>
                             ) : (
@@ -423,9 +669,12 @@ export function ServiceActivityTable({ onSelectActivity, activities = [], isLoad
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
 
             <Pagination
-                currentPage={currentPage}
+                currentPage={effectiveCurrentPage}
                 totalPages={totalPages}
-                onPageChange={setPage}
+                onPageChange={(page) => {
+                    const nextPage = totalPages > 0 ? Math.min(Math.max(page, 1), totalPages) : 1;
+                    setCurrentPage(nextPage);
+                }}
                 startIndex={startIndex}
                 endIndex={endIndex}
                 totalItems={totalItems}
