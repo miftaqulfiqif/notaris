@@ -1,262 +1,159 @@
-'use client';
+import Image from 'next/image';
+import { Manrope } from 'next/font/google';
+import type { ReactNode } from 'react';
+import { ArrowUpRight, Bolt } from 'lucide-react';
 
-import { ArrowUpRight, ChevronDown, Search, Upload, UserRound } from 'lucide-react';
+const manrope = Manrope({
+    subsets: ['latin'],
+    weight: ['500', '600', '700', '800'],
+    display: 'swap',
+});
 
-/* ──────────────────────────────────────────
-   Feature 1: Terorganisir Cepat (full-width)
-   ────────────────────────────────────────── */
+const sectionTitle = 'Kelola Layanan Notaris Lebih Cepat, Rapi, dan Terpusat.';
+const sectionDescription =
+    'Semua jobfile, aktivitas, tenant, dan notifikasi dalam satu sistem yang memudahkan kerja tim Anda.';
+
+function SectionBadge() {
+    return (
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#DDD4C7] bg-white px-4 py-2 text-sm font-semibold text-[#7D684D] shadow-[0_10px_24px_rgba(88,67,43,0.06)]">
+            <Bolt className="h-4 w-4 stroke-[1.9]" />
+            Features
+        </span>
+    );
+}
+
+function FeatureCardShell({
+    children,
+    className = '',
+}: Readonly<{
+    children: ReactNode;
+    className?: string;
+}>) {
+    return (
+        <article
+            className={`overflow-hidden rounded-[14px] border border-white/70 bg-[#D8CDC0] shadow-[0_20px_50px_rgba(90,70,44,0.08)] ${className}`}
+        >
+            {children}
+        </article>
+    );
+}
+
 function FeatureOrganized() {
     return (
-        <div className="rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
-            <div className="grid lg:grid-cols-2 gap-0">
-                {/* Left — copy */}
-                <div className="p-8 lg:p-10 flex flex-col justify-center">
-                    <h3 className="text-xl font-semibold text-[#2A2318] leading-snug">
-                        Terorganisir Cepat
-                    </h3>
-                    <p className="mt-3 text-sm text-[#5A5046] leading-relaxed max-w-md">
-                        Kelola seluruh jobfile, klien, dan jadwal layanan Notaris Anda
-                        dengan cepat. Pantau timeline, aktivitas, penanggung jawab dan personil persidangan
-                        dalam satu tempat.
-                    </p>
-                    <div className="mt-6">
+        <FeatureCardShell>
+            <div className="grid lg:grid-cols-[0.84fr_1.16fr]">
+                <div className="flex flex-col justify-between gap-10 px-7 py-8 sm:px-10 sm:py-10 lg:px-7 lg:py-9 xl:px-10 xl:py-12">
+                    <div className="max-w-[360px]">
+                        <h3 className="text-[2rem] font-extrabold tracking-[-0.04em] text-[#6E5C46] sm:text-[2.25rem]">
+                            Terorganisir Cepat
+                        </h3>
+                        <p className="mt-4 text-base leading-[1.55] text-[#786750] sm:text-[1.06rem]">
+                            Semua aktivitas, file, dan status layanan dalam satu tampilan yang membantu tim mengambil
+                            keputusan lebih cepat. Hemat waktu monitoring, percepat penyelesaian tugas.
+                        </p>
+                    </div>
+
+                    <div>
                         <a
                             href="#demo"
-                            className="inline-flex items-center gap-2 rounded-lg bg-[#3B332A] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#2F2922] transition-colors"
+                            className="inline-flex items-center gap-2 rounded-[10px] bg-[#7A6548] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#66543D]"
                         >
                             Request Demo
-                            <ArrowUpRight className="h-3.5 w-3.5" />
+                            <ArrowUpRight className="h-4 w-4" />
                         </a>
                     </div>
                 </div>
 
-                {/* Right — mock UI */}
-                <div className="bg-[#F9F7F5] p-6 lg:p-8">
-                    <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 p-4">
-                        {/* Mock header */}
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-[#98856B]" />
-                                <span className="text-xs font-medium text-[#3B332A]">
-                                    Daftar Akta / Jenis Data / Klien / Mahkota
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="h-6 w-20 rounded bg-[#F3F0EC]" />
-                                <div className="h-6 w-6 rounded bg-[#F3F0EC]" />
-                            </div>
-                        </div>
-                        {/* Mock rows */}
-                        {[
-                            { color: '#E8DFD3', label: 'Klien Pertama / Jasa Kenotariatan', tag: 'Pending', tagColor: '#EAB308' },
-                            { color: '#D4C5B0', label: 'PT. Kautaman Jaya', tag: 'Review', tagColor: '#6366F1' },
-                            { color: '#C8B89A', label: 'Sari Lestari / Menolak', tag: 'Expired', tagColor: '#EF4444' },
-                        ].map((row, i) => (
-                            <div
-                                key={i}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1.5 last:mb-0 hover:bg-[#FAF8F6] transition-colors"
-                            >
-                                <div
-                                    className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
-                                    style={{ background: row.color }}
-                                >
-                                    <UserRound className="h-4 w-4 text-[#6B5C48]" />
-                                </div>
-                                <span className="flex-1 text-xs text-[#3B332A] truncate">{row.label}</span>
-                                <span
-                                    className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                                    style={{ background: `${row.tagColor}18`, color: row.tagColor }}
-                                >
-                                    {row.tag}
-                                </span>
-                            </div>
-                        ))}
+                <div className="border-t border-white/60 bg-[#F7F4EF] lg:border-l lg:border-t-0">
+                    <div className="relative aspect-[640/330] w-full">
+                        <Image
+                            src="/images/landing/Dashboard OnActivities.png"
+                            alt="Preview dashboard Notarix untuk pengelolaan jobfile dan aktivitas"
+                            fill
+                            priority
+                            sizes="(min-width: 1280px) 640px, (min-width: 1024px) 56vw, 100vw"
+                            className="object-cover object-left-top"
+                        />
                     </div>
                 </div>
             </div>
-        </div>
+        </FeatureCardShell>
     );
 }
 
-/* ──────────────────────────────────────
-   Feature 2: Smart Docs Upload (half)
-   ────────────────────────────────────── */
-function FeatureSmartDocs() {
+interface FeaturePreviewCardProps {
+    title: string;
+    description: string;
+    imageSrc: string;
+    imageAlt: string;
+}
+
+function FeaturePreviewCard({
+    title,
+    description,
+    imageSrc,
+    imageAlt,
+}: Readonly<FeaturePreviewCardProps>) {
     return (
-        <div className="rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col">
-            <div className="p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-[#2A2318]">Smart Docs Upload</h3>
-                <p className="mt-2 text-sm text-[#5A5046] leading-relaxed">
-                    Cukup unggah satu kali, isi keterangan, set keterangan, dan
-                    dokumen Anda akan terklasifikasi dengan rapi, tertempel dan langsung
-                    terhubung ke masing-masing klien terkait.
+        <FeatureCardShell className="h-full">
+            <div className="px-6 pb-6 pt-7 text-center sm:px-8 sm:pb-8 sm:pt-8">
+                <h3 className="text-[1.95rem] font-extrabold tracking-[-0.04em] text-[#6E5C46] sm:text-[2.15rem]">
+                    {title}
+                </h3>
+                <p className="mx-auto mt-4 max-w-[420px] text-[1rem] leading-[1.55] text-[#786750]">
+                    {description}
                 </p>
             </div>
 
-            {/* Mock form */}
-            <div className="px-6 lg:px-8 pb-6 lg:pb-8 flex-1">
-                <div className="rounded-xl bg-[#FAFAF9] ring-1 ring-black/5 p-4 space-y-3">
-                    <p className="text-xs font-medium text-[#3B332A] mb-3">Upload Jasa Baru</p>
-                    {/* Field mocks */}
-                    {[
-                        { label: 'Judul jasa', placeholder: '' },
-                        { label: 'Tipe laporan', placeholder: '', hasDropdown: true },
-                        { label: 'Instansi', placeholder: '', hasDropdown: true },
-                    ].map((field, i) => (
-                        <div key={i}>
-                            <label className="text-[10px] font-medium text-[#7A7067] mb-1 block">
-                                {field.label}
-                            </label>
-                            <div className="flex items-center h-8 rounded-md bg-white ring-1 ring-black/8 px-2.5">
-                                <span className="flex-1 text-[10px] text-[#BDB5AB]">{field.placeholder}</span>
-                                {field.hasDropdown && (
-                                    <ChevronDown className="h-3 w-3 text-[#BDB5AB]" />
-                                )}
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Upload area */}
-                    <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#D4CEC6] py-4">
-                        <Upload className="h-4 w-4 text-[#98856B]" />
-                        <span className="text-[10px] text-[#7A7067]">Drag & drop file atau klik untuk upload</span>
-                    </div>
-
-                    <button className="mt-2 w-full rounded-lg bg-[#6B5C48] py-2 text-xs font-semibold text-white hover:bg-[#5A4D3C] transition-colors">
-                        Ajukan Demo
-                    </button>
+            <div className="border-t border-white/60 bg-[#F7F4EF]">
+                <div className="relative aspect-[542/392] w-full">
+                    <Image
+                        src={imageSrc}
+                        alt={imageAlt}
+                        fill
+                        sizes="(min-width: 1024px) 540px, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover object-top"
+                    />
                 </div>
             </div>
-        </div>
+        </FeatureCardShell>
     );
 }
 
-/* ─────────────────────────────────────
-   Feature 3: Audit Activity (half)
-   ───────────────────────────────────── */
-function FeatureAuditActivity() {
-    const activities = [
-        {
-            avatar: '#D4C5B0',
-            name: 'Anda Mengedit Data di',
-            detail: 'PT. Kautaman Jaya',
-            time: '',
-        },
-        {
-            avatar: '#B39B7B',
-            name: 'Anda Mengedit Bidang di',
-            detail: '',
-            time: '',
-            badge: 'Edited',
-            badgeColor: '#6366F1',
-        },
-        {
-            avatar: '#A08968',
-            name: 'Budi Lestari Menolak Notaris di',
-            detail: '',
-            time: '',
-        },
-        {
-            avatar: '#C8B89A',
-            name: 'Perubahan',
-            detail: 'PT Madura Spart',
-            time: '',
-        },
-    ];
-
-    return (
-        <div className="rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col">
-            <div className="p-6 lg:p-8">
-                <h3 className="text-lg font-semibold text-[#2A2318]">Audit Activity</h3>
-                <p className="mt-2 text-sm text-[#5A5046] leading-relaxed">
-                    Aktivitas di seluruh tim terjaga dan terpantau dalam satu tempat dan satu panduan.
-                    Fitur memastikan kunci catatan Anda berjalan dengan cepat.
-                </p>
-            </div>
-
-            {/* Activity list */}
-            <div className="px-6 lg:px-8 pb-6 lg:pb-8 flex-1">
-                <div className="rounded-xl bg-[#FAFAF9] ring-1 ring-black/5 p-4">
-                    <p className="text-xs font-medium text-[#3B332A] mb-4">Activity</p>
-                    <div className="space-y-4">
-                        {activities.map((a, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                                <div
-                                    className="mt-0.5 h-8 w-8 shrink-0 rounded-full flex items-center justify-center"
-                                    style={{ background: a.avatar }}
-                                >
-                                    <UserRound className="h-4 w-4 text-white/90" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] text-[#3B332A] leading-relaxed">
-                                        {a.name}
-                                    </p>
-                                    {a.detail && (
-                                        <p className="text-[10px] text-[#98856B] flex items-center gap-1 mt-0.5">
-                                            <Search className="h-2.5 w-2.5" />
-                                            {a.detail}
-                                        </p>
-                                    )}
-                                    {a.badge && (
-                                        <span
-                                            className="inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full"
-                                            style={{ background: `${a.badgeColor}18`, color: a.badgeColor }}
-                                        >
-                                            {a.badge}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/* ──────────────────────
-   Main Features Section
-   ────────────────────── */
 export function LandingFeatures() {
     return (
-        <section className="py-16 sm:py-20 px-4">
-            <div className="mx-auto max-w-5xl">
-                {/* Badge */}
-                <div className="flex justify-center mb-6">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F3F0EC] px-3.5 py-1 text-xs font-medium text-[#6B5C48] ring-1 ring-[#E8DFD3]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#98856B]" />
-                        Features
-                    </span>
+        <section id="fitur" className={`${manrope.className} px-4 py-[4.5rem] sm:px-6 sm:py-24`}>
+            <div className="mx-auto max-w-[1160px]">
+                <div className="flex justify-center">
+                    <SectionBadge />
                 </div>
 
-                {/* Heading */}
-                <h2 className="text-center text-2xl sm:text-3xl font-semibold text-[#2A2318] leading-snug max-w-xl mx-auto">
-                    Kelola Layanan Notaris Lebih Cepat, Rapi, dan Terpusat.
-                </h2>
-                <p className="mt-4 text-center text-sm text-[#7A7067] max-w-lg mx-auto leading-relaxed">
-                    Semua jobfile, aktivitas, kontrak, dan hasil kerja tidak perlu ada sistem yang
-                    memudahkan kerja tim Anda.
-                </p>
+                <div className="mx-auto mt-8 max-w-[820px] text-center">
+                    <h2 className="text-[2.3rem] font-extrabold leading-[1.18] tracking-[-0.05em] text-[#6E5C46] sm:text-[3rem] lg:text-[3.55rem]">
+                        {sectionTitle}
+                    </h2>
+                    <p className="mx-auto mt-5 max-w-[650px] text-base leading-[1.55] text-[#7D684D] sm:text-[1.08rem]">
+                        {sectionDescription}
+                    </p>
+                </div>
 
-                {/* Feature Cards */}
-                <div className="mt-12 space-y-6">
-                    {/* Full-width card */}
+                <div className="mt-12 space-y-4 sm:space-y-5">
                     <FeatureOrganized />
 
-                    {/* Two-column cards */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <FeatureSmartDocs />
-                        <FeatureAuditActivity />
+                    <div className="grid gap-4 md:grid-cols-2 sm:gap-5">
+                        <FeaturePreviewCard
+                            title="Smart Docs Upload"
+                            description="Form upload terpadu: pilih layanan, isi metadata, dan simpan file. Seluruh proses dalam satu langkah."
+                            imageSrc="/images/landing/Image (1).png"
+                            imageAlt="Preview form upload dokumen layanan notaris"
+                        />
+                        <FeaturePreviewCard
+                            title="Audit Activity"
+                            description="Rekam jejak lengkap setiap aksi supaya tim dan auditor bisa menelusuri perubahan dengan cepat."
+                            imageSrc="/images/landing/Image.png"
+                            imageAlt="Preview riwayat aktivitas untuk audit layanan notaris"
+                        />
                     </div>
-                </div>
-
-                {/* Scroll indicator */}
-                <div className="mt-10 flex justify-center">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F3F0EC] px-3.5 py-1 text-xs font-medium text-[#6B5C48] ring-1 ring-[#E8DFD3]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#98856B]" />
-                        Scroll more
-                    </span>
                 </div>
             </div>
         </section>
