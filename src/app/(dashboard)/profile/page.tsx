@@ -24,10 +24,23 @@ interface InfoCardProps {
     isEditing?: boolean;
     onEdit?: () => void;
     onCancel?: () => void;
-    onSave?: () => void;
+    onSave?: (data: Record<string, string>) => void;
+
 }
 
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCardProps) {
+
+    const [formData, setFormData] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const initialData: Record<string, string> = {};
+        rows.forEach(row => {
+            initialData[row.label] = row.value;
+        });
+
+        setFormData(initialData);
+    }, [rows, isEditing]);
+    
     return (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
@@ -53,7 +66,10 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                         </button>
 
                         <button
-                            onClick={onSave}
+                            onClick={() => {
+                                console.log(title, formData)
+                                onSave?.(formData)
+                            }}
                             className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
                         >
                             Save
@@ -74,8 +90,14 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                         <div className="flex items-center justify-between gap-2 bg-gray-50/50 px-4 py-3">
                             {isEditing ? (
                                     <input
-                                        defaultValue={row.value}
                                         className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                        value={formData[row.label] || ''}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                [row.label]: e.target.value
+                                            })
+                                        }
                                     />
                                 ) : (
                                     <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{row.value}</span>
@@ -113,7 +135,6 @@ export default function ProfilePage() {
     const { user, logout } = useAuthContext();
     const [profileDetail, setProfileDetail] = useState<UserDetailData | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
     const [editingSection, setEditingSection] = useState<string | null>(null);
 
     useEffect(() => {
@@ -178,21 +199,21 @@ export default function ProfilePage() {
         { label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
     ];
 
-    const handleSaveUserInfo = () => {
+    const handleSaveUserInfo = (data: any) => {
         // Implementasi penyimpanan informasi user
-        console.log('Menyimpan informasi user...');
+        console.log('Menyimpan informasi user :', data);
         setEditingSection(null);
     };
 
-    const handleSaveInstitutionInfo = () => {
+    const handleSaveInstitutionInfo = (data: any) => {
         // Implementasi penyimpanan informasi instansi
-        console.log('Menyimpan informasi instansi...');
+        console.log('Menyimpan informasi instansi :', data);
         setEditingSection(null);
     };
 
-    const handleSaveAccountDetails = () => {
+    const handleSaveAccountDetails = (data: any) => {
         // Implementasi penyimpanan detail akun
-        console.log('Menyimpan detail akun...');
+        console.log('Menyimpan detail akun :', data);
         setEditingSection(null);
     };
 
@@ -231,12 +252,12 @@ export default function ProfilePage() {
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
-                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo()}} />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo()}} />
+                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo}} />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo}} />
                             </div>
 
                             <div className="space-y-4">
-                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails()}} />
+                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails}} />
 
                                 <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between gap-4 px-4 py-3">
