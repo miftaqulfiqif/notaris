@@ -12,6 +12,7 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 import { getInitials } from '@/shared/utils/initials';
 
 interface InfoRow {
+    key: string;
     label: string;
     value: string;
     isMuted?: boolean;
@@ -35,7 +36,7 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
     useEffect(() => {
         const initialData: Record<string, string> = {};
         rows.forEach(row => {
-            initialData[row.label] = row.value;
+            initialData[row.key] = row.value;
         });
 
         setFormData(initialData);
@@ -91,11 +92,11 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                             {isEditing ? (
                                     <input
                                         className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                        value={formData[row.label] || ''}
+                                        value={formData[row.key] || ''}
                                         onChange={(e) =>
                                             setFormData({
                                                 ...formData,
-                                                [row.label]: e.target.value
+                                                [row.key]: e.target.value
                                             })
                                         }
                                     />
@@ -173,30 +174,31 @@ export default function ProfilePage() {
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
 
     const userInfoRows: InfoRow[] = [
-        { label: 'Nama lengkap', value: profileName, isMuted: profileName === '-' },
-        { label: 'Gender', value: gender, isMuted: gender === '-' },
-        { label: 'Nomor Handphone', value: phone, isMuted: phone === '-' },
-        { label: 'Jabatan', value: jabatan, isMuted: jabatan === '-' },
+        { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-' },
+        { key: 'gender', label: 'Gender', value: gender, isMuted: gender === '-' },
+        { key: 'phone', label: 'Nomor Handphone', value: phone, isMuted: phone === '-' },
+        { key: 'position', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-' },
     ];
 
     const institutionInfoRows: InfoRow[] = [
         {
+            key: 'name',
             label: 'Nama Instansi',
             value: getDisplayValue(profileDetail?.informasi_instansi.notaris_name ?? user?.notaris_name),
         },
-        { label: 'Email', value: instansiEmail, isMuted: instansiEmail === '-' },
-        { label: 'No.Telp', value: instansiPhone, isMuted: instansiPhone === '-' },
-        { label: 'Paket langganan', value: instansiPaket, isMuted: instansiPaket === '-' },
+        { key: 'email', label: 'Email', value: instansiEmail, isMuted: instansiEmail === '-' },
+        { key: 'phone', label: 'No.Telp', value: instansiPhone, isMuted: instansiPhone === '-' },
+        { key: 'package', label: 'Paket langganan', value: instansiPaket, isMuted: instansiPaket === '-' },
     ];
 
     const accountDetailRows: InfoRow[] = [
-        { label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name) },
-        { label: 'Email', value: profileEmail, isMuted: profileEmail === '-' },
-        { label: 'Password', value: '********', isMasked: true },
-        { label: 'Role', value: accountRole, isMuted: accountRole === '-' },
-        { label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at) },
-        { label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-' },
-        { label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
+        { key: 'username', label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name) },
+        { key: 'email', label: 'Email', value: profileEmail, isMuted: profileEmail === '-' },
+        { key: 'password', label: 'Password', value: '********', isMasked: true },
+        { key: 'role', label: 'Role', value: accountRole, isMuted: accountRole === '-' },
+        { key: 'created_at', label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at) },
+        { key: 'last_login', label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-' },
+        { key: 'last_updated_password', label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
     ];
 
     const handleSaveUserInfo = (data: any) => {
@@ -252,12 +254,12 @@ export default function ProfilePage() {
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
-                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo}} />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo}} />
+                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={handleSaveUserInfo} />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={handleSaveInstitutionInfo} />
                             </div>
 
                             <div className="space-y-4">
-                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails}} />
+                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={handleSaveAccountDetails} />
 
                                 <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between gap-4 px-4 py-3">
