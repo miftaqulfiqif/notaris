@@ -15,6 +15,8 @@ interface InfoRow {
     key: string;
     label: string;
     value: string;
+    type?: 'text' | 'select';
+    options?: { label: string; value: string }[];
     isMuted?: boolean;
     isMasked?: boolean;
 }
@@ -89,20 +91,41 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                             {row.label}
                         </div>
                         <div className="flex items-center justify-between gap-2 bg-gray-50/50 px-4 py-3">
-                            {isEditing ? (
-                                    <input
-                                        className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                        value={formData[row.key] || ''}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                [row.key]: e.target.value
-                                            })
-                                        }
-                                    />
-                                ) : (
-                                    <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{row.value}</span>
-                                )}
+                        {isEditing ? (
+                            row.type === 'select' ? (
+                                <select
+                                    className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                    value={formData[row.key] || ''}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            [row.key]: e.target.value
+                                        })
+                                    }
+                                >
+                                    <option value="">Pilih {row.label}</option>
+
+                                    {row.options?.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                    value={formData[row.key] || ''}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            [row.key]: e.target.value
+                                        })
+                                    }
+                                />
+                            )
+                        ) : (
+                            <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{getDisplayLabel(row, row.value)}</span>
+                        )}
                             {row.isMasked && <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />}
                         </div>
                     </div>
@@ -131,6 +154,16 @@ function getDisplayValue(value?: string | null, fallback = '-'): string {
 
     return trimmedValue;
 }
+
+const getDisplayLabel = (row: InfoRow, value: string) => {
+    if (row.type === 'select') {
+        return (
+            row.options?.find((opt) => opt.value === value)?.label || value
+        );
+    }
+
+    return value;
+};
 
 export default function ProfilePage() {
     const { user, logout } = useAuthContext();
@@ -175,7 +208,12 @@ export default function ProfilePage() {
 
     const userInfoRows: InfoRow[] = [
         { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-' },
-        { key: 'gender', label: 'Gender', value: gender, isMuted: gender === '-' },
+        { key: 'gender', label: 'Gender', value: gender, type: 'select', 
+            options: [
+                { label: 'Laki-laki', value: 'male' },
+                { label: 'Perempuan', value: 'female' }
+            ]
+        },
         { key: 'phone', label: 'Nomor Handphone', value: phone, isMuted: phone === '-' },
         { key: 'position', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-' },
     ];
