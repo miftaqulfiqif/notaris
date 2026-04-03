@@ -180,17 +180,20 @@ export default function ProfilePage() {
 
     const handleSaveUserInfo = () => {
         // Implementasi penyimpanan informasi user
-        setIsEditing(false);
+        console.log('Menyimpan informasi user...');
+        setEditingSection(null);
     };
 
     const handleSaveInstitutionInfo = () => {
         // Implementasi penyimpanan informasi instansi
-        setIsEditing(false);
+        console.log('Menyimpan informasi instansi...');
+        setEditingSection(null);
     };
 
     const handleSaveAccountDetails = () => {
         // Implementasi penyimpanan detail akun
-        setIsEditing(false);
+        console.log('Menyimpan detail akun...');
+        setEditingSection(null);
     };
 
     return (
@@ -228,12 +231,12 @@ export default function ProfilePage() {
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
-                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo}} />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo}} />
+                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo()}} />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo()}} />
                             </div>
 
                             <div className="space-y-4">
-                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails}} />
+                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails()}} />
 
                                 <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between gap-4 px-4 py-3">
