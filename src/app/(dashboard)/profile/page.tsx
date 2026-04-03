@@ -69,10 +69,7 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                         </button>
 
                         <button
-                            onClick={() => {
-                                console.log(title, formData)
-                                onSave?.(formData)
-                            }}
+                            onClick={() => {onSave?.(formData)}}
                             className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
                         >
                             Save
