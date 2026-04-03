@@ -21,20 +21,45 @@ interface InfoRow {
 interface InfoCardProps {
     title: string;
     rows: InfoRow[];
+    isEditing?: boolean;
+    onEdit?: () => void;
+    onCancel?: () => void;
+    onSave?: () => void;
 }
 
-function InfoCard({ title, rows }: InfoCardProps) {
+function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCardProps) {
     return (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-                <h2 className="text-[22px] font-semibold text-gray-800 leading-none">{title}</h2>
-                <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
-                </button>
+                <h2 className="text-[22px] font-semibold text-gray-800 leading-none">
+                    {title}
+                </h2>
+
+                {!isEditing ? (
+                    <button
+                        onClick={onEdit}
+                        className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                    </button>
+                ) : (
+                    <div className="flex gap-4 px-3">
+                        <button
+                            onClick={onCancel}
+                            className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            onClick={onSave}
+                            className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
+                        >
+                            Save
+                        </button>
+                    </div>
+                )}
             </header>
 
             <div>
@@ -47,13 +72,14 @@ function InfoCard({ title, rows }: InfoCardProps) {
                             {row.label}
                         </div>
                         <div className="flex items-center justify-between gap-2 bg-gray-50/50 px-4 py-3">
-                            <span
-                                className={`text-base sm:text-lg leading-none ${
-                                    row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'
-                                }`}
-                            >
-                                {row.value}
-                            </span>
+                            {isEditing ? (
+                                    <input
+                                        defaultValue={row.value}
+                                        className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                    />
+                                ) : (
+                                    <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{row.value}</span>
+                                )}
                             {row.isMasked && <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />}
                         </div>
                     </div>
@@ -87,6 +113,8 @@ export default function ProfilePage() {
     const { user, logout } = useAuthContext();
     const [profileDetail, setProfileDetail] = useState<UserDetailData | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingSection, setEditingSection] = useState<string | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -150,6 +178,21 @@ export default function ProfilePage() {
         { label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
     ];
 
+    const handleSaveUserInfo = () => {
+        // Implementasi penyimpanan informasi user
+        setIsEditing(false);
+    };
+
+    const handleSaveInstitutionInfo = () => {
+        // Implementasi penyimpanan informasi instansi
+        setIsEditing(false);
+    };
+
+    const handleSaveAccountDetails = () => {
+        // Implementasi penyimpanan detail akun
+        setIsEditing(false);
+    };
+
     return (
         <div className="flex h-screen overflow-hidden">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -185,12 +228,12 @@ export default function ProfilePage() {
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
-                                <InfoCard title="Informasi User" rows={userInfoRows} />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} />
+                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveUserInfo}} />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveInstitutionInfo}} />
                             </div>
 
                             <div className="space-y-4">
-                                <InfoCard title="Detail Akun" rows={accountDetailRows} />
+                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={() => {handleSaveAccountDetails}} />
 
                                 <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between gap-4 px-4 py-3">
