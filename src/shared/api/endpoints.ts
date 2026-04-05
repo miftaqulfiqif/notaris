@@ -53,6 +53,8 @@ export const ENDPOINTS = {
         OTP_REQUEST: `${API_BASE_URL}/user/otp/request`,
         OTP_VERIFY: `${API_BASE_URL}/user/otp/verify`,
         DETAIL: `${API_BASE_URL}/user/detail`,
+        DELETE_ACCOUNT: `${API_BASE_URL}/user/delete-user-account`,
+        EDIT_USER_ACCOUNT: `${API_BASE_URL}/user/update-user-account`,
     },
     NOTARIS: {
         UPDATE: `${API_BASE_URL}/notaris/update`,

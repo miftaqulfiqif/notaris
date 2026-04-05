@@ -7,7 +7,7 @@ import { DashboardHeader } from '@/layout/DashboardHeader';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { getUserRoleName } from '@/features/auth/utils/user';
 import type { UserDetailData, UserDetailResponse } from '@/features/auth/types';
-import { apiGet } from '@/shared/api/api-client';
+import { apiGet, apiPatch, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { getInitials } from '@/shared/utils/initials';
 
@@ -215,7 +215,7 @@ export default function ProfilePage() {
             ]
         },
         { key: 'phone', label: 'Nomor Handphone', value: phone, isMuted: phone === '-', editable: true },
-        { key: 'position', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-', editable: false },
+        { key: 'jabatan', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-', editable: false },
     ];
 
     const institutionInfoRows: InfoRow[] = [
@@ -244,6 +244,8 @@ export default function ProfilePage() {
     const handleSaveUserInfo = (data: any) => {
         // Implementasi penyimpanan informasi user
         console.log('Menyimpan informasi user :', data);
+        apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
+        window.location.reload();
         setEditingSection(null);
     };
 
@@ -255,9 +257,20 @@ export default function ProfilePage() {
 
     const handleSaveAccountDetails = (data: any) => {
         // Implementasi penyimpanan detail akun
+        data.created_at = undefined;
+        data.last_login = undefined;
+        data.last_updated_password = undefined;
+        data.role = undefined;
         console.log('Menyimpan detail akun :', data);
+        apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
     };
+
+    const handleDeleteAccount = () => {
+        // Implementasi penghapusan akun
+        apiPost(ENDPOINTS.USER.DELETE_ACCOUNT);
+        console.log('Menghapus akun');
+    }
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -316,9 +329,9 @@ export default function ProfilePage() {
                                                 Keluar
                                             </button>
                                             <button
+                                                onClick={handleDeleteAccount}
                                                 type="button"
-                                                disabled
-                                                className="rounded-lg border border-gray-200 bg-gray-100 px-5 py-2 text-gray-400 cursor-not-allowed"
+                                                className="rounded-lg border border-red-200 bg-red-100 px-5 py-2 text-red-600 hover:bg-red-200 transition-colors"
                                             >
                                                 Hapus akun
                                             </button>
