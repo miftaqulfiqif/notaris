@@ -19,6 +19,7 @@ interface InfoRow {
     options?: { label: string; value: string }[];
     isMuted?: boolean;
     isMasked?: boolean;
+    editable?: boolean;
 }
 
 interface InfoCardProps {
@@ -88,41 +89,41 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                             {row.label}
                         </div>
                         <div className="flex items-center justify-between gap-2 bg-gray-50/50 px-4 py-3">
-                        {isEditing ? (
-                            row.type === 'select' ? (
-                                <select
-                                    className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                    value={formData[row.key] || ''}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            [row.key]: e.target.value
-                                        })
-                                    }
-                                >
-                                    <option value="">Pilih {row.label}</option>
+                            {isEditing && row.editable ? (
+                                row.type === 'select' ? (
+                                    <select
+                                        className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                        value={formData[row.key] || ''}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                [row.key]: e.target.value
+                                            })
+                                        }
+                                    >
+                                        <option value="">Pilih {row.label}</option>
 
-                                    {row.options?.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                        {row.options?.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                        value={formData[row.key] || ''}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                [row.key]: e.target.value
+                                            })
+                                        }
+                                    />
+                                )
                             ) : (
-                                <input
-                                    className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                    value={formData[row.key] || ''}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            [row.key]: e.target.value
-                                        })
-                                    }
-                                />
-                            )
-                        ) : (
-                            <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{getDisplayLabel(row, row.value)}</span>
-                        )}
+                                <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{getDisplayLabel(row, row.value)}</span>
+                            )}
                             {row.isMasked && <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />}
                         </div>
                     </div>
@@ -204,15 +205,15 @@ export default function ProfilePage() {
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
 
     const userInfoRows: InfoRow[] = [
-        { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-' },
-        { key: 'gender', label: 'Gender', value: gender, type: 'select', 
+        { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-', editable: true },
+        { key: 'gender', label: 'Gender', value: gender, type: 'select', editable: true,
             options: [
                 { label: 'Laki-laki', value: 'male' },
                 { label: 'Perempuan', value: 'female' }
             ]
         },
-        { key: 'phone', label: 'Nomor Handphone', value: phone, isMuted: phone === '-' },
-        { key: 'position', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-' },
+        { key: 'phone', label: 'Nomor Handphone', value: phone, isMuted: phone === '-', editable: true },
+        { key: 'position', label: 'Jabatan', value: jabatan, isMuted: jabatan === '-', editable: false },
     ];
 
     const institutionInfoRows: InfoRow[] = [
@@ -220,20 +221,22 @@ export default function ProfilePage() {
             key: 'name',
             label: 'Nama Instansi',
             value: getDisplayValue(profileDetail?.informasi_instansi.notaris_name ?? user?.notaris_name),
+            editable: false
         },
-        { key: 'email', label: 'Email', value: instansiEmail, isMuted: instansiEmail === '-' },
-        { key: 'phone', label: 'No.Telp', value: instansiPhone, isMuted: instansiPhone === '-' },
-        { key: 'package', label: 'Paket langganan', value: instansiPaket, isMuted: instansiPaket === '-' },
+        { key: 'email', label: 'Email', value: instansiEmail, isMuted: instansiEmail === '-', editable: false },
+        { key: 'phone', label: 'No.Telp', value: instansiPhone, isMuted: instansiPhone === '-', editable: false },
+        { key: 'package', label: 'Paket langganan', value: instansiPaket, isMuted: instansiPaket === '-', editable: false },
     ];
 
     const accountDetailRows: InfoRow[] = [
-        { key: 'username', label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name) },
-        { key: 'email', label: 'Email', value: profileEmail, isMuted: profileEmail === '-' },
-        { key: 'password', label: 'Password', value: '********', isMasked: true },
-        { key: 'role', label: 'Role', value: accountRole, isMuted: accountRole === '-' },
-        { key: 'created_at', label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at) },
-        { key: 'last_login', label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-' },
-        { key: 'last_updated_password', label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-' },
+        { key: 'username', label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name), editable: true },
+        { key: 'email', label: 'Email', value: profileEmail, isMuted: profileEmail === '-', editable: true },
+        { key: 'password', label: 'Password', value: '********', isMasked: true, editable: true },
+        { key: 'confirm_password', label: 'Konfirmasi password', value: '********', isMasked: true, editable: true },
+        { key: 'role', label: 'Role', value: accountRole, isMuted: accountRole === '-', editable: false,},
+        { key: 'created_at', label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at), editable: false },
+        { key: 'last_login', label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-', editable: false },
+        { key: 'last_updated_password', label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-', editable: false },
     ];
 
     const handleSaveUserInfo = (data: any) => {
