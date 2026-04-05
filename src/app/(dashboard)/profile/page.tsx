@@ -29,10 +29,10 @@ interface InfoCardProps {
     onEdit?: () => void;
     onCancel?: () => void;
     onSave?: (data: Record<string, string>) => void;
-
+    editable?: boolean;
 }
 
-function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCardProps) {
+function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
 
     const [formData, setFormData] = useState<Record<string, string>>({});
 
@@ -52,30 +52,32 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave }: InfoCard
                     {title}
                 </h2>
 
-                {!isEditing ? (
-                    <button
-                        onClick={onEdit}
-                        className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                    </button>
-                ) : (
-                    <div className="flex gap-4 px-3">
+                {editable !== false && (
+                    !isEditing ? (
                         <button
-                            onClick={onCancel}
+                            onClick={onEdit}
                             className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
                         >
-                            Cancel
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
                         </button>
+                    ) : (
+                        <div className="flex gap-4 px-3">
+                            <button
+                                onClick={onCancel}
+                                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                            >
+                                Cancel
+                            </button>
 
-                        <button
-                            onClick={() => {onSave?.(formData)}}
-                            className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
-                        >
-                            Save
-                        </button>
-                    </div>
+                            <button
+                                onClick={() => {onSave?.(formData)}}
+                                className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    )
                 )}
             </header>
 
@@ -292,12 +294,12 @@ export default function ProfilePage() {
 
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
-                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={handleSaveUserInfo} />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={handleSaveInstitutionInfo} />
+                                <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={handleSaveUserInfo} editable />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={handleSaveInstitutionInfo} editable={false} />
                             </div>
 
                             <div className="space-y-4">
-                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={handleSaveAccountDetails} />
+                                <InfoCard title="Detail Akun" rows={accountDetailRows} isEditing={editingSection === 'account'} onEdit={() => setEditingSection('account')} onCancel={() => setEditingSection(null)} onSave={handleSaveAccountDetails} editable/>
 
                                 <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                                     <div className="flex items-center justify-between gap-4 px-4 py-3">
