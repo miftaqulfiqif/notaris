@@ -36,22 +36,23 @@ interface InfoCardProps {
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
 
     const initialData = useMemo(() => {
-        
-        const data: Record<string, string> = {};
-        
-        rows.forEach(row => {data[row.key] = row.value});
-        
-        return data;
-
+        return rows.reduce<Record<string, string>>((acc, row) => {
+            acc[row.key] = row.value ?? '';
+            return acc;
+        }, {});
     }, [rows]);
 
-    const [formData, setFormData] = useState<Record<string, string>>(initialData);
+    const [formData, setFormData] = useState<Record<string, string>>({});
 
-    useEffect(() => {
-        if (isEditing) {
-            setFormData(initialData);
-        }
-    }, [initialData, isEditing]);
+    const handleEdit = () => {
+        setFormData(initialData);
+        onEdit?.();
+    };
+
+    const handleCancel = () => {
+        setFormData(initialData);
+        onCancel?.();
+    };
 
     return (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -63,7 +64,7 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                 {editable !== false && (
                     !isEditing ? (
                         <button
-                            onClick={onEdit}
+                            onClick={handleEdit}
                             className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
                         >
                             <Pencil className="h-3.5 w-3.5" />
@@ -72,14 +73,14 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                     ) : (
                         <div className="flex gap-4 px-3">
                             <button
-                                onClick={onCancel}
+                                onClick={handleCancel}
                                 className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
                             >
                                 Cancel
                             </button>
 
                             <button
-                                onClick={() => {onSave?.(formData)}}
+                                onClick={() => onSave?.(formData)}
                                 className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-500"
                             >
                                 Save
@@ -92,23 +93,26 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
             <div>
                 {rows.map((row) => (
                     <div
-                        key={row.label}
+                        key={row.key}
                         className="grid grid-cols-[42%_58%] border-b border-gray-200 last:border-b-0"
                     >
                         <div className="px-4 py-3 text-base sm:text-lg font-semibold text-gray-600 leading-none">
                             {row.label}
                         </div>
+
                         <div className="flex items-center justify-between gap-2 bg-gray-50/50 px-4 py-3">
+
                             {isEditing && row.editable ? (
+
                                 row.type === 'select' ? (
                                     <select
                                         className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                        value={formData[row.key] || ''}
+                                        value={formData[row.key] ?? ''}
                                         onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
+                                            setFormData(prev => ({
+                                                ...prev,
                                                 [row.key]: e.target.value
-                                            })
+                                            }))
                                         }
                                     >
                                         <option value="">Pilih {row.label}</option>
@@ -118,23 +122,33 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                                                 {opt.label}
                                             </option>
                                         ))}
+
                                     </select>
                                 ) : (
+
                                     <input
                                         className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
-                                        value={formData[row.key] || ''}
+                                        value={formData[row.key] ?? ''}
                                         onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
+                                            setFormData(prev => ({
+                                                ...prev,
                                                 [row.key]: e.target.value
-                                            })
+                                            }))
                                         }
                                     />
+
                                 )
+
                             ) : (
-                                <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>{getDisplayLabel(row, row.value)}</span>
+                                <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>
+                                    {getDisplayLabel(row, row.value)}
+                                </span>
                             )}
-                            {row.isMasked && <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />}
+
+                            {row.isMasked && (
+                                <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />
+                            )}
+
                         </div>
                     </div>
                 ))}
@@ -178,6 +192,8 @@ export default function ProfilePage() {
     const [profileDetail, setProfileDetail] = useState<UserDetailData | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
+    const [popUpLogout, setPopUpLogout] = useState(false);  
+    const [popUpDeleteAccount, setPopUpDeleteAccount] = useState(false);  
 
     useEffect(() => {
         let isMounted = true;
@@ -213,8 +229,7 @@ export default function ProfilePage() {
     const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? getUserRoleName(user));
     const lastLogin = formatDate(profileDetail?.detail_akun.last_login);
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
-    const [popUpLogout, setPopUpLogout] = useState(false);  
-    const [popUpDeleteAccount, setPopUpDeleteAccount] = useState(false);  
+    const password = getDisplayValue(profileDetail?.detail_akun.password);
 
     const userInfoRows: InfoRow[] = [
         { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-', editable: true },
@@ -243,8 +258,8 @@ export default function ProfilePage() {
     const accountDetailRows: InfoRow[] = [
         { key: 'username', label: 'Nama pengguna', value: getDisplayValue(profileDetail?.detail_akun.username ?? user?.username ?? user?.name), editable: true },
         { key: 'email', label: 'Email', value: profileEmail, isMuted: profileEmail === '-', editable: true },
-        { key: 'password', label: 'Password', value: '********', isMasked: true, editable: true },
-        { key: 'confirm_password', label: 'Konfirmasi password', value: '********', isMasked: true, editable: true },
+        // { key: 'password', label: 'Password', value: '********', isMasked: true, editable: true },
+        // { key: 'confirm_password', label: 'Konfirmasi password', value: '********', isMasked: true, editable: true },
         { key: 'role', label: 'Role', value: accountRole, isMuted: accountRole === '-', editable: false,},
         { key: 'created_at', label: 'Akun dibuat', value: formatDate(profileDetail?.detail_akun.created_at ?? user?.created_at), editable: false },
         { key: 'last_login', label: 'Terakhir login', value: lastLogin, isMuted: lastLogin === '-', editable: false },
@@ -274,6 +289,7 @@ export default function ProfilePage() {
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
+        window.location.reload();
     };
 
     const handleDeleteAccount = () => {
