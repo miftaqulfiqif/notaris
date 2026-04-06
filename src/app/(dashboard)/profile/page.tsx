@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, EyeOff, Pencil, LogOut } from 'lucide-react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
@@ -10,6 +10,7 @@ import type { UserDetailData, UserDetailResponse } from '@/features/auth/types';
 import { apiGet, apiPatch, apiPost } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { getInitials } from '@/shared/utils/initials';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 interface InfoRow {
     key: string;
@@ -34,17 +35,24 @@ interface InfoCardProps {
 
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
 
-    const [formData, setFormData] = useState<Record<string, string>>({});
+    const initialData = useMemo(() => {
+        
+        const data: Record<string, string> = {};
+        
+        rows.forEach(row => {data[row.key] = row.value});
+        
+        return data;
+
+    }, [rows]);
+
+    const [formData, setFormData] = useState<Record<string, string>>(initialData);
 
     useEffect(() => {
-        const initialData: Record<string, string> = {};
-        rows.forEach(row => {
-            initialData[row.key] = row.value;
-        });
+        if (isEditing) {
+            setFormData(initialData);
+        }
+    }, [initialData, isEditing]);
 
-        setFormData(initialData);
-    }, [rows, isEditing]);
-    
     return (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
@@ -205,6 +213,8 @@ export default function ProfilePage() {
     const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? getUserRoleName(user));
     const lastLogin = formatDate(profileDetail?.detail_akun.last_login);
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
+    const [popUpLogout, setPopUpLogout] = useState(false);  
+    const [popUpDeleteAccount, setPopUpDeleteAccount] = useState(false);  
 
     const userInfoRows: InfoRow[] = [
         { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-', editable: true },
@@ -329,7 +339,7 @@ export default function ProfilePage() {
                                                 Keluar
                                             </button>
                                             <button
-                                                onClick={handleDeleteAccount}
+                                                onClick={() => setPopUpDeleteAccount(true)}
                                                 type="button"
                                                 className="rounded-lg border border-red-200 bg-red-100 px-5 py-2 text-red-600 hover:bg-red-200 transition-colors"
                                             >
@@ -343,6 +353,16 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
+            <ConfirmDialog
+                isOpen={popUpDeleteAccount}
+                title="Hapus Akun"
+                message="Apakah anda yakin ingin menghapus akun?"
+                confirmText="Hapus"
+                cancelText="Batal"
+                type="danger"
+                onConfirm={handleDeleteAccount}
+                onCancel={() => setPopUpDeleteAccount(false)}
+            />
         </div>
     );
 }
