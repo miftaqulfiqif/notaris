@@ -33,6 +33,19 @@ interface InfoCardProps {
     editable?: boolean;
 }
 
+interface UpdateUserInfo {
+    name?: string;
+    gender?: string;
+    phone?: string;
+}
+
+interface UpdateAccountDetails {
+    username?: string;
+    email?: string;
+    password?: string;
+    confirm_password?: string;
+}
+
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
 
     const initialData = useMemo(() => {
@@ -192,7 +205,6 @@ export default function ProfilePage() {
     const [profileDetail, setProfileDetail] = useState<UserDetailData | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
-    const [popUpLogout, setPopUpLogout] = useState(false);  
     const [popUpDeleteAccount, setPopUpDeleteAccount] = useState(false);  
 
     useEffect(() => {
@@ -229,7 +241,6 @@ export default function ProfilePage() {
     const accountRole = getDisplayValue(profileDetail?.detail_akun.role ?? getUserRoleName(user));
     const lastLogin = formatDate(profileDetail?.detail_akun.last_login);
     const lastUpdatedPassword = formatDate(profileDetail?.detail_akun.last_updated_password);
-    const password = getDisplayValue(profileDetail?.detail_akun.password);
 
     const userInfoRows: InfoRow[] = [
         { key: 'name', label: 'Nama lengkap', value: profileName, isMuted: profileName === '-', editable: true },
@@ -266,7 +277,7 @@ export default function ProfilePage() {
         { key: 'last_updated_password', label: 'Perubahan kata sandi terakhir', value: lastUpdatedPassword, isMuted: lastUpdatedPassword === '-', editable: false },
     ];
 
-    const handleSaveUserInfo = (data: any) => {
+    const handleSaveUserInfo = (data: UpdateUserInfo) => {
         // Implementasi penyimpanan informasi user
         console.log('Menyimpan informasi user :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
@@ -274,18 +285,12 @@ export default function ProfilePage() {
         setEditingSection(null);
     };
 
-    const handleSaveInstitutionInfo = (data: any) => {
-        // Implementasi penyimpanan informasi instansi
-        console.log('Menyimpan informasi instansi :', data);
-        setEditingSection(null);
-    };
-
-    const handleSaveAccountDetails = (data: any) => {
+    const handleSaveAccountDetails = (data: UpdateAccountDetails) => {
         // Implementasi penyimpanan detail akun
-        data.created_at = undefined;
-        data.last_login = undefined;
-        data.last_updated_password = undefined;
-        data.role = undefined;
+        // data.created_at = undefined;
+        // data.last_login = undefined;
+        // data.last_updated_password = undefined;
+        // data.role = undefined;
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
@@ -334,7 +339,7 @@ export default function ProfilePage() {
                         <div className="mt-8 grid gap-4 xl:grid-cols-2">
                             <div className="space-y-4">
                                 <InfoCard title="Informasi User" rows={userInfoRows} isEditing={editingSection === 'user'} onEdit={() => setEditingSection('user')} onCancel={() => setEditingSection(null)} onSave={handleSaveUserInfo} editable />
-                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} onSave={handleSaveInstitutionInfo} editable={false} />
+                                <InfoCard title="Informasi Instansi" rows={institutionInfoRows} isEditing={editingSection === 'institution'} onEdit={() => setEditingSection('institution')} onCancel={() => setEditingSection(null)} editable={false} />
                             </div>
 
                             <div className="space-y-4">
