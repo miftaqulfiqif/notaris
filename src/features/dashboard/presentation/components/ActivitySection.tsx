@@ -48,6 +48,7 @@ import { useSidebar } from '@/layout/providers/SidebarContext';
 import type { FolderSidebarResponse, ServiceType } from '@/features/services/types';
 import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
 import folderIcon from '@/assets/icons/folder.png';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 interface ActivitySectionProps {
     onSelectActivity?: (activity: Activity) => void;
@@ -453,6 +454,8 @@ export function ActivitySection({
     const [detailSidebarFolder, setDetailSidebarFolder] = useState<{ id: string; name: string } | null>(null);
     const [sortField, setSortField] = useState<ActivitySortField>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+    const [popUpDeleteFolder, setPopUpDeleteFolder] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
 
     const resolveFavoriteTarget = useCallback((activity: Activity) => {
         const itemType = activity.itemType ?? 'FOLDER';
@@ -1447,7 +1450,8 @@ export function ActivitySection({
                 label: 'Tambahkan ke sampah',
                 icon: <Trash2 className="h-4 w-4" />,
                 onClick: () => {
-                    void handleMoveToTrash();
+                    setDeleteTarget(activeActivity);
+                    setPopUpDeleteFolder(true);
                 },
                 className: isTrashLoading ? 'pointer-events-none opacity-60' : '',
             },
@@ -1832,6 +1836,20 @@ export function ActivitySection({
                 confirmText="Ya, Pindahkan"
                 cancelText="Batal"
                 variant="danger"
+            />
+            <ConfirmDialog
+                isOpen={popUpDeleteFolder}
+                title="Pindahkan ke Sampah"
+                message="Apakah anda yakin ingin memindahkan folder ini ke sampah? Tindakan ini dapat dibalikkan dari halaman sampah."
+                confirmText="Pindahkan"
+                cancelText="Batal"
+                type="danger"
+                onConfirm={async () => {
+                    if (!deleteTarget) return;
+                    await handleMoveToTrash(deleteTarget);
+                    setPopUpDeleteFolder(false);
+                }}
+                onCancel={() => setPopUpDeleteFolder(false)}
             />
         </div>
     );
