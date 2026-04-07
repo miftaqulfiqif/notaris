@@ -18,6 +18,8 @@ import { useFavoriteFolder } from '@/features/services/presentation/hooks/useFav
 import { FolderDetailOffcanvas } from '@/features/services/presentation/components/FolderDetailOffcanvas';
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import folderIcon from '@/assets/icons/folder.png';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { Activity } from '@/features/dashboard/types/activity.types';
 
 interface CompanyItem {
     id: string;
@@ -274,6 +276,8 @@ export default function CompanyPage() {
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const { toast, showToast, hideToast } = useToast();
     const { addToFavorite, removeFromFavorite, isLoading: isFavoriteLoading } = useFavoriteFolder();
+    const [popUpDeleteFolder, setPopUpDeleteFolder] = useState(false);
+    const [deleteTargetCompany, setDeleteTargetCompany] = useState<CompanyItem | null>(null);
     const { activeDropdown, openDropdown, closeDropdown, isOpen, triggerClass, menuClass } =
         useDropdown<string>({
             triggerClass: 'company-table-dropdown-trigger',
@@ -607,16 +611,20 @@ export default function CompanyPage() {
         });
     }, [activeCompany]);
 
-    const handleMoveToTrash = useCallback(async () => {
-        if (!activeCompany || isMovingToTrash) return;
+    const handleMoveToTrash = useCallback(async (targetCompany?: CompanyItem | null) => {
+        const company = targetCompany ?? activeCompany;
+
+        if (!company || isMovingToTrash) return;
 
         setIsMovingToTrash(true);
         try {
             await apiPost(ENDPOINTS.USER.MULTIPLE_ITEM_DELETE, {
-                items: [{ item_id: activeCompany.id, item_type: 'FOLDER' }],
+                items: [{ item_id: company.id, item_type: 'FOLDER' }],
             });
-            setItems((prev) => prev.filter((item) => item.id !== activeCompany.id));
-            setSelectedIds((prev) => prev.filter((id) => id !== activeCompany.id));
+
+            setItems((prev) => prev.filter((item) => item.id !== company.id));
+            setSelectedIds((prev) => prev.filter((id) => id !== company.id));
+
             showToast({ message: 'Berhasil dipindahkan ke sampah', variant: 'success' });
         } catch {
             showToast({ message: 'Gagal memindahkan ke sampah', variant: 'error' });
@@ -878,7 +886,8 @@ export default function CompanyPage() {
                 label: 'Tambahkan ke sampah',
                 icon: <Trash2 className="h-4 w-4" />,
                 onClick: () => {
-                    void handleMoveToTrash();
+                    setDeleteTargetCompany(activeCompany);
+                    setPopUpDeleteFolder(true);
                 },
                 className: isMovingToTrash ? 'pointer-events-none opacity-60' : '',
             },
@@ -1360,6 +1369,20 @@ export default function CompanyPage() {
                     statusDisabled={isBulkActionLoading || isRenamingFolder}
                 />
             )}
+            <ConfirmDialog
+                isOpen={popUpDeleteFolder}
+                title="Pindahkan ke Sampah"
+                message="Apakah anda yakin ingin memindahkan folder ini ke sampah? Tindakan ini dapat dibalikkan dari halaman sampah."
+                confirmText="Pindahkan"
+                cancelText="Batal"
+                type="danger"
+                onConfirm={async () => {
+                    await handleMoveToTrash(deleteTargetCompany);
+                    setPopUpDeleteFolder(false);
+                    setDeleteTargetCompany(null);
+                }}
+                onCancel={() => setPopUpDeleteFolder(false)}
+            />
         </div>
     );
 }
