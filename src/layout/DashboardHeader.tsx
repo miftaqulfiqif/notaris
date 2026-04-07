@@ -18,6 +18,7 @@ import { useToast } from '@/shared/hooks/useToast';
 import { FolderSidebarResponse, ServiceType } from '@/features/services/types';
 import type { NotificationItem } from '@/features/notifications/types/notification.types';
 import type { Service } from '@/features/dashboard/types/service.types';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 type SearchFilter = 'ALL' | 'DOCUMENT' | 'FOLDER';
 const SEARCH_FILTER_ORDER: SearchFilter[] = ['ALL', 'DOCUMENT', 'FOLDER'];
@@ -172,6 +173,7 @@ export function DashboardHeader() {
     const [navigatingSearchItemId, setNavigatingSearchItemId] = useState<string | null>(null);
     const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(-1);
     const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+    const [popUpLogoutAccount, setPopUpLogoutAccount] = useState(false);
     const {
         notifications,
         isLoading: isNotificationLoading,
@@ -1035,10 +1037,7 @@ export function DashboardHeader() {
                                 <p className="text-xs text-gray-400 truncate">{user?.email || 'email@example.com'}</p>
                             </button>
                             <button
-                                onClick={() => {
-                                    logout();
-                                    setIsDropdownOpen(false);
-                                }}
+                                onClick={() => setPopUpLogoutAccount(true)}
                                 className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
                             >
                                 <LogOut className="w-4 h-4" />
@@ -1050,6 +1049,19 @@ export function DashboardHeader() {
             </div>
             </header>
             <Toast toast={toast} onClose={hideToast} position="bottom-left" />
+            <ConfirmDialog
+                isOpen={popUpLogoutAccount}
+                title="Logout"
+                message="Apakah anda yakin ingin keluar dari akun Anda?"
+                confirmText="Keluar"
+                cancelText="Batal"
+                type="danger"
+                onConfirm={() => {
+                    logout();
+                    setIsDropdownOpen(false);
+                }}
+                onCancel={() => setPopUpLogoutAccount(false)}
+            />
         </>
     );
 }

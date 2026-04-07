@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type ConfirmDialogProps = {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -42,8 +44,8 @@ export default function ConfirmDialog({
     info: "bg-blue-600 hover:bg-blue-700",
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40"
@@ -51,15 +53,15 @@ export default function ConfirmDialog({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-xl shadow-lg w-full max-w-md p-6 animate-fadeIn">
-        <h2 className="text-black text-lg font-semibold mb-2 ">{title}</h2>
+      <div className="relative bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+        <h2 className="text-black text-lg font-semibold mb-2">{title}</h2>
 
         <p className="text-gray-600 mb-6">{message}</p>
 
         <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-100 text-black"
+            className="text-black px-4 py-2 border rounded-lg hover:bg-gray-100"
           >
             {cancelText}
           </button>
@@ -72,6 +74,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
