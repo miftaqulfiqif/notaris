@@ -15,6 +15,7 @@ export const ENDPOINTS = {
         CREATE_NOTARIS: `${API_BASE_URL}/user/create-notaris`,
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
+        FORGOT_PASSWORD: `${API_BASE_URL}/user/forgot-password`,
     },
     USER: {
         CREATE: `${API_BASE_URL}/user/create`,

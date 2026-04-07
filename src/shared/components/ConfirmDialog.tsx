@@ -52,7 +52,7 @@ export default function ConfirmDialog({
 
       {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-lg w-full max-w-md p-6 animate-fadeIn">
-        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        <h2 className="text-black text-lg font-semibold mb-2 ">{title}</h2>
 
         <p className="text-gray-600 mb-6">{message}</p>
 

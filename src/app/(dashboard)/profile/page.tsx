@@ -138,9 +138,8 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
 
                                     </select>
                                 ) : (
-
                                     <input
-                                        className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}
+                                        className={`w-full text-base sm:text-lg leading-none ${row.editable ? 'font-semibold text-gray-900' : ' text-gray-400'}`}
                                         value={formData[row.key] ?? ''}
                                         onChange={(e) =>
                                             setFormData(prev => ({
@@ -149,11 +148,9 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                                             }))
                                         }
                                     />
-
                                 )
-
                             ) : (
-                                <span className={`w-full text-base sm:text-lg leading-none ${row.isMuted ? 'text-gray-400' : 'font-semibold text-gray-800'}`}>
+                                <span className={`w-full text-base sm:text-lg leading-none ${row.editable ? 'font-semibold text-gray-900' : ' text-gray-400'}`}>
                                     {getDisplayLabel(row, row.value)}
                                 </span>
                             )}
@@ -206,6 +203,8 @@ export default function ProfilePage() {
     const [profileError, setProfileError] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
     const [popUpDeleteAccount, setPopUpDeleteAccount] = useState(false);  
+    const [popUpLogoutAccount, setPopUpLogoutAccount] = useState(false);
+    const [popUpChangePassword, setPopUpChangePassword] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -303,6 +302,12 @@ export default function ProfilePage() {
         console.log('Menghapus akun');
     }
 
+    const handleChangePassword = () => {
+        // Implementasi perubahan password
+        apiPost(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: profileEmail });
+        console.log('Mengubah password');
+    }
+
     return (
         <div className="flex h-screen overflow-hidden">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -352,7 +357,7 @@ export default function ProfilePage() {
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    void logout();
+                                                    setPopUpLogoutAccount(true);
                                                 }}
                                                 className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 transition-colors"
                                             >
@@ -365,6 +370,13 @@ export default function ProfilePage() {
                                                 className="rounded-lg border border-red-200 bg-red-100 px-5 py-2 text-red-600 hover:bg-red-200 transition-colors"
                                             >
                                                 Hapus akun
+                                            </button>
+                                            <button
+                                                onClick={() => setPopUpChangePassword(true)}
+                                                type="button"
+                                                className="rounded-lg border border-blue-200 bg-blue-100 px-5 py-2 text-blue-600 hover:bg-blue-200 transition-colors"
+                                            >
+                                                Ubah password
                                             </button>
                                         </div>
                                     </div>
@@ -384,6 +396,29 @@ export default function ProfilePage() {
                 onConfirm={handleDeleteAccount}
                 onCancel={() => setPopUpDeleteAccount(false)}
             />
+            <ConfirmDialog
+                isOpen={popUpLogoutAccount}
+                title="Keluar Akun"
+                message="Apakah anda yakin ingin keluar dari akun ini?"
+                confirmText="Keluar"
+                cancelText="Batal"
+                type="danger"
+                onConfirm={() => {
+                    void logout();
+                }}
+                onCancel={() => setPopUpLogoutAccount(false)}
+            />
+            <ConfirmDialog
+                isOpen={popUpChangePassword}
+                title="Ubah Password"
+                message="Apakah anda yakin ingin mengubah password? Anda akan menerima email untuk mengatur ulang password Anda."
+                confirmText="Ubah"
+                cancelText="Batal"
+                type="info"
+                onConfirm={handleChangePassword}
+                onCancel={() => setPopUpChangePassword(false)}
+            />
         </div>
     );
+
 }
