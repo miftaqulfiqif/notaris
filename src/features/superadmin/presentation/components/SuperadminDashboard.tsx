@@ -215,7 +215,7 @@ export function SuperadminDashboard() {
                             {chartSummaryData.map((item) => (
                                 <div key={item.label} className="space-y-1">
                                     <p className="text-[12px] text-[#6F6F6F]">{item.label}</p>
-                                    <p className={`text-[16px] ${item.tone ?? 'text-white'}`}>{item.value}</p>
+                                    <p className="text-[16px] text-white">{item.value}</p>
                                 </div>
                             ))}
                         </div>

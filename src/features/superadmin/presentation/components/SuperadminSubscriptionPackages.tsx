@@ -121,7 +121,7 @@ function PackagePlanCard({
 }>) {
     const statusMeta = packageStatusMeta((plan.status || 'unpublished') as PackageStatusValue);
     const planFeatures = normalizePlanFeatures(plan.features);
-    const monthlyPrice = Number(plan.monthly_price ?? plan.monthlyPrice ?? 0);
+    const monthlyPrice = Number(plan.monthly_price ?? 0);
     const activeTenants = Number(plan.active_tenants ?? 0);
     const totalSubscriptions = Number(plan.total_subscriptions ?? 0);
     const canDelete = plan.can_delete ?? totalSubscriptions === 0;

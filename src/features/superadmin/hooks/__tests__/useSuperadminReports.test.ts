@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useSuperadminReports } from '../useSuperadminReports';
 import { superadminApi } from '../../services/superadmin-api';
+import type { ReportGenerateRequest, ScheduledReportRequest } from '../../types';
 
 jest.mock('../../services/superadmin-api');
 jest.mock('@/shared/hooks/useToast', () => ({
@@ -53,14 +54,20 @@ describe('useSuperadminReports', () => {
         (superadminApi.generateReport as jest.Mock).mockResolvedValue({ message: 'Success' });
 
         const { result } = renderHook(() => useSuperadminReports());
+        const request: ReportGenerateRequest = {
+            format: 'csv',
+            period_end: '2024-03-31',
+            period_start: '2024-03-01',
+            report_type: 'test',
+        };
 
-        let response: any;
+        let response: Awaited<ReturnType<typeof result.current.generateReport>>;
         await waitFor(async () => {
-            response = await result.current.generateReport({ report_type: 'test' } as any);
+            response = await result.current.generateReport(request);
         });
 
         expect(response.success).toBe(true);
-        expect(superadminApi.generateReport).toHaveBeenCalledWith({ report_type: 'test' });
+        expect(superadminApi.generateReport).toHaveBeenCalledWith(request);
     });
 
     it('should schedule report successfully', async () => {
@@ -69,13 +76,18 @@ describe('useSuperadminReports', () => {
         (superadminApi.createScheduledReport as jest.Mock).mockResolvedValue({ message: 'Success' });
 
         const { result } = renderHook(() => useSuperadminReports());
+        const request: ScheduledReportRequest = {
+            recipient_email: 'admin@notarix.com',
+            report_type: 'test',
+            schedule: 'weekly',
+        };
 
         let success;
         await waitFor(async () => {
-            success = await result.current.scheduleReport({ schedule: 'test' });
+            success = await result.current.scheduleReport(request);
         });
 
         expect(success).toBe(true);
-        expect(superadminApi.createScheduledReport).toHaveBeenCalledWith({ schedule: 'test' });
+        expect(superadminApi.createScheduledReport).toHaveBeenCalledWith(request);
     });
 });

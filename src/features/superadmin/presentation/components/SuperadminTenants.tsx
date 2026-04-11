@@ -5,6 +5,7 @@ import {
     SuperadminShell,
     SuperadminStatCard,
     SuperadminStatusBadge,
+    type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
 import { useSuperadminTenants } from '../../hooks/useSuperadminTenants';
@@ -88,11 +89,11 @@ export function SuperadminTenants() {
         contactPhone: t.contact_phone || '-',
         createdAt: new Date(t.created_at || t.joined_date).toLocaleDateString('id-ID'),
         packageLabel: t.package,
-        packageTone: t.package.toLowerCase().includes('starter') ? 'starter' : 'basic',
+        packageTone: (t.package.toLowerCase().includes('starter') ? 'starter' : 'basic') as TenantPackageTone,
         joinedAt: new Date(t.joined_date).toLocaleDateString('id-ID'),
         activity: `${t.users_count} user aktif`,
         statusLabel: t.status,
-        statusTone: t.status === 'active' ? 'success' : t.status === 'trial' ? 'warning' : 'danger',
+        statusTone: (t.status === 'active' ? 'success' : t.status === 'trial' ? 'warning' : 'danger') as SuperadminStatusTone,
         usersCount: t.users_count
     }));
 
