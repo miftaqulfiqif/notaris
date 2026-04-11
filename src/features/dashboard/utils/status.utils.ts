@@ -2,8 +2,12 @@ import { ActivityStatus } from '../types';
 
 export function getStatusColor(status: ActivityStatus | string): string {
     const normalizedStatus = status.toLowerCase();
+    const normalizedAlias =
+        normalizedStatus === 'terutunda' || normalizedStatus === 'tertunda'
+            ? 'terjeda'
+            : normalizedStatus;
 
-    switch (normalizedStatus) {
+    switch (normalizedAlias) {
         case 'selesai':
             return 'bg-green-100 text-green-600';
         case 'terjeda':

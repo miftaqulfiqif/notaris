@@ -1,4 +1,6 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 
 interface DebouncedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
     value: string | number;

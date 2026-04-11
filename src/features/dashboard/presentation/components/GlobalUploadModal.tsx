@@ -10,6 +10,15 @@ import { UploadFormData, EMPTY_UPLOAD_FORM } from '@/features/dashboard/types';
 import { ServiceType } from '@/features/services/types';
 import { DebouncedInput } from '@/shared/components/DebouncedInput';
 
+const PDF_MIME_TYPE = 'application/pdf';
+const PDF_ONLY_ERROR_MESSAGE = 'Hanya file PDF (.pdf) yang diperbolehkan';
+
+const isPdfFile = (file: File) =>
+    file.type === PDF_MIME_TYPE || file.name.toLowerCase().endsWith('.pdf');
+
+const hasNonPdfFile = (fileList: FileList) =>
+    Array.from(fileList).some((file) => !isPdfFile(file));
+
 export function GlobalUploadModal() {
     const { isOpen, closeModal, files, setFiles, preSelection } = useUploadModal();
     const { services } = useSidebar();
@@ -25,6 +34,7 @@ export function GlobalUploadModal() {
 
     const isLayananLocked = !!preSelection?.layananId;
     const isTipeLayananLocked = !!preSelection?.tipeLayananId;
+    const isFolderLocked = !!preSelection?.folderName?.trim();
 
     const [prevIsOpen, setPrevIsOpen] = useState(false);
 
@@ -34,6 +44,7 @@ export function GlobalUploadModal() {
                 ...EMPTY_UPLOAD_FORM,
                 layanan_id: preSelection?.layananId || '',
                 tipe_layanan_id: preSelection?.tipeLayananId || '',
+                folder_name: preSelection?.folderName?.trim() || '',
             });
             setError(null);
         }
@@ -64,13 +75,20 @@ export function GlobalUploadModal() {
     }, [formData.layanan_id]);
 
     useEffect(() => {
-        if (files && files.length > 0) {
-            setFormData(prev => ({
-                ...prev,
-                file_name: files[0].name.replace(/\.[^/.]+$/, '')
-            }));
+        if (!files || files.length === 0) return;
+
+        if (hasNonPdfFile(files)) {
+            setError(PDF_ONLY_ERROR_MESSAGE);
+            setFiles(null);
+            return;
         }
-    }, [files]);
+
+        setError(null);
+        setFormData(prev => ({
+            ...prev,
+            file_name: files[0].name.replace(/\.[^/.]+$/, '')
+        }));
+    }, [files, setFiles]);
 
     if (!isOpen) return null;
 
@@ -88,12 +106,27 @@ export function GlobalUploadModal() {
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            if (hasNonPdfFile(e.dataTransfer.files)) {
+                setError(PDF_ONLY_ERROR_MESSAGE);
+                setFiles(null);
+                return;
+            }
+
+            setError(null);
             setFiles(e.dataTransfer.files);
         }
     };
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
+            if (hasNonPdfFile(e.target.files)) {
+                setError(PDF_ONLY_ERROR_MESSAGE);
+                setFiles(null);
+                e.target.value = '';
+                return;
+            }
+
+            setError(null);
             setFiles(e.target.files);
         }
     };
@@ -106,6 +139,12 @@ export function GlobalUploadModal() {
     };
 
     const handleSubmit = async () => {
+        const normalizedFolderName = formData.folder_name.trim();
+
+        if (!normalizedFolderName) {
+            setError('Nama Folder harus diisi');
+            return;
+        }
         if (!formData.layanan_id) {
             setError('Layanan harus dipilih');
             return;
@@ -115,20 +154,43 @@ export function GlobalUploadModal() {
             return;
         }
 
+        const selectedFiles = files ? Array.from(files) : [];
+        if (selectedFiles.some((file) => !isPdfFile(file))) {
+            setError(PDF_ONLY_ERROR_MESSAGE);
+            return;
+        }
+
         setIsSubmitting(true);
         setError(null);
 
         try {
-            const payload = {
-                layanan_id: formData.layanan_id,
-                tipe_layanan_id: formData.tipe_layanan_id,
-                folder_name: formData.folder_name,
-                kedudukan: formData.kedudukan,
-                nomor_akta: formData.nomor_akta,
-                ...(formData.file_name ? { file_name: formData.file_name } : {}),
+            const buildPayload = (file?: File) => {
+                const payload = new FormData();
+                payload.append('layanan_id', formData.layanan_id);
+                payload.append('tipe_layanan_id', formData.tipe_layanan_id);
+                payload.append('folder_name', normalizedFolderName);
+
+                // Saat upload dari halaman detail folder, metadata kedudukan/nomor akta tidak diperlukan.
+                if (!isFolderLocked) {
+                    payload.append('kedudukan', formData.kedudukan);
+                    payload.append('nomor_akta', formData.nomor_akta);
+                }
+
+                if (file) {
+                    payload.append('file', file);
+                }
+
+                return payload;
             };
 
-            await apiPost(ENDPOINTS.USER.UPLOAD_FILE, payload);
+            if (selectedFiles.length > 0) {
+                for (const file of selectedFiles) {
+                    await apiPost(ENDPOINTS.USER.UPLOAD_FILE, buildPayload(file));
+                }
+            } else {
+                await apiPost(ENDPOINTS.USER.UPLOAD_FILE, buildPayload());
+            }
+
             if (preSelection?.onSuccess) {
                 preSelection.onSuccess();
             }
@@ -250,37 +312,53 @@ export function GlobalUploadModal() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Nama Folder</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.folder_name}
-                                onChange={(value) => handleInputChange('folder_name', value as string)}
-                                placeholder="Contoh: PT ABC"
-                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
-                            />
+                            <label className="font-medium text-gray-700 text-sm">
+                                Nama Folder <span className="text-red-500">*</span>
+                            </label>
+                            {isFolderLocked ? (
+                                <input
+                                    type="text"
+                                    value={formData.folder_name}
+                                    disabled
+                                    className="bg-gray-100 px-3 py-2 border border-gray-200 rounded-xl w-full text-gray-700 cursor-not-allowed"
+                                />
+                            ) : (
+                                <DebouncedInput
+                                    type="text"
+                                    value={formData.folder_name}
+                                    onChange={(value) => handleInputChange('folder_name', value as string)}
+                                    placeholder="Contoh: PT ABC"
+                                    required
+                                    className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
+                                />
+                            )}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.kedudukan}
-                                onChange={(value) => handleInputChange('kedudukan', value as string)}
-                                placeholder="Kedudukan"
-                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
-                            />
-                        </div>
+                        {!isFolderLocked && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="font-medium text-gray-700 text-sm">Kedudukan</label>
+                                    <DebouncedInput
+                                        type="text"
+                                        value={formData.kedudukan}
+                                        onChange={(value) => handleInputChange('kedudukan', value as string)}
+                                        placeholder="Kedudukan"
+                                        className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
+                                    />
+                                </div>
 
-                        <div className="space-y-2">
-                            <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
-                            <DebouncedInput
-                                type="text"
-                                value={formData.nomor_akta}
-                                onChange={(value) => handleInputChange('nomor_akta', value as string)}
-                                placeholder="Nomor Akta"
-                                className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
-                            />
-                        </div>
+                                <div className="space-y-2">
+                                    <label className="font-medium text-gray-700 text-sm">Nomor Akta</label>
+                                    <DebouncedInput
+                                        type="text"
+                                        value={formData.nomor_akta}
+                                        onChange={(value) => handleInputChange('nomor_akta', value as string)}
+                                        placeholder="Nomor Akta"
+                                        className="bg-white px-3 py-2 border border-gray-200 focus:border-[#8B7355] rounded-xl focus:outline-none focus:ring-[#8B7355]/20 focus:ring-2 w-full text-gray-700 placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </>
+                        )}
 
                     </div>
 
@@ -297,6 +375,7 @@ export function GlobalUploadModal() {
                         >
                             <input
                                 type="file"
+                                accept=".pdf,application/pdf"
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileInput}
@@ -336,7 +415,7 @@ export function GlobalUploadModal() {
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !formData.folder_name.trim()}
                         className="flex items-center gap-2 bg-[#8B7355] hover:bg-[#7A6548] disabled:opacity-50 shadow-sm px-6 py-2.5 rounded-xl font-medium text-white transition-colors"
                     >
                         {isSubmitting ? (

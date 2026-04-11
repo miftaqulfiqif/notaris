@@ -10,9 +10,9 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     isVerified: boolean;
-    login: (credentials: LoginCredentials) => Promise<boolean>;
+    login: (credentials: LoginCredentials) => Promise<User | null>;
     logout: () => Promise<void>;
-    checkAuth: () => Promise<void>;
+    checkAuth: () => Promise<User | null>;
     error: string | null;
 }
 
@@ -24,14 +24,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    const checkAuth = useCallback(async () => {
+    const checkAuth = useCallback(async (): Promise<User | null> => {
         const result = await authService.getCurrentUser();
-        if (result.success && result.data) {
-            setUser(result.data);
-        } else {
-            setUser(null);
-        }
+        const nextUser = result.success && result.data ? result.data : null;
+
+        setUser(nextUser);
         setIsLoading(false);
+
+        return nextUser;
     }, []);
 
     useEffect(() => {
@@ -39,14 +39,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const fetchAuth = async () => {
             const result = await authService.getCurrentUser();
-            if (mounted) {
-                if (result.success && result.data) {
-                    setUser(result.data);
-                } else {
-                    setUser(null);
-                }
-                setIsLoading(false);
+            if (!mounted) {
+                return;
             }
+
+            const nextUser = result.success && result.data ? result.data : null;
+            setUser(nextUser);
+            setIsLoading(false);
         };
 
         fetchAuth();
@@ -56,29 +55,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
     }, []);
 
-    const login = async (credentials: LoginCredentials): Promise<boolean> => {
+    const login = async (credentials: LoginCredentials): Promise<User | null> => {
         setIsLoading(true);
         setError(null);
 
         const result = await authService.login(credentials);
 
         if (result.success) {
-            await checkAuth();
-            setIsLoading(false);
-            return true;
+            return checkAuth();
         } else {
             setError(result.error || 'Login failed');
             setIsLoading(false);
-            return false;
+            return null;
         }
     };
 
     const logout = async () => {
         setIsLoading(true);
+        setError(null);
         await authService.logout();
         setUser(null);
         setIsLoading(false);
-        router.push('/login');
+        router.replace('/login');
     };
 
     return (
@@ -104,3 +102,5 @@ export const useAuthContext = () => {
     }
     return context;
 };
+
+export const useOptionalAuthContext = () => useContext(AuthContext);

@@ -4,14 +4,18 @@ import "./globals.css";
 import { AuthProvider } from "@/features/auth/context/auth.context";
 import { siteConfig } from "@/shared/utils/seo";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const robotoSans = Roboto({
+  variable: '--font-roboto-sans',
+  subsets: ['latin'],
+  weight: ['100', '300', '400', '500', '700', '900'],
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const robotoMono = Roboto_Mono({
+  variable: '--font-roboto-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -66,7 +70,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  width: "device-width",
+  width: 'device-width',
   initialScale: 1,
 };
 
@@ -78,7 +82,7 @@ export default function RootLayout({
   return (
     <html lang="en" style={{scrollBehavior: 'smooth'}}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${robotoSans.variable} ${robotoMono.variable} antialiased`}
       >
         <AuthProvider>
           {children}

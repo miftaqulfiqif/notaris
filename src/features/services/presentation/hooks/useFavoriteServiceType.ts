@@ -28,5 +28,16 @@ export function useFavoriteServiceType() {
         }
     }, []);
 
-    return { addToFavorite, isLoading };
+    const removeFromFavorite = useCallback(async (itemId: string) => {
+        setIsLoading(true);
+        try {
+            await apiPost<unknown>(
+                `${ENDPOINTS.USER.REMOVE_ITEM_FAVORITE}/${FAVORITE_ITEM_TYPE}/${itemId}`,
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    return { addToFavorite, removeFromFavorite, isLoading };
 }

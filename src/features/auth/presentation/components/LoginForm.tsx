@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { BrandLogo } from '@/shared/components';
+import { getAuthenticatedHomePath } from '@/features/auth/utils/user';
 
 
 export const LoginForm = () => {
@@ -13,9 +15,9 @@ export const LoginForm = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const response = await login(credentials);
-        if (response) {
-            window.location.href = '/dashboard';
+        const authenticatedUser = await login(credentials);
+        if (authenticatedUser) {
+            window.location.href = getAuthenticatedHomePath(authenticatedUser);
         }
     };
 
@@ -30,26 +32,7 @@ export const LoginForm = () => {
     return (
         <div className="w-full">
             <div className="flex flex-col items-center mb-10 text-center">
-                <div className="flex items-center gap-2 mb-6 text-[#2A3F6D]">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="w-10 h-10"
-                    >
-                        <path d="M2 6h4" />
-                        <path d="M2 10h4" />
-                        <path d="M2 14h4" />
-                        <path d="M2 18h4" />
-                        <rect width="16" height="20" x="4" y="2" rx="2" />
-                        <path d="M16 2v20" />
-                    </svg>
-                    <span className="font-bold text-2xl">Notarix</span>
-                </div>
+                <BrandLogo className="mb-6" width={162} height={60} priority />
 
                 <div className="w-full text-left">
                     <h1 className="mb-2 font-bold text-[28px] text-gray-900">Selamat Datang</h1>

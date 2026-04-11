@@ -6,8 +6,15 @@ import { Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 
+interface OtpRequestResponse {
+    message?: string;
+    data?: {
+        ttl_ms?: number;
+    };
+}
+
 export const EmailVerificationForm = () => {
-    const { user } = useAuthContext();
+    const { user, checkAuth } = useAuthContext();
     const router = useRouter();
     const [isRequesting, setIsRequesting] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -16,6 +23,7 @@ export const EmailVerificationForm = () => {
     const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
     const [timeLeft, setTimeLeft] = useState(300);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const didAutoRequestRef = useRef(false);
 
     const requestOtp = useCallback(async () => {
         setIsRequesting(true);
@@ -29,15 +37,20 @@ export const EmailVerificationForm = () => {
                 credentials: 'include',
             });
 
+            const data: OtpRequestResponse = await response.json().catch(() => ({}));
+
             if (response.ok) {
                 setOtpSent(true);
-                setTimeLeft(300);
+                const ttlSeconds = Math.max(
+                    1,
+                    Math.ceil((data.data?.ttl_ms ?? 300000) / 1000),
+                );
+                setTimeLeft(ttlSeconds);
             } else {
-                const data = await response.json();
                 setError(data.message || 'Gagal mengirim kode OTP. Silakan coba lagi.');
                 setOtpSent(false);
             }
-        } catch (err) {
+        } catch {
             setError('Terjadi kesalahan. Silakan coba lagi.');
             setOtpSent(false);
         } finally {
@@ -46,10 +59,17 @@ export const EmailVerificationForm = () => {
     }, []);
 
     useEffect(() => {
+        if (!user?.email || didAutoRequestRef.current) return;
+
+        didAutoRequestRef.current = true;
+        void requestOtp();
+    }, [requestOtp, user?.email]);
+
+    useEffect(() => {
         if (timeLeft <= 0 || !otpSent) return;
 
         const timer = setInterval(() => {
-            setTimeLeft(prev => prev - 1);
+            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
         }, 1000);
 
         return () => clearInterval(timer);
@@ -95,8 +115,9 @@ export const EmailVerificationForm = () => {
     };
 
     const handleResend = () => {
+        if (isRequesting || isVerifying || (otpSent && timeLeft > 0)) return;
         setOtp(['', '', '', '', '', '']);
-        requestOtp();
+        void requestOtp();
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -118,58 +139,18 @@ export const EmailVerificationForm = () => {
             });
 
             if (response.ok) {
+                await checkAuth();
                 router.push('/verification-success');
             } else {
                 const data = await response.json();
-                setError(data.message || 'Kode OTP tidak valid. Silakan coba lagi.');
+                setError(data.errors || data.message || 'Kode OTP tidak valid. Silakan coba lagi.');
             }
-        } catch (err) {
+        } catch {
             setError('Terjadi kesalahan. Silakan coba lagi.');
         } finally {
             setIsVerifying(false);
         }
     };
-
-    if (!otpSent) {
-        return (
-            <div className="w-full">
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600">
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <p className="text-sm">{error}</p>
-                    </div>
-                )}
-
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Verifikasi Email</h1>
-
-                    <p className="text-gray-500 text-center mb-6">
-                        Klik tombol di bawah untuk mengirimkan kode OTP ke email Anda
-                    </p>
-
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-8">
-                        <div className="w-10 h-10 flex items-center justify-center text-gray-400">
-                            <Mail className="w-5 h-5" />
-                        </div>
-                        <span className="flex-1 text-gray-700">{user?.email || 'example@gmail.com'}</span>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={requestOtp}
-                        disabled={isRequesting}
-                        className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
-                    >
-                        {isRequesting ? (
-                            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            'Kirim Kode OTP'
-                        )}
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="w-full">
@@ -183,7 +164,9 @@ export const EmailVerificationForm = () => {
             <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">Verifikasi Email</h1>
-                    <span className="text-gray-400 font-mono text-lg">{formatTime(timeLeft)}</span>
+                    <span className="text-gray-400 font-mono text-lg">
+                        {otpSent ? formatTime(timeLeft) : (isRequesting ? 'Mengirim...' : '--:--')}
+                    </span>
                 </div>
 
                 <p className="text-gray-500 text-center mb-6">
@@ -211,7 +194,7 @@ export const EmailVerificationForm = () => {
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
                                 onPaste={handlePaste}
-                                disabled={isVerifying}
+                                disabled={isVerifying || !otpSent}
                                 className="w-12 h-14 text-center text-xl font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B39B7D] focus:border-transparent transition-all disabled:opacity-50"
                             />
                         ))}
@@ -219,13 +202,13 @@ export const EmailVerificationForm = () => {
 
                     <button
                         type="submit"
-                        disabled={otp.join('').length !== 6 || isVerifying}
+                        disabled={otp.join('').length !== 6 || isVerifying || !otpSent}
                         className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                         {isVerifying ? (
                             <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
-                            'Buat Akun'
+                            'Verifikasi Email'
                         )}
                     </button>
                 </form>
@@ -235,7 +218,7 @@ export const EmailVerificationForm = () => {
                     <button
                         type="button"
                         onClick={handleResend}
-                        disabled={isRequesting || isVerifying}
+                        disabled={isRequesting || isVerifying || (otpSent && timeLeft > 0)}
                         className="text-sm font-semibold text-[#8B7355] hover:text-[#7A6548] transition-colors disabled:opacity-50"
                     >
                         Kirim ulang

@@ -1,12 +1,31 @@
 'use client';
 
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { getUserRoleName } from '@/features/auth/utils/user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export const ProtectedPath = ({ children }: { children: React.ReactNode }) => {
-    const { isAuthenticated, isVerified, isLoading } = useAuthContext();
+type ProtectedPathProps = {
+    allowedRoles?: string[];
+    children: React.ReactNode;
+    disallowedRoles?: string[];
+    redirectTo?: string;
+};
+
+export const ProtectedPath = ({
+    allowedRoles,
+    children,
+    disallowedRoles,
+    redirectTo = '/dashboard',
+}: ProtectedPathProps) => {
+    const { isAuthenticated, isVerified, isLoading, user } = useAuthContext();
     const router = useRouter();
+    const normalizedRoleName = getUserRoleName(user)?.toUpperCase();
+    const normalizedAllowedRoles = allowedRoles?.map((role) => role.toUpperCase());
+    const normalizedDisallowedRoles = disallowedRoles?.map((role) => role.toUpperCase());
+    const isAllowedRole = normalizedAllowedRoles ? normalizedAllowedRoles.includes(normalizedRoleName ?? '') : true;
+    const isDisallowedRole = normalizedDisallowedRoles ? normalizedDisallowedRoles.includes(normalizedRoleName ?? '') : false;
+    const hasAccess = isAuthenticated && isVerified && isAllowedRole && !isDisallowedRole;
 
     useEffect(() => {
         if (!isLoading) {
@@ -14,9 +33,11 @@ export const ProtectedPath = ({ children }: { children: React.ReactNode }) => {
                 router.push('/login');
             } else if (!isVerified) {
                 router.push('/verify-email');
+            } else if (!isAllowedRole || isDisallowedRole) {
+                router.push(redirectTo);
             }
         }
-    }, [isLoading, isAuthenticated, isVerified, router]);
+    }, [isLoading, isAuthenticated, isVerified, isAllowedRole, isDisallowedRole, redirectTo, router]);
 
     if (isLoading) {
         return (
@@ -29,7 +50,7 @@ export const ProtectedPath = ({ children }: { children: React.ReactNode }) => {
         );
     }
 
-    if (!isAuthenticated || !isVerified) {
+    if (!hasAccess) {
         return null;
     }
 

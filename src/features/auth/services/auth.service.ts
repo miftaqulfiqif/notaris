@@ -47,7 +47,7 @@ export const authService = {
             const response = await fetchWithCredentials(ENDPOINTS.AUTH.LOGIN, {
                 method: 'POST',
                 body: JSON.stringify({
-                    username: credentials.emailOrUsername,
+                    identifier: credentials.emailOrUsername,
                     password: credentials.password,
                 }),
             });

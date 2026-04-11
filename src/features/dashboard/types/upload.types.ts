@@ -23,6 +23,8 @@ export interface UploadPreSelection {
     tipeLayananId?: string;
     /** Pre-selected tipe layanan name for display */
     tipeLayananName?: string;
+    /** Pre-selected folder name for upload target */
+    folderName?: string;
     /** Callback function to run after successful upload */
     onSuccess?: () => void;
 }

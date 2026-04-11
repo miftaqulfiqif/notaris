@@ -40,9 +40,8 @@ export const navigationItems: NavigationItem[] = [
     {
         id: 'company',
         label: 'Perusahaan',
-        path: '#',
+        path: '/company',
         icon: Building2,
-        disabled: true,
     },
     {
         id: 'trash',
@@ -53,8 +52,7 @@ export const navigationItems: NavigationItem[] = [
     {
         id: 'settings',
         label: 'Setting',
-        path: '#',
+        path: '/settings',
         icon: Settings,
-        disabled: true,
     },
 ];

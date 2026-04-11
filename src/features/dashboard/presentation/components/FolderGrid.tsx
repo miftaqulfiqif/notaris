@@ -1,22 +1,143 @@
-import { Folder, MoreVertical } from 'lucide-react';
-import { folders } from '@/features/dashboard/data';
+'use client';
+
+import { useMemo, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import FolderIcon from '@/assets/icons/folders Icons.svg';
+import Image from 'next/image';
+import { useAuthContext } from '@/features/auth/context/auth.context';
+import {
+    buildServiceHref,
+    trackDashboardSuggestedFolderClick,
+    toSlug,
+} from '@/features/dashboard/utils';
+import { getUserRoleName } from '@/features/auth/utils/user';
+import { useSidebar } from '@/layout/providers/SidebarContext';
+
+interface DisplayFolder {
+    id: string;
+    layanan: string;
+    typeName: string;
+    href: string;
+}
 
 export function FolderGrid() {
+    const pathname = usePathname();
+    const { user } = useAuthContext();
+    const { services, isLoadingServices = false } = useSidebar();
+
+    const displayFolders = useMemo<DisplayFolder[]>(() => {
+        if (isLoadingServices || services.length === 0) {
+            return [];
+        }
+
+        const deduplicatedFolders = new Map<string, DisplayFolder>();
+
+        services.forEach((service, index) => {
+            if (!service.name?.trim()) return;
+
+            const href = buildServiceHref(service.name);
+            const key = toSlug(service.name) || service.id || `${href}-${index}`;
+            if (deduplicatedFolders.has(key)) {
+                return;
+            }
+
+            deduplicatedFolders.set(key, {
+                id: key,
+                layanan: service.name.trim(),
+                typeName: service.name.trim(),
+                href,
+            });
+        });
+
+        return Array.from(deduplicatedFolders.values());
+    }, [isLoadingServices, services]);
+
+    const handleTrackOpen = (folder: DisplayFolder) => {
+        trackDashboardSuggestedFolderClick({
+            layanan: folder.layanan,
+            tipe_layanan: folder.typeName,
+            timestamp: new Date().toISOString(),
+            user_id: user?.id,
+            user_role: getUserRoleName(user),
+        });
+    };
+
+    const handleTileClick = (
+        event: ReactMouseEvent<HTMLAnchorElement>,
+        folder: DisplayFolder,
+    ) => {
+        if (event.defaultPrevented) return;
+        handleTrackOpen(folder);
+    };
+
+    const handleTileAuxClick = (
+        event: ReactMouseEvent<HTMLAnchorElement>,
+        folder: DisplayFolder,
+    ) => {
+        if (event.button !== 1) return;
+        handleTrackOpen(folder);
+    };
+
+    const handleTileKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
+        if (event.key !== ' ') return;
+        event.preventDefault();
+        event.currentTarget.click();
+    };
+
+    if (isLoadingServices) {
+        return (
+            <div className="mb-10 w-full">
+                <h3 className="mb-4 text-lg font-bold text-gray-800">Folder yang disarankan</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[1, 2, 3, 4, 5, 6, 7].map((index) => (
+                        <div
+                            key={index}
+                            className="h-12 rounded-lg bg-[#F5F5F5] animate-pulse"
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (displayFolders.length === 0) {
+        return null;
+    }
+
     return (
-        <div className="mb-10 max-w-full">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Folder yang disarankan</h3>
-            <div className="grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 -mx-1 px-1 scrollbar-hide auto-cols-[16rem]">
-                {folders.map((folder, index) => (
-                    <div
-                        key={index}
-                        className="group flex items-center justify-between py-1 px-2 bg-[#FAFAFA] rounded-xl hover:bg-[#f1f1f1] transition-all cursor-pointer h-full"
-                    >
-                        <div className="flex items-center gap-3 min-w-0">
-                            <Folder className="w-10 h-10 text-yellow-400 fill-yellow-400" />
-                            <span className="font-semibold text-gray-700 truncate group-hover:text-gray-900">{folder.name}</span>
-                        </div>
-                    </div>
-                ))}
+        <div className="mb-10 w-full">
+            <h3 className="mb-4 text-lg font-bold text-gray-800">Folder yang disarankan</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {displayFolders.map((folder) => {
+                    const layananSlug = toSlug(folder.layanan);
+                    const isActive = pathname === folder.href || pathname.startsWith(`/services/${layananSlug}/`);
+                    const tooltip = `Lihat semua item ${folder.layanan}`;
+
+                    return (
+                        <Link
+                            key={folder.id}
+                            href={folder.href}
+                            title={tooltip}
+                            aria-label={`Buka ${folder.layanan} - layanan`}
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={(event) => handleTileClick(event, folder)}
+                            onAuxClick={(event) => handleTileAuxClick(event, folder)}
+                            onKeyDown={handleTileKeyDown}
+                            className={`group flex min-h-12 items-center gap-2.5 rounded-lg px-4 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B39B7D] focus-visible:ring-offset-2 ${
+                                isActive
+                                    ? 'bg-[#FFF1CC] text-gray-900'
+                                    : 'bg-[#F7F7F7] text-gray-800 hover:bg-[#F1F1F1]'
+                                }`}
+                        >
+                            <Image src={FolderIcon} alt="Folder" width={20} height={20} className="shrink-0" />
+
+                            <span className="truncate text-base font-semibold leading-none">
+                                {folder.layanan}
+                            </span>
+                        </Link>
+                    );
+                })}
             </div>
         </div>
     );

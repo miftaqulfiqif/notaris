@@ -4,6 +4,7 @@
 export interface ServiceType {
     id: string;
     name: string;
+    is_favorite?: boolean;
 }
 
 /**

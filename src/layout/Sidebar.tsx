@@ -6,27 +6,25 @@ import {
     Folder
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { FontSizeSlider } from '@/shared/components/FontSizeSlider';
-import { useState, useEffect } from 'react';
+import { BrandLogo } from '@/shared/components';
+import { useState } from 'react';
 import { useSidebar } from '@/layout/providers/SidebarContext';
-import { currentUser } from '@/layout/data/sidebar.data';
+import { useCurrentUser } from '@/layout/data/sidebar.data';
 import { navigationItems } from '@/layout/data/navigation.data';
 import { getInitials } from '@/shared/utils/initials';
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [isServicesOpen, setIsServicesOpen] = useState(false);
     const { isOpen, close, services } = useSidebar();
+    const currentUser = useCurrentUser();
 
     const isActive = (path: string) => pathname === path;
     const isServiceActive = pathname.startsWith('/services/');
 
-    useEffect(() => {
-        if (isServiceActive && !isServicesOpen) {
-            setIsServicesOpen(true);
-        }
-    }, [isServiceActive, isServicesOpen]);
+    const [isServicesOpen, setIsServicesOpen] = useState(isServiceActive);
 
     const getNavItemClasses = (path: string, hasSubmenu?: boolean) => {
         const active = hasSubmenu ? (isServicesOpen || isServiceActive) : isActive(path);
@@ -48,43 +46,36 @@ export function Sidebar() {
             <aside className={`w-64 h-screen bg-(--sidebar-bg) border-r border-gray-100 flex flex-col fixed left-0 top-0 overflow-y-auto z-40 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:visible ${isOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
                 }`}>
                 <div className="flex items-center px-6 border-gray-100 border-b h-16">
-                    <div className="flex items-center gap-2">
-                        <div className="text-(--sidebar-primary)">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="w-8 h-8"
-                            >
-                                <path d="M2 6h4" />
-                                <path d="M2 10h4" />
-                                <path d="M2 14h4" />
-                                <path d="M2 18h4" />
-                                <rect width="16" height="20" x="4" y="2" rx="2" />
-                                <path d="M16 2v20" />
-                            </svg>
-                        </div>
-                        <span className="font-bold text-[#2A3F6D] text-xl">Notarix</span>
-                    </div>
+                    <BrandLogo width={108} height={40} />
                 </div>
 
                 <div className="p-4 border-gray-100 border-b">
-                    <div className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
+                    <Link
+                        href="/instansi"
+                        className="group flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer"
+                    >
                         <div className="relative bg-gray-200 rounded-full w-10 h-10 overflow-hidden">
-                            <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
-                                {getInitials(currentUser.name)}
-                            </div>
+                            {currentUser.avatar ? (
+                                <Image
+                                    src={currentUser.avatar}
+                                    alt={currentUser.name}
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover"
+                                    unoptimized
+                                />
+                            ) : (
+                                <div className="flex justify-center items-center bg-gray-100 w-full h-full font-bold text-gray-500">
+                                    {getInitials(currentUser.name)}
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-sm truncate">{currentUser.name}</p>
                             <p className="text-gray-500 text-xs truncate">{currentUser.email}</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                    </div>
+                    </Link>
                 </div>
 
                 <nav className="flex-1 space-y-1 px-4 py-6">
@@ -122,7 +113,7 @@ export function Sidebar() {
                                                                 : 'text-gray-600 hover:bg-(--sidebar-hover) hover:text-gray-900'
                                                                 }`}
                                                         >
-                                                            <Folder className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                                            <Folder className="fill-yellow-400 w-5 h-5 text-yellow-400" />
                                                             <span className="font-medium">{service.name}</span>
                                                         </Link>
                                                     );

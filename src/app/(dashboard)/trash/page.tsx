@@ -1,101 +1,106 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState } from 'react';
 import { DashboardHeader } from '@/layout/DashboardHeader';
-import { SortableHeader } from '@/shared/components/SortableHeader';
-import {
-    LayoutGrid,
-    List,
-    Folder,
-    FileText,
-    MoreVertical,
-    RotateCcw,
-    Trash2
-} from 'lucide-react';
-import { useSelection } from '@/shared/hooks/useSelection';
-import { usePagination } from '@/shared/hooks/usePagination';
-
-const trashItems = [
-    {
-        id: 1,
-        name: 'PT. Abibas Sport',
-        type: 'folder',
-        author: 'Admin 2',
-        deletedDate: 'Januari, 13 2026',
-        originalLocation: 'Pendirian'
-    },
-    {
-        id: 2,
-        name: 'Akta.pdf',
-        type: 'file',
-        author: 'Admin 2',
-        deletedDate: 'Januari, 13 2026',
-        originalLocation: 'PT. Abibas Sport'
-    }
-];
+import { AlertCircle, LayoutGrid, List, Trash2 } from 'lucide-react';
+import { useTrashItems, TrashItem } from '@/features/dashboard/hooks/useTrashItems';
+import { TrashTable } from '@/features/dashboard/presentation/components/TrashTable';
+import { Pagination } from '@/shared/components/Pagination';
+import { useToast } from '@/shared/hooks/useToast';
+import { Toast } from '@/shared/components/Toast';
 
 export default function TrashPage() {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-
+    const [isEmptyTrashConfirmOpen, setIsEmptyTrashConfirmOpen] = useState(false);
     const {
-        selectedItems,
-        toggleSelectAll,
-        toggleSelectItem,
-        isSelected,
-        isAllSelected
-    } = useSelection({ items: trashItems, itemIdKey: 'id' });
-
-    const {
+        items,
+        isLoading,
+        isEmptyingTrash,
         currentPage,
+        totalItems,
         totalPages,
-        paginatedItems,
-        setPage,
-        startIndex,
-        endIndex,
-        totalItems
-    } = usePagination({ items: trashItems, itemsPerPage: 10 });
+        handlePageChange,
+        itemsPerPage,
+        restoreItem,
+        restoreItems,
+        deleteItemPermanently,
+        deleteItemsPermanently,
+        emptyTrashPermanently,
+    } = useTrashItems();
 
-    const [activeDropdown, setActiveDropdown] = useState<{ id: number; top: number; right: number } | null>(null);
+    const { toast, showToast, hideToast } = useToast();
 
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            const target = event.target as Element;
-            if (activeDropdown &&
-                !target.closest('.action-dropdown-btn') &&
-                !target.closest('.action-dropdown-menu')) {
-                setActiveDropdown(null);
-            }
+    const handleRestore = async (item: TrashItem) => {
+        try {
+            await restoreItem(item);
+            showToast({ message: 'Berhasil memulihkan item', variant: 'success' });
+        } catch {
+            showToast({ message: 'Gagal memulihkan item', variant: 'error' });
         }
+    };
 
-        function handleScroll() {
-            if (activeDropdown) setActiveDropdown(null);
-        }
-
-        document.addEventListener("mousedown", handleClickOutside);
-        window.addEventListener("scroll", handleScroll, true);
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-            window.removeEventListener("scroll", handleScroll, true);
-        };
-    }, [activeDropdown]);
-
-    const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (activeDropdown?.id === id) {
-            setActiveDropdown(null);
-        } else {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setActiveDropdown({
-                id,
-                top: rect.bottom + 4,
-                right: window.innerWidth - rect.right
+    const handleDeleteForever = async (item: TrashItem) => {
+        try {
+            await deleteItemPermanently(item);
+            showToast({ message: 'Berhasil menghapus item selamanya', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menghapus item selamanya',
+                variant: 'error',
             });
         }
     };
+
+    const handleRestoreBulk = async (selectedItems: TrashItem[]) => {
+        try {
+            await restoreItems(selectedItems);
+            showToast({ message: `${selectedItems.length} item berhasil dipulihkan`, variant: 'success' });
+        } catch {
+            showToast({ message: 'Gagal memulihkan item terpilih', variant: 'error' });
+        }
+    };
+
+    const handleDeleteForeverBulk = async (selectedItems: TrashItem[]) => {
+        try {
+            await deleteItemsPermanently(selectedItems);
+            showToast({
+                message: `${selectedItems.length} item berhasil dihapus selamanya`,
+                variant: 'success',
+            });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal menghapus item terpilih',
+                variant: 'error',
+            });
+        }
+    };
+
+    const handleEmptyTrash = async () => {
+        if (isEmptyingTrash) return;
+
+        try {
+            await emptyTrashPermanently();
+            setIsEmptyTrashConfirmOpen(false);
+            showToast({ message: 'Sampah berhasil dikosongkan', variant: 'success' });
+        } catch (err) {
+            showToast({
+                message: err instanceof Error ? err.message : 'Gagal mengosongkan sampah',
+                variant: 'error',
+            });
+        }
+    };
+
+    const openEmptyTrashConfirm = () => {
+        if (isEmptyingTrash) return;
+        setIsEmptyTrashConfirmOpen(true);
+    };
+
+    const closeEmptyTrashConfirm = () => {
+        if (isEmptyingTrash) return;
+        setIsEmptyTrashConfirmOpen(false);
+    };
+
+    const hasTrashItems = totalItems > 0;
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50 lg:bg-white">
@@ -129,120 +134,108 @@ export default function TrashPage() {
                             </div>
                         </div>
 
-                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center justify-between">
-                            <p className="text-red-600 text-sm font-medium">
-                                Item dalam sampah akan dihapus selamanya setelah 30 hari
-                            </p>
-                            <button className="text-red-600 text-sm font-bold hover:text-red-700 transition-colors">
-                                Kosongkan sampah
-                            </button>
+                        {hasTrashItems && (
+                            <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center justify-between">
+                                <p className="text-red-600 text-sm font-medium">
+                                    Item dalam sampah akan dihapus selamanya setelah 30 hari
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={openEmptyTrashConfirm}
+                                    disabled={isEmptyingTrash}
+                                    className="text-red-600 text-sm font-bold hover:text-red-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isEmptyingTrash ? 'Mengosongkan...' : 'Kosongkan sampah'}
+                                </button>
+                            </div>
+                        )}
+
+                        {isLoading ? (
+                            <div className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="bg-gray-100 rounded-xl h-16 animate-pulse" />
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <TrashTable
+                                    items={items}
+                                    onRestore={handleRestore}
+                                    onDeleteForever={handleDeleteForever}
+                                    onRestoreMultiple={handleRestoreBulk}
+                                    onDeleteForeverMultiple={handleDeleteForeverBulk}
+                                />
+                                <div className="mt-4">
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={handlePageChange}
+                                        startIndex={(currentPage - 1) * itemsPerPage + 1}
+                                        endIndex={Math.min(currentPage * itemsPerPage, totalItems)}
+                                        totalItems={totalItems}
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+            {isEmptyTrashConfirmOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+                    onClick={closeEmptyTrashConfirm}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="empty-trash-modal-title"
+                        className="w-full max-w-[460px] overflow-hidden rounded-2xl bg-white shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3 bg-[#F3E8E8] px-5 py-4">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-red-300 bg-red-100 text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                            </div>
+                            <h2 id="empty-trash-modal-title" className="text-lg font-semibold text-[#101010]">
+                                Hapus Permanen Semua Item
+                            </h2>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 bg-gray-50/50">
-                                            <th className="px-6 py-4 text-left w-12">
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded border-gray-300 text-[#B39B7D] focus:ring-[#B39B7D]"
-                                                    checked={isAllSelected}
-                                                    onChange={toggleSelectAll}
-                                                />
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                                <SortableHeader label="Nama File" />
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                                <SortableHeader label="Author" />
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                                <SortableHeader label="Tanggal dihapus" />
-                                            </th>
-                                            <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
-                                                <SortableHeader label="Lokasi awal" />
-                                            </th>
-                                            <th className="px-6 py-4 w-12"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {paginatedItems.map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="rounded border-gray-300 text-[#B39B7D] focus:ring-[#B39B7D]"
-                                                        checked={isSelected(item.id)}
-                                                        onChange={() => toggleSelectItem(item.id)}
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        {item.type === 'folder' ? (
-                                                            <Folder className="w-5 h-5 text-gray-400 fill-gray-100" />
-                                                        ) : (
-                                                            <FileText className="w-5 h-5 text-red-500" />
-                                                        )}
-                                                        <span className="font-medium text-gray-900">{item.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-600 text-sm">
-                                                    {item.author}
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-600 text-sm">
-                                                    {item.deletedDate}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                                                        <Folder className="w-4 h-4 text-gray-400" />
-                                                        {item.originalLocation}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button
-                                                        onClick={(e) => handleDropdownClick(e, item.id)}
-                                                        className={`p-1 rounded-lg transition-colors action-dropdown-btn ${activeDropdown?.id === item.id ? 'bg-gray-100 text-gray-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
-                                                    >
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        <div className="px-6 py-8 text-center">
+                            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-700">
+                                <AlertCircle className="h-10 w-10" />
+                            </div>
+                            <p className="mx-auto max-w-[350px] text-sm leading-relaxed text-[#1F1F1F]">
+                                Semua item di Sampah akan dihapus secara permanen dan tidak dapat dipulihkan.
+                                Pastikan Anda telah memulihkan atau mengekspor data penting sebelum melanjutkan.
+                            </p>
+
+                            <div className="mt-8 flex items-center justify-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        void handleEmptyTrash();
+                                    }}
+                                    disabled={isEmptyingTrash}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-red-500 bg-red-50 px-7 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    {isEmptyingTrash ? 'Menghapus...' : 'Hapus Permanen'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeEmptyTrashConfirm}
+                                    disabled={isEmptyingTrash}
+                                    className="rounded-xl border border-[#7A6A53] bg-[#7A6A53] px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-[#685942] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {activeDropdown && typeof document !== 'undefined' && createPortal(
-                <div
-                    className="fixed z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 w-48 action-dropdown-menu animate-in fade-in zoom-in-95 duration-100"
-                    style={{
-                        top: activeDropdown.top,
-                        right: activeDropdown.right
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <button
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                        onClick={() => setActiveDropdown(null)}
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        Pulihkan
-                    </button>
-                    <button
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                        onClick={() => setActiveDropdown(null)}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Hapus selamanya
-                    </button>
-                </div>,
-                document.body
             )}
+            <Toast toast={toast} onClose={hideToast} position="bottom-left" />
         </div>
     );
 }
