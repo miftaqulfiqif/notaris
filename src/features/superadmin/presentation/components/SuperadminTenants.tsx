@@ -1,176 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowUpRight, ChevronDown, Download, Search } from 'lucide-react';
+import { ChevronDown, Download, Search } from 'lucide-react';
 import {
     SuperadminShell,
     SuperadminStatCard,
     SuperadminStatusBadge,
-    type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
+import { useSuperadminTenants } from '../../hooks/useSuperadminTenants';
+
 type TenantStatusFilter = 'all' | 'active' | 'suspended' | 'trial';
-type TenantPackageTone = 'basic' | 'starter';
-type TenantRecord = {
-    activity: string;
-    contactEmail: string;
-    contactPhone: string;
-    createdAt: string;
-    id: string;
-    joinedAt: string;
-    name: string;
-    packageLabel: string;
-    packageTone: TenantPackageTone;
-    statusLabel: string;
-    statusTone: SuperadminStatusTone;
-    statusValue: Exclude<TenantStatusFilter, 'all'>;
-    subtitle: string;
-};
-
-const tenantSummaryCards = [
-    {
-        label: 'TOTAL TENANTS',
-        value: '284',
-        footer: (
-            <div className="flex items-center gap-2 text-[10px]">
-                <span className="flex items-center gap-1 font-medium text-[#3DBA7E]">
-                    <ArrowUpRight className="h-3 w-3" />
-                    4.1%
-                </span>
-                <span className="text-[#797F8F]">vs bulan lalu</span>
-            </div>
-        ),
-    },
-    {
-        label: 'AKTIF',
-        value: '1.182',
-        valueClassName: 'text-[#3DBA7E]',
-    },
-    {
-        label: 'NON-AKTIF / SUSPEND',
-        value: '13',
-        valueClassName: 'text-[#FF6B71]',
-        footer: (
-            <div className="flex items-center gap-2 text-[10px]">
-                <span className="font-medium text-[#E05A5A]">3 dispute</span>
-                <span className="text-[#797F8F]">Pending</span>
-            </div>
-        ),
-    },
-    {
-        label: 'TRIAL / GRACE PERIOD',
-        value: '8',
-        valueClassName: 'text-[#E0A030]',
-    },
-];
-
-const tenants: TenantRecord[] = [
-    {
-        id: 'tenant-graha-notaris',
-        name: 'PT Graha Notaris',
-        subtitle: 'Jakarta',
-        contactEmail: 'graha@notarix.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Basic',
-        packageTone: 'basic',
-        joinedAt: '12 Jan 2024',
-        activity: 'Baru saja',
-        statusLabel: 'Aktif',
-        statusTone: 'success',
-        statusValue: 'active',
-    },
-    {
-        id: 'tenant-kn-surya-hukum',
-        name: 'KN Surya Hukum',
-        subtitle: 'Samarinda',
-        contactEmail: 'surya@kn-sh.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Starter',
-        packageTone: 'starter',
-        joinedAt: '12 Jan 2024',
-        activity: '30 mnt lalu',
-        statusLabel: 'Suspend',
-        statusTone: 'danger',
-        statusValue: 'suspended',
-    },
-    {
-        id: 'tenant-cv-legaltama',
-        name: 'CV Legaltama',
-        subtitle: 'Samarinda',
-        contactEmail: 'legal@legaltama.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Starter',
-        packageTone: 'starter',
-        joinedAt: '12 Jan 2024',
-        activity: '2 jam lalu',
-        statusLabel: 'Aktif',
-        statusTone: 'success',
-        statusValue: 'active',
-    },
-    {
-        id: 'tenant-notaris-dewi',
-        name: 'Notaris Dewi A.',
-        subtitle: 'Jakarta',
-        contactEmail: 'dewi@notarisdewi.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Starter',
-        packageTone: 'starter',
-        joinedAt: '12 Jan 2024',
-        activity: '3 jam lalu',
-        statusLabel: 'Aktif',
-        statusTone: 'success',
-        statusValue: 'active',
-    },
-    {
-        id: 'tenant-kn-mitra-akta',
-        name: 'KN Mitra Akta',
-        subtitle: 'Jakarta',
-        contactEmail: 'info@mitraakta.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Starter',
-        packageTone: 'starter',
-        joinedAt: '12 Jan 2024',
-        activity: '1 hari lalu',
-        statusLabel: 'Trial',
-        statusTone: 'warning',
-        statusValue: 'trial',
-    },
-    {
-        id: 'tenant-pt-akta-sentosa',
-        name: 'PT Akta Sentosa',
-        subtitle: 'Samarinda',
-        contactEmail: 'akta@sentosa.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Basic',
-        packageTone: 'basic',
-        joinedAt: '12 Jan 2024',
-        activity: '5 hari lalu',
-        statusLabel: 'Aktif',
-        statusTone: 'success',
-        statusValue: 'active',
-    },
-    {
-        id: 'tenant-firma-hukum',
-        name: 'Firma Hukum',
-        subtitle: 'Jakarta',
-        contactEmail: 'prima@arsipprima.id',
-        contactPhone: '+62 812-0001',
-        createdAt: '19 Feb 2026, 09:22',
-        packageLabel: 'Basic',
-        packageTone: 'basic',
-        joinedAt: '12 Jan 2024',
-        activity: '10 hari lalu',
-        statusLabel: 'Trial',
-        statusTone: 'warning',
-        statusValue: 'trial',
-    },
-];
+type TenantPackageTone = 'basic' | 'starter' | 'professional' | 'enterprise';
 
 const statusOptions: { label: string; value: TenantStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
@@ -229,36 +69,70 @@ function TenantPackageBadge({
 }
 
 export function SuperadminTenants() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<TenantStatusFilter>('all');
+    const { 
+        tenants, 
+        stats, 
+        isLoading, 
+        search, 
+        setSearch, 
+        statusFilter, 
+        setStatusFilter 
+    } = useSuperadminTenants();
+    
+    // Fallback UI mapping for Tenant records
+    const mappedTenants = tenants.map(t => ({
+        id: t.id,
+        name: t.name,
+        subtitle: 'Notaris & PPAT',
+        contactEmail: t.contact_email || 'Belum tersedia',
+        contactPhone: t.contact_phone || '-',
+        createdAt: new Date(t.created_at || t.joined_date).toLocaleDateString('id-ID'),
+        packageLabel: t.package,
+        packageTone: t.package.toLowerCase().includes('starter') ? 'starter' : 'basic',
+        joinedAt: new Date(t.joined_date).toLocaleDateString('id-ID'),
+        activity: `${t.users_count} user aktif`,
+        statusLabel: t.status,
+        statusTone: t.status === 'active' ? 'success' : t.status === 'trial' ? 'warning' : 'danger',
+        usersCount: t.users_count
+    }));
 
-    const filteredTenants = useMemo(() => {
-        const normalizedQuery = searchQuery.trim().toLowerCase();
-
-        return tenants.filter((tenant) => {
-            const matchesQuery =
-                normalizedQuery.length === 0 ||
-                tenant.name.toLowerCase().includes(normalizedQuery) ||
-                tenant.contactEmail.toLowerCase().includes(normalizedQuery) ||
-                tenant.id.toLowerCase().includes(normalizedQuery);
-            const matchesStatus = statusFilter === 'all' || tenant.statusValue === statusFilter;
-
-            return matchesQuery && matchesStatus;
-        });
-    }, [searchQuery, statusFilter]);
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="tenants" title="Tenants">
+                <div className="flex h-64 items-center justify-center text-[#6F6F6F]">
+                    Loading...
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
         <SuperadminShell activePage="tenants" title="Tenants">
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {tenantSummaryCards.map((card) => (
-                    <SuperadminStatCard
-                        key={card.label}
-                        footer={card.footer}
-                        label={card.label}
-                        value={card.value}
-                        valueClassName={card.valueClassName}
-                    />
-                ))}
+                <SuperadminStatCard
+                    label="TOTAL TENANTS"
+                    value={stats?.total_tenants.toString() || '0'}
+                    footer={
+                        <div className="flex items-center gap-2 text-[10px]">
+                            <span className="text-[#797F8F]">Semua tenant terdaftar</span>
+                        </div>
+                    }
+                />
+                <SuperadminStatCard
+                    label="AKTIF"
+                    value={stats?.active_tenants.toString() || '0'}
+                    valueClassName="text-[#3DBA7E]"
+                />
+                <SuperadminStatCard
+                    label="NON-AKTIF / SUSPEND"
+                    value={stats?.suspended_tenants.toString() || '0'}
+                    valueClassName="text-[#FF6B71]"
+                />
+                <SuperadminStatCard
+                    label="TRIAL / GRACE PERIOD"
+                    value={stats?.trial_tenants.toString() || '0'}
+                    valueClassName="text-[#E0A030]"
+                />
             </section>
 
             <section className="rounded-[12px] border border-[#25282D] bg-[#16181C]">
@@ -270,8 +144,8 @@ export function SuperadminTenants() {
                             <input
                                 type="search"
                                 aria-label="Cari tenant atau kontak"
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
                                 placeholder="Cari Tenant, ID Transaksi"
                                 className="h-8 w-full min-w-0 rounded-[8px] border border-[#212121] bg-[#0E0F11] pl-9 pr-3 text-[12px] text-[#D4D4D4] outline-none transition-colors placeholder:text-[#6F6F6F] hover:border-[#3B414D] focus:border-[#C99D4B] sm:min-w-[275px]"
                             />
@@ -309,7 +183,7 @@ export function SuperadminTenants() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredTenants.map((tenant) => (
+                            {mappedTenants.map((tenant) => (
                                 <tr key={tenant.id} className="align-top">
                                     <td className="border-b border-[#303030] px-3 py-3">
                                         <p className="text-[14px] text-white">{tenant.name}</p>
@@ -350,6 +224,13 @@ export function SuperadminTenants() {
                                     </td>
                                 </tr>
                             ))}
+                            {mappedTenants.length === 0 && (
+                                <tr>
+                                    <td colSpan={8} className="px-3 py-8 text-center text-[14px] text-[#6F6F6F] border-b border-[#303030]">
+                                        Tidak ada data
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

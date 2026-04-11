@@ -15,7 +15,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedPath>
+        <ProtectedPath disallowedRoles={['SUPERADMIN']} redirectTo="/superadmin">
             <SidebarProvider>
                 <UploadModalProvider>
                     <EditFolderModalProvider>

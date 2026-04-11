@@ -39,7 +39,11 @@ interface NotarisUserItem {
 
 interface NotarisUsersResponse {
     message: string;
-    data: NotarisUserItem[];
+    data:
+        | NotarisUserItem[]
+        | {
+            data?: NotarisUserItem[];
+        };
 }
 
 interface CurrentUserResponse {
@@ -74,6 +78,14 @@ const resolveRoleClass = (role: string) =>
         : 'bg-lime-100 text-lime-700';
 
 const toSafeValue = (value?: string | null) => value?.trim() ?? '';
+
+const normalizeNotarisUsers = (response: NotarisUsersResponse): NotarisUserItem[] => {
+    if (Array.isArray(response.data)) {
+        return response.data;
+    }
+
+    return Array.isArray(response.data?.data) ? response.data.data : [];
+};
 
 const resolveAvatarUrl = (avatar?: string | null) => {
     if (!avatar) return null;
@@ -187,7 +199,7 @@ export default function InstansiPage() {
                 setEditedNotarisName(detail.notaris_name ?? '');
                 setEditedEmail(detail.email ?? '');
                 setEditedAlamat(detail.alamat ?? '');
-                setTeamMembers(usersResponse.data || []);
+                setTeamMembers(normalizeNotarisUsers(usersResponse));
             } catch (err) {
                 if (!mounted) return;
                 setError(err instanceof Error ? err.message : 'Gagal memuat data instansi');
@@ -461,7 +473,7 @@ export default function InstansiPage() {
         try {
             await apiPost(ENDPOINTS.USER.CREATE, payload);
             const usersResponse = await apiGet<NotarisUsersResponse>(ENDPOINTS.NOTARIS.USERS);
-            setTeamMembers(usersResponse.data || []);
+            setTeamMembers(normalizeNotarisUsers(usersResponse));
             setIsCreateMemberModalOpen(false);
             setCreateMemberForm(initialCreateMemberForm);
             showToast({ message: 'Member baru berhasil ditambahkan', variant: 'success' });

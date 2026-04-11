@@ -1,140 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowUpRight, ChevronRight, CircleAlert, X } from 'lucide-react';
+import { useState } from 'react';
+import { CircleAlert, X } from 'lucide-react';
 import {
     SuperadminShell,
     SuperadminStatCard,
     SuperadminStatusBadge,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
-type NotificationTone = 'danger' | 'warning' | 'success';
-type NotificationItem = {
-    actionLabel: string;
-    company: string;
-    timeLabel: string;
-    title: string;
-    tone: NotificationTone;
-};
-type TransactionItem = {
-    amount: string;
-    method: string;
-    status: string;
-    statusTone: 'danger' | 'success' | 'warning';
-    tenant: string;
-};
-
-const chartValues = [24, 35, 28, 14, 19, 34, 37, 41, 36, 33, 35, 17, 31, 47, 40];
-const xAxisLabels = ['1 Jan', '5 Jan', '10 Jan', '15 Jan', '20 Jan', '25 Jan', '30 Jan'];
-
-const chartSummary = [
-    { label: 'Total 30 hari', value: '1.247' },
-    { label: 'Avg/hari', value: '41.6' },
-    { label: 'Eror Rate', value: '5.2%', tone: 'text-[#FF5757]' },
-    { label: 'Revenue', value: '1.247' },
-];
-
-const notificationItems: NotificationItem[] = [
-    {
-        title: 'Pembayaran gagal -',
-        company: 'PT Graha Notaris',
-        timeLabel: '5 menit yang lalu',
-        actionLabel: 'Lihat transaksi',
-        tone: 'danger',
-    },
-    {
-        title: 'Tiket support baru dari',
-        company: 'KN Budi S.',
-        timeLabel: '23 menit lalu',
-        actionLabel: 'Buka Ticket',
-        tone: 'warning',
-    },
-    {
-        title: 'Job queue error: invoice generator gagal',
-        company: '',
-        timeLabel: '1 jam yang lalu',
-        actionLabel: 'Lihat Log',
-        tone: 'danger',
-    },
-    {
-        title: 'Tenant baru -',
-        company: 'CV Arsip Prima',
-        timeLabel: '2 jam yang lalu',
-        actionLabel: 'Detail',
-        tone: 'success',
-    },
-];
-
-const transactionItems: TransactionItem[] = [
-    {
-        tenant: 'PT Graha Notaris',
-        amount: 'Rp 500.000',
-        method: 'Transfer',
-        status: 'Gagal',
-        statusTone: 'danger',
-    },
-    {
-        tenant: 'KN Surya Hukum',
-        amount: 'Rp 500.000',
-        method: 'Qris',
-        status: 'Sukses',
-        statusTone: 'success',
-    },
-    {
-        tenant: 'CV Legaltama',
-        amount: 'Rp 500.000',
-        method: 'VA BCA',
-        status: 'Sukses',
-        statusTone: 'success',
-    },
-    {
-        tenant: 'Notaris Dewi A.',
-        amount: 'Rp 500.000',
-        method: 'Transfer',
-        status: 'Pending',
-        statusTone: 'warning',
-    },
-];
-
-function NotificationDot({ tone }: Readonly<{ tone: NotificationTone }>) {
-    const toneClassName =
-        tone === 'danger' ? 'bg-[#FF5C64]' : tone === 'warning' ? 'bg-[#E0A030]' : 'bg-[#3DBA7E]';
-
-    return <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toneClassName}`} aria-hidden="true" />;
-}
-
-function NotificationRow({
-    actionLabel,
-    company,
-    timeLabel,
-    title,
-    tone,
-}: Readonly<NotificationItem>) {
-    return (
-        <div className="flex gap-3 border-b border-[#303030] py-4 last:border-b-0">
-            <NotificationDot tone={tone} />
-            <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-white">
-                    {title}{' '}
-                    {company ? <span className="font-semibold">{company}</span> : null}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[#6F6F6F]">
-                    <span>{timeLabel}</span>
-                    <span className="hidden text-[12px] sm:inline">•</span>
-                    <button type="button" className="inline-flex items-center gap-1 text-[12px] text-[#C9AA6F] hover:text-[#DFC28E]">
-                        {actionLabel}
-                        <ChevronRight className="h-3 w-3" />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
+import { useSuperadminDashboard } from '../../hooks/useSuperadminDashboard';
+import { TrendDataPoint, RecentTransaction } from '../../types';
 
 function buildChartPath(values: number[]) {
     const width = 520;
     const height = 148;
-    const maxValue = 60;
+    const maxValue = Math.max(...values, 1);
 
     const points = values.map((value, index) => {
         const x = (index / (values.length - 1)) * width;
@@ -164,7 +44,56 @@ function HeaderAction({ label }: Readonly<{ label: string }>) {
 
 export function SuperadminDashboard() {
     const [isAlertVisible, setIsAlertVisible] = useState(true);
-    const { areaPath, linePath } = useMemo(() => buildChartPath(chartValues), []);
+    const { stats, trend, recentTransactions, isLoading, error } = useSuperadminDashboard();
+    
+    const chartValuesData = trend && trend.length ? trend.map((t: TrendDataPoint) => t.revenue) : [0];
+    const xAxisLabelsData = trend && trend.length ? trend.map((t: TrendDataPoint) => t.date) : ['Belum ada data'];
+    const totalTrendRevenue = chartValuesData.reduce((sum, value) => sum + value, 0);
+    const averageTrendRevenue = chartValuesData.length ? totalTrendRevenue / chartValuesData.length : 0;
+    const highestTrendRevenue = Math.max(...chartValuesData, 0);
+
+    const chartSummaryData = [
+        {
+            label: 'Total 30 hari',
+            value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalTrendRevenue),
+        },
+        {
+            label: 'Rata-rata/hari',
+            value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(averageTrendRevenue),
+        },
+        {
+            label: 'Puncak harian',
+            value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(highestTrendRevenue),
+        },
+        {
+            label: 'Revenue bulan ini',
+            value: stats?.monthly_revenue
+                ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats.monthly_revenue)
+                : 'Rp 0',
+        },
+    ];
+    
+    const { areaPath, linePath } = buildChartPath(chartValuesData);
+
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="dashboard" title="Dashboard">
+                <div className="flex h-64 items-center justify-center">
+                    <div className="text-[#6F6F6F]">Loading...</div>
+                </div>
+            </SuperadminShell>
+        );
+    }
+
+    if (error) {
+        return (
+            <SuperadminShell activePage="dashboard" title="Dashboard">
+                <div className="flex h-64 items-center justify-center">
+                    <div className="text-[#FF5757]">{error}</div>
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
             <SuperadminShell activePage="dashboard" title="Dashboard">
@@ -174,7 +103,7 @@ export function SuperadminDashboard() {
                     <div className="min-w-0 flex-1 text-sm">
                         <span className="font-medium text-[#EB3223]">Alert :</span>{' '}
                         <span className="text-white">
-                            Error rate payment gateway 5.2% melampaui threshold. 3 transaksi pending perlu ditinjau.
+                            Sistem berjalan normal.
                         </span>
                     </div>
                     <button
@@ -191,51 +120,38 @@ export function SuperadminDashboard() {
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <SuperadminStatCard
                     label="TENANT AKTIF"
-                    value="284"
+                    value={stats?.active_tenants?.toString() || '0'}
                     footer={
                         <div className="flex items-center gap-2 text-[10px]">
-                            <span className="flex items-center gap-1 font-medium text-[#3DBA7E]">
-                                <ArrowUpRight className="h-3 w-3" />
-                                4.1%
+                            <span className="flex items-center gap-1 text-[#797F8F]">
+                                Dari total {stats?.total_tenants} tenant
                             </span>
-                            <span className="text-[#797F8F]">vs bulan lalu</span>
                         </div>
                     }
                 />
                 <SuperadminStatCard
                     label="TRANSAKSI HARI INI"
-                    value="47"
+                    value={stats?.transactions_today?.toString() || '0'}
                     footer={
                         <div className="flex items-center gap-2 text-[10px]">
-                            <span className="flex items-center gap-1 font-medium text-[#3DBA7E]">
-                                <ArrowUpRight className="h-3 w-3" />
-                                12%
-                            </span>
-                            <span className="text-[#797F8F]">vs kemarin</span>
                         </div>
                     }
                 />
                 <SuperadminStatCard
                     label="PENDAPATAN BULAN INI"
-                    value="Rp 218 jt"
+                    value={stats?.monthly_revenue ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats.monthly_revenue) : 'Rp 0'}
                     footer={
                         <div className="flex items-center gap-2 text-[10px]">
-                            <span className="flex items-center gap-1 font-medium text-[#3DBA7E]">
-                                <ArrowUpRight className="h-3 w-3" />
-                                8.7%
-                            </span>
-                            <span className="text-[#797F8F]">Bulan lalu</span>
                         </div>
                     }
                 />
                 <SuperadminStatCard
                     label="TIKET SUPPORT TERBUKA"
-                    value="7"
-                    valueClassName="text-[#E0A030]"
+                    value={stats?.open_tickets?.toString() || '0'}
+                    valueClassName={stats?.open_tickets && stats.open_tickets > 0 ? "text-[#E0A030]" : "text-white"}
                     footer={
                         <div className="flex items-center gap-2 text-[10px]">
-                            <span className="font-medium text-[#E0A030]">+3</span>
-                            <span className="text-[#797F8F]">Baru hari ini</span>
+                            <span className="text-[#797F8F]">Perlu ditindaklanjuti</span>
                         </div>
                     }
                 />
@@ -289,14 +205,14 @@ export function SuperadminDashboard() {
                             </div>
 
                             <div className="ml-8 mt-3 flex justify-between text-[11px] text-[rgba(56,60,71,0.87)]">
-                                {xAxisLabels.map((label) => (
+                                {xAxisLabelsData.map((label: string) => (
                                     <span key={label}>{label}</span>
                                 ))}
                             </div>
                         </div>
 
                         <div className="mt-5 grid gap-4 border-t border-[#25282D] pt-4 sm:grid-cols-2 xl:grid-cols-4">
-                            {chartSummary.map((item) => (
+                            {chartSummaryData.map((item) => (
                                 <div key={item.label} className="space-y-1">
                                     <p className="text-[12px] text-[#6F6F6F]">{item.label}</p>
                                     <p className={`text-[16px] ${item.tone ?? 'text-white'}`}>{item.value}</p>
@@ -311,10 +227,8 @@ export function SuperadminDashboard() {
                         <h2 className="text-[16px] font-semibold text-white">Notifikasi</h2>
                         <HeaderAction label="Lihat semua" />
                     </div>
-                    <div className="px-4">
-                        {notificationItems.map((item) => (
-                            <NotificationRow key={`${item.title}-${item.company}`} {...item} />
-                        ))}
+                    <div className="px-4 py-4 text-center text-[#6F6F6F] text-sm">
+                        Belum ada notifikasi baru
                     </div>
                 </article>
             </section>
@@ -336,16 +250,28 @@ export function SuperadminDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {transactionItems.map((transaction) => (
-                                <tr key={transaction.tenant} className="border-b border-[#303030] last:border-b-0">
-                                    <td className="px-3 py-4 text-[14px] text-white">{transaction.tenant}</td>
-                                    <td className="px-3 py-4 text-[14px] text-[#757C8B]">{transaction.amount}</td>
+                            {recentTransactions.map((transaction: RecentTransaction) => (
+                                <tr key={transaction.id} className="border-b border-[#303030] last:border-b-0">
+                                    <td className="px-3 py-4 text-[14px] text-white">{transaction.tenant_name}</td>
+                                    <td className="px-3 py-4 text-[14px] text-[#757C8B]">
+                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(transaction.amount)}
+                                    </td>
                                     <td className="px-3 py-4 text-[14px] text-[#757C8B]">{transaction.method}</td>
                                     <td className="px-3 py-4">
-                                        <SuperadminStatusBadge tone={transaction.statusTone} value={transaction.status} />
+                                        <SuperadminStatusBadge 
+                                            tone={transaction.status === 'success' ? 'success' : transaction.status === 'failed' || transaction.status === 'refund' ? 'danger' : 'warning'} 
+                                            value={transaction.status} 
+                                        />
                                     </td>
                                 </tr>
                             ))}
+                            {recentTransactions.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-3 py-8 text-center text-[14px] text-[#6F6F6F]">
+                                        Belum ada transaksi
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

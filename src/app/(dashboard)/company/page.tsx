@@ -19,7 +19,6 @@ import { FolderDetailOffcanvas } from '@/features/services/presentation/componen
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import folderIcon from '@/assets/icons/folder.png';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
-import { Activity } from '@/features/dashboard/types/activity.types';
 
 interface CompanyItem {
     id: string;
@@ -893,9 +892,9 @@ export default function CompanyPage() {
             },
         ],
         [
+            activeCompany,
             activeCompanyIsFavorite,
             handleDownloadFolder,
-            handleMoveToTrash,
             handleOpenDetailSidebar,
             handleToggleFavorite,
             openRenameModal,

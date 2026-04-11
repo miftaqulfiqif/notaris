@@ -69,5 +69,50 @@ export const ENDPOINTS = {
     DASHBOARD: {
         ACTIVITIES: `${API_BASE_URL}/aktifitas`,
         RECOMMENDATIONS: `${API_BASE_URL}/aktifitas/recomendation`,
+    },
+    SUPERADMIN: {
+        DASHBOARD: {
+            STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/dashboard/stats`,
+            TREND: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/dashboard/trend`,
+            RECENT_TRANSACTIONS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/dashboard/recent-transactions`,
+        },
+        TENANTS: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tenants`,
+            STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tenants/stats`,
+        },
+        INVOICES: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/invoices`,
+            STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/invoices/stats`,
+            REVENUE: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/invoices/revenue`,
+            AGING: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/invoices/aging`,
+            MARK_PAID: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/invoices/${id}/mark-paid`,
+        },
+        PACKAGES: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages`,
+            CREATE: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages`,
+            UPDATE: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages/${id}`,
+            DELETE: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages/${id}`,
+            TENANTS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages/tenants`,
+            METRICS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/packages/metrics`,
+        },
+        TICKETS: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tickets`,
+            STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tickets/stats`,
+            CREATE: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tickets`,
+            UPDATE: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tickets/${id}`,
+            REPLIES: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/tickets/${id}/replies`,
+        },
+        REPORTS: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports`,
+            GENERATE: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/generate`,
+            SCHEDULED: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/scheduled`,
+            CREATE_SCHEDULED: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/scheduled`,
+        },
+        TRANSACTIONS: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions`,
+            STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/stats`,
+            DETAIL: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/${id}`,
+            REFUND: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/${id}/refund`,
+        }
     }
 } as const;

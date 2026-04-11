@@ -15,3 +15,13 @@ export const getUserRoleName = (user?: Pick<User, 'role'> | null) => {
 
     return undefined;
 };
+
+export const isSuperadminUser = (user?: Pick<User, 'role'> | null) => {
+    const roleName = getUserRoleName(user);
+
+    return roleName?.toUpperCase() === 'SUPERADMIN';
+};
+
+export const getAuthenticatedHomePath = (user?: Pick<User, 'role'> | null) => {
+    return isSuperadminUser(user) ? '/superadmin' : '/dashboard';
+};

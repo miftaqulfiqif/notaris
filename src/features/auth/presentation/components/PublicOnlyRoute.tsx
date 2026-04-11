@@ -1,18 +1,19 @@
 'use client';
 
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { getAuthenticatedHomePath } from '@/features/auth/utils/user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-    const { isAuthenticated, isLoading } = useAuthContext();
+    const { isAuthenticated, isLoading, user } = useAuthContext();
     const router = useRouter();
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            router.push('/dashboard');
+            router.push(getAuthenticatedHomePath(user));
         }
-    }, [isLoading, isAuthenticated, router]);
+    }, [isLoading, isAuthenticated, router, user]);
 
     if (isLoading) {
         return (

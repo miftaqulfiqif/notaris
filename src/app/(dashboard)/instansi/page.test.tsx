@@ -149,22 +149,24 @@ describe('InstansiPage', () => {
       .mockResolvedValueOnce(mockedCurrentUserResponse)
       .mockResolvedValueOnce({
         message: 'Get users by notaris success',
-        data: [
-          {
-            id: '1',
-            role: 'KEPALA NOTARIS',
-            name: 'Johny Marteen',
-            profile_picture: null,
-            created_at: 'Januari, 31 2026',
-          },
-          {
-            id: '2',
-            role: 'STAFF',
-            name: 'Staff Rosyam',
-            profile_picture: null,
-            created_at: 'Maret, 1 2026',
-          },
-        ],
+        data: {
+          data: [
+            {
+              id: '1',
+              role: 'KEPALA NOTARIS',
+              name: 'Johny Marteen',
+              profile_picture: null,
+              created_at: 'Januari, 31 2026',
+            },
+            {
+              id: '2',
+              role: 'STAFF',
+              name: 'Staff Rosyam',
+              profile_picture: null,
+              created_at: 'Maret, 1 2026',
+            },
+          ],
+        },
       });
 
     (apiPost as jest.Mock).mockResolvedValue({
@@ -216,15 +218,17 @@ describe('InstansiPage', () => {
       })
       .mockResolvedValueOnce({
         message: 'Get users by notaris success',
-        data: [
-          {
-            id: '1',
-            role: 'STAFF',
-            name: 'Staff Rosyam',
-            profile_picture: null,
-            created_at: 'Maret, 1 2026',
-          },
-        ],
+        data: {
+          data: [
+            {
+              id: '1',
+              role: 'STAFF',
+              name: 'Staff Rosyam',
+              profile_picture: null,
+              created_at: 'Maret, 1 2026',
+            },
+          ],
+        },
       })
       .mockResolvedValueOnce(mockedCurrentUserStaffResponse);
 

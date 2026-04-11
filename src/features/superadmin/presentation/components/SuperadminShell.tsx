@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Bell, Menu, X } from 'lucide-react';
+import { Bell, LogOut, Menu, X } from 'lucide-react';
+import { useOptionalAuthContext } from '@/features/auth/context/auth.context';
+import { superadminApi } from '@/features/superadmin/services/superadmin-api';
+import { getUserRoleName } from '@/features/auth/utils/user';
 import { SuperadminNotificationPopover } from '@/features/superadmin/presentation/components/SuperadminNotificationPopover';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 export type SuperadminPageId =
     | 'dashboard'
@@ -34,6 +39,11 @@ type SidebarSection = {
     label: string;
 };
 
+type SidebarBadgeCounts = {
+    subscriptionPackages: number;
+    support: number;
+};
+
 type SuperadminStatCardProps = {
     footer?: ReactNode;
     label: string;
@@ -43,7 +53,14 @@ type SuperadminStatCardProps = {
 
 const WITA_TIME_ZONE = 'Asia/Makassar';
 
-const sidebarSections: SidebarSection[] = [
+const emptySidebarBadgeCounts: SidebarBadgeCounts = {
+    subscriptionPackages: 0,
+    support: 0,
+};
+
+const toSidebarBadge = (count: number) => (count > 0 ? String(count) : undefined);
+
+const buildSidebarSections = (badgeCounts: SidebarBadgeCounts): SidebarSection[] => [
     {
         label: 'UTAMA',
         items: [
@@ -56,14 +73,24 @@ const sidebarSections: SidebarSection[] = [
         items: [
             { href: '/superadmin/tenants', id: 'tenants', label: 'Tenants' },
             { href: '/superadmin/billing-invoices', id: 'billingInvoices', label: 'Billing Invoices' },
-            { badge: '1', href: '/superadmin/paket-langganan', id: 'subscriptionPackages', label: 'Paket Langganan' },
+            {
+                badge: toSidebarBadge(badgeCounts.subscriptionPackages),
+                href: '/superadmin/paket-langganan',
+                id: 'subscriptionPackages',
+                label: 'Paket Langganan',
+            },
         ],
     },
     {
         label: 'OPERASIONAL',
         items: [
             { href: '/superadmin/laporan', id: 'reports', label: 'Laporan' },
-            { badge: '3', href: '/superadmin/support', id: 'support', label: 'Support' },
+            {
+                badge: toSidebarBadge(badgeCounts.support),
+                href: '/superadmin/support',
+                id: 'support',
+                label: 'Support',
+            },
             { label: 'Integrasi & API' },
         ],
     },
@@ -101,9 +128,15 @@ function formatDateTime(now: Date | null) {
 
 function DashboardLogo() {
     return (
-        <div className="relative h-10 w-10 shrink-0 text-[#B99963]" aria-hidden="true">
-            <span className="absolute left-0 top-1 h-5 w-5 rounded-[4px] border-[3px] border-current/70" />
-            <span className="absolute right-[2px] top-4 h-5 w-5 rounded-[4px] border-[3px] border-current" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[#111317] ring-1 ring-[#25282D]">
+            <Image
+                src="/Logo.png"
+                alt="Notarix logo"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain"
+                priority
+            />
         </div>
     );
 }
@@ -162,9 +195,11 @@ function SidebarAction({
 function SidebarContent({
     activePage,
     onNavigate,
+    sections,
 }: Readonly<{
     activePage: SuperadminPageId;
     onNavigate?: () => void;
+    sections: SidebarSection[];
 }>) {
     return (
         <>
@@ -176,7 +211,7 @@ function SidebarContent({
             </div>
 
             <div className="space-y-6 py-5">
-                {sidebarSections.map((section) => (
+                {sections.map((section) => (
                     <div key={section.label} className="space-y-2">
                         <SidebarSectionTitle>{section.label}</SidebarSectionTitle>
                         <div className="space-y-1">
@@ -200,19 +235,90 @@ function SidebarContent({
     );
 }
 
+function getUserInitials(name?: string | null) {
+    if (!name) {
+        return 'SA';
+    }
+
+    const parts = name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+
+    if (!parts.length) {
+        return 'SA';
+    }
+
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+}
+
 function UserCard() {
+    const authContext = useOptionalAuthContext();
+    const user = authContext?.user;
+    const userRole = getUserRoleName(user) ?? 'SUPERADMIN';
+    const userSubtitle = user?.email ?? user?.username ?? 'superadmin@example.com';
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        if (!authContext?.logout) {
+            setIsConfirmOpen(false);
+            return;
+        }
+
+        setIsLoggingOut(true);
+
+        try {
+            await authContext.logout();
+        } finally {
+            setIsLoggingOut(false);
+            setIsConfirmOpen(false);
+        }
+    };
+
     return (
-        <div className="rounded-[8px] bg-[#0F1012] p-3">
-            <div className="flex items-center gap-3">
-                <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-gradient-to-br from-[#C99D4B] via-[#8D6A38] to-[#3E2E18] text-sm font-semibold text-white">
-                    M
+        <>
+            <div className="rounded-[8px] bg-[#0F1012] p-3">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-gradient-to-br from-[#C99D4B] via-[#8D6A38] to-[#3E2E18] text-sm font-semibold text-white">
+                        {getUserInitials(user?.name)}
+                    </div>
+                    <div className="min-w-0">
+                        <p className="truncate text-[14px] text-white">{user?.name ?? 'Super Admin'}</p>
+                        <p className="truncate text-[10px] uppercase tracking-[0.04em] text-[#858585]">{userRole}</p>
+                        <p className="truncate text-[10px] text-[#6F6F6F]">{userSubtitle}</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-[14px] text-white">Maspek</p>
-                    <p className="text-[10px] text-[#858585]">Master Admin</p>
-                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setIsConfirmOpen(true)}
+                    disabled={isLoggingOut}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[8px] border border-[#3B3F48] bg-[#15171B] px-3 py-2 text-[12px] font-medium text-[#D7D9DE] transition-colors hover:border-[#C99D4B] hover:text-[#C99D4B] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <LogOut className="h-3.5 w-3.5" />
+                    {isLoggingOut ? 'Memproses...' : 'Keluar'}
+                </button>
             </div>
-        </div>
+
+            <ConfirmDialog
+                isOpen={isConfirmOpen}
+                title="Keluar dari akun"
+                message="Apakah anda yakin ingin keluar dari panel superadmin?"
+                confirmText={isLoggingOut ? 'Memproses...' : 'Ya, Keluar'}
+                cancelText="Batal"
+                type="danger"
+                onConfirm={() => {
+                    void handleLogout();
+                }}
+                onCancel={() => {
+                    if (!isLoggingOut) {
+                        setIsConfirmOpen(false);
+                    }
+                }}
+            />
+        </>
     );
 }
 
@@ -267,6 +373,7 @@ export function SuperadminShell({
     const [now, setNow] = useState<Date | null>(null);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [sidebarBadgeCounts, setSidebarBadgeCounts] = useState<SidebarBadgeCounts>(emptySidebarBadgeCounts);
     const notificationRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -312,6 +419,40 @@ export function SuperadminShell({
     }, [isNotificationOpen]);
 
     useEffect(() => {
+        let mounted = true;
+
+        const fetchSidebarBadgeCounts = async () => {
+            try {
+                const [packagesResponse, ticketStatsResponse] = await Promise.all([
+                    superadminApi.getPackages(),
+                    superadminApi.getTicketStats(),
+                ]);
+
+                if (!mounted) {
+                    return;
+                }
+
+                setSidebarBadgeCounts({
+                    subscriptionPackages: packagesResponse.data?.length ?? 0,
+                    support: ticketStatsResponse.data?.open_tickets ?? 0,
+                });
+            } catch {
+                if (!mounted) {
+                    return;
+                }
+
+                setSidebarBadgeCounts(emptySidebarBadgeCounts);
+            }
+        };
+
+        void fetchSidebarBadgeCounts();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
         if (!isSidebarOpen) {
             return undefined;
         }
@@ -333,12 +474,13 @@ export function SuperadminShell({
     }, [isSidebarOpen]);
 
     const { dateLabel, timeLabel } = useMemo(() => formatDateTime(now), [now]);
+    const sidebarSections = useMemo(() => buildSidebarSections(sidebarBadgeCounts), [sidebarBadgeCounts]);
 
     return (
         <div className="min-h-screen bg-[#0F1012] text-white">
             <div className="flex min-h-screen flex-col lg:flex-row">
                 <aside className="hidden shrink-0 border-r border-[#25282D] bg-[#16181C] px-3 py-3 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[240px] lg:flex-col">
-                    <SidebarContent activePage={activePage} />
+                    <SidebarContent activePage={activePage} sections={sidebarSections} />
                 </aside>
 
                 <main className="min-w-0 flex-1">
@@ -413,7 +555,7 @@ export function SuperadminShell({
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
-                        <SidebarContent activePage={activePage} onNavigate={() => setIsSidebarOpen(false)} />
+                        <SidebarContent activePage={activePage} onNavigate={() => setIsSidebarOpen(false)} sections={sidebarSections} />
                     </aside>
                 </div>
             ) : null}

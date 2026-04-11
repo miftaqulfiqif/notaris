@@ -1,11 +1,12 @@
 'use client';
 
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { getAuthenticatedHomePath } from '@/features/auth/utils/user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export const UnverifiedOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-    const { isAuthenticated, isVerified, isLoading } = useAuthContext();
+    const { isAuthenticated, isVerified, isLoading, user } = useAuthContext();
     const router = useRouter();
 
     useEffect(() => {
@@ -13,10 +14,10 @@ export const UnverifiedOnlyRoute = ({ children }: { children: React.ReactNode })
             if (!isAuthenticated) {
                 router.push('/login');
             } else if (isVerified) {
-                router.push('/dashboard');
+                router.push(getAuthenticatedHomePath(user));
             }
         }
-    }, [isLoading, isAuthenticated, isVerified, router]);
+    }, [isLoading, isAuthenticated, isVerified, router, user]);
 
     if (isLoading) {
         return (

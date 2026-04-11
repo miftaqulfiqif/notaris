@@ -6,25 +6,13 @@ import {
     SuperadminShell,
     SuperadminStatusBadge,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
-
-type RecentReportRecord = {
-    createdAt: string;
-    format: string;
-    period: string;
-    title: string;
-};
-
-type ScheduledReport = {
-    deliveryLabel: string;
-    recipient: string;
-    statusLabel: string;
-};
+import { useSuperadminReports } from '../../hooks/useSuperadminReports';
 
 const reportTypeOptions = [
-    { label: 'Transaksi pembayaran', value: 'transactionPayments' },
-    { label: 'Pendapatan bulanan', value: 'monthlyRevenue' },
-    { label: 'Pertumbuhan tenant', value: 'tenantGrowth' },
-    { label: 'Support & SLA', value: 'supportSla' },
+    { label: 'Transaksi pembayaran', value: 'transaction_payments' },
+    { label: 'Pendapatan bulanan', value: 'monthly_revenue' },
+    { label: 'Pertumbuhan tenant', value: 'tenant_growth' },
+    { label: 'Support & SLA', value: 'support_sla' },
 ];
 
 const formatOptions = [
@@ -39,48 +27,27 @@ const deliveryScheduleOptions = [
     { label: 'Bulanan', value: 'monthly' },
 ];
 
-const recentReports: RecentReportRecord[] = [
-    {
-        title: 'Transaksi Jan 2026',
-        period: 'Jan 2026',
-        format: 'PDF',
-        createdAt: '1 Feb 2026',
-    },
-    {
-        title: 'Churn Q4 2025',
-        period: 'Okt-Des 2025',
-        format: 'PDF',
-        createdAt: '1 Feb 2026',
-    },
-    {
-        title: 'Revenue 2025',
-        period: 'Jan-Des 2025',
-        format: 'PDF',
-        createdAt: '1 Feb 2026',
-    },
-    {
-        title: 'Tenant Growth Q3',
-        period: 'Jul-Sep 2025',
-        format: 'PDF',
-        createdAt: '1 Feb 2026',
-    },
-    {
-        title: 'Support SLA Jul 2025',
-        period: 'Jul 2025',
-        format: 'PDF',
-        createdAt: '1 Feb 2026',
-    },
-];
+const formatReportTypeLabel = (reportType: string) =>
+    reportType
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
 
-const scheduledReports: ScheduledReport[] = [
-    {
-        deliveryLabel: 'Setiap hari, 08.00 WITA',
-        recipient: 'cto@id',
-        statusLabel: 'Aktif',
-    },
-];
+const formatSchedule = (schedule: string) => {
+    switch (schedule) {
+        case 'daily':
+            return 'harian';
+        case 'weekly':
+            return 'mingguan';
+        case 'monthly':
+            return 'bulanan';
+        default:
+            return schedule;
+    }
+};
 
-function InputLabel({ children }: Readonly<{ children: string }>) {
+function InputLabel({ children }: Readonly<{ children: React.ReactNode }>) {
     return <span className="text-[12px] font-medium text-[#9EA4B3]">{children}</span>;
 }
 
@@ -138,12 +105,88 @@ function TextField({
 }
 
 export function SuperadminReports() {
-    const [reportType, setReportType] = useState('transactionPayments');
-    const [startDate, setStartDate] = useState('01/01/2026');
-    const [endDate, setEndDate] = useState('01/02/2026');
+    const { recentReports, scheduledReports, isLoading, isGenerating, isScheduling, generateReport, scheduleReport } = useSuperadminReports();
+    const [reportType, setReportType] = useState('transaction_payments');
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [formatOutput, setFormatOutput] = useState('pdf');
     const [deliverySchedule, setDeliverySchedule] = useState('weekly');
-    const [recipientEmail, setRecipientEmail] = useState('CTO : Johnymartteen@gmail.com');
+    const [recipientEmail, setRecipientEmail] = useState('');
+
+    const downloadCsv = (data: Record<string, unknown>[], filename: string) => {
+        if (!data.length) return;
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map((item) => Object.values(item).map(val => `"${val}"`).join(','));
+        const csvContent = [headers, ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${filename}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleGenerateReport = async () => {
+        const res = await generateReport({
+            report_type: reportType,
+            period_start: startDate,
+            period_end: endDate,
+            format: formatOutput,
+        });
+
+        if (res.success && res.data) {
+            const responseData = res.data as { data?: Record<string, unknown>[] };
+            if (Array.isArray(responseData.data) && responseData.data.length > 0) {
+                if (formatOutput === 'csv') {
+                    downloadCsv(responseData.data, `report_${reportType}_${startDate}_${endDate}`);
+                }
+            }
+        }
+    };
+
+    const handleDownloadHistory = async (report: import('../../types').ReportRecord) => {
+        const reportFormat = report.format || 'csv';
+        const pStart = new Date(report.period_start).toISOString().split('T')[0];
+        const pEnd = new Date(report.period_end).toISOString().split('T')[0];
+        
+        const res = await generateReport({
+            report_type: report.report_type,
+            period_start: pStart,
+            period_end: pEnd,
+            format: reportFormat,
+        });
+
+        if (res.success && res.data) {
+            const responseData = res.data as { data?: Record<string, unknown>[] };
+            if (Array.isArray(responseData.data) && responseData.data.length > 0) {
+                if (reportFormat === 'csv') {
+                    downloadCsv(responseData.data, `report_${report.report_type}_${pStart}_${pEnd}`);
+                }
+            }
+        }
+    };
+
+    const handleScheduleReport = async () => {
+        if (!recipientEmail.trim()) return;
+        await scheduleReport({
+            report_type: reportType,
+            schedule: deliverySchedule,
+            recipient_email: recipientEmail.trim(),
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="reports" title="Laporan">
+                <div className="flex h-64 items-center justify-center text-[#6F6F6F]">
+                    Loading...
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
         <SuperadminShell
@@ -225,13 +268,25 @@ export function SuperadminReports() {
                             />
                         </label>
 
-                        <button
-                            type="button"
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[#C9AA6F] px-4 text-[14px] font-medium text-[#25282D] transition-colors hover:bg-[#D7B97F]"
-                        >
-                            <FileText className="h-4 w-4" />
-                            Generate Laporan
-                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={handleGenerateReport}
+                                disabled={isGenerating}
+                                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#C9AA6F] px-4 text-[14px] font-medium text-[#25282D] transition-colors hover:bg-[#D7B97F] disabled:opacity-50"
+                            >
+                                <FileText className="h-4 w-4" />
+                                {isGenerating ? 'Generating...' : 'Generate Laporan'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleScheduleReport}
+                                disabled={isScheduling || !recipientEmail.trim()}
+                                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] border border-[#C9AA6F] px-4 text-[14px] font-medium text-[#C9AA6F] transition-colors hover:bg-[#C9AA6F]/10 disabled:opacity-50"
+                            >
+                                {isScheduling ? 'Menjadwalkan...' : 'Jadwalkan Laporan'}
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -260,22 +315,23 @@ export function SuperadminReports() {
                                 </thead>
                                 <tbody>
                                     {recentReports.map((report) => (
-                                        <tr key={report.title}>
+                                        <tr key={report.id}>
                                             <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-white">
-                                                {report.title}
+                                                {report.title || formatReportTypeLabel(report.report_type)}
                                             </td>
                                             <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-[#757C8B]">
-                                                {report.period}
+                                                {new Date(report.period_start).toLocaleDateString('id-ID')} - {new Date(report.period_end).toLocaleDateString('id-ID')}
                                             </td>
                                             <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-white">
-                                                {report.format}
+                                                {(report.format || 'csv').toUpperCase()}
                                             </td>
                                             <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-[#757C8B]">
-                                                {report.createdAt}
+                                                {new Date(report.created_at).toLocaleDateString('id-ID')}
                                             </td>
                                             <td className="border-b border-[#303030] px-3 py-3 text-center">
                                                 <button
                                                     type="button"
+                                                    onClick={() => handleDownloadHistory(report)}
                                                     className="inline-flex items-center gap-1 rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A]"
                                                 >
                                                     unduh
@@ -284,6 +340,13 @@ export function SuperadminReports() {
                                             </td>
                                         </tr>
                                     ))}
+                                    {recentReports.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="border-b border-[#303030] px-3 py-8 text-center text-[14px] text-[#6F6F6F]">
+                                                Belum ada laporan yang digenerate
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -297,20 +360,25 @@ export function SuperadminReports() {
                         <div className="divide-y divide-[#303030]">
                             {scheduledReports.map((report) => (
                                 <div
-                                    key={report.recipient}
+                                    key={report.id}
                                     className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                     <div className="space-y-1">
-                                        <p className="text-[14px] font-medium text-white">Transaksi harian</p>
-                                        <p className="text-[12px] text-[#797F8F]">Dikirim ke {report.recipient}</p>
+                                        <p className="text-[14px] font-medium text-white">{formatReportTypeLabel(report.report_type)}</p>
+                                        <p className="text-[12px] text-[#797F8F]">Dikirim ke {report.recipient_email}</p>
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <SuperadminStatusBadge tone="success" value={report.statusLabel} />
-                                        <span className="text-[12px] text-[#6F6F6F]">{report.deliveryLabel}</span>
+                                        <SuperadminStatusBadge tone={report.status === 'active' ? "success" : "muted"} value={report.status === 'active' ? 'Aktif' : 'Non-aktif'} />
+                                        <span className="text-[12px] text-[#6F6F6F]">Setiap {formatSchedule(report.schedule)}</span>
                                     </div>
                                 </div>
                             ))}
+                            {scheduledReports.length === 0 && (
+                                <div className="px-4 py-8 text-center text-[14px] text-[#6F6F6F]">
+                                    Belum ada jadwal laporan
+                                </div>
+                            )}
                         </div>
                     </section>
                 </div>

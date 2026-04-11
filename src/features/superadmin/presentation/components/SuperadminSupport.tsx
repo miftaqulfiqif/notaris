@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Plus, Search } from 'lucide-react';
 import {
     SuperadminActionButton,
     SuperadminModal,
     SuperadminSelectField,
     SuperadminTextarea,
+    SuperadminTextInput,
     type SuperadminSelectOption,
 } from '@/features/superadmin/presentation/components/SuperadminOverlay';
 import {
@@ -15,33 +16,18 @@ import {
     SuperadminStatusBadge,
     type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
+import { useSuperadminSupport } from '../../hooks/useSuperadminSupport';
+import { SupportTicket as SupportType } from '../../types';
 
 type TicketPriorityFilter = 'all' | 'critical' | 'high' | 'medium' | 'low';
 type TicketStatusFilter = 'all' | 'open' | 'inProgress' | 'resolved' | 'closed' | 'slaBreach';
 type TicketWorkflowStatus = Exclude<TicketStatusFilter, 'all' | 'slaBreach'>;
 
-type SupportTicket = {
-    accountName: string;
-    accentClassName: string;
-    assignee: string;
-    createdAt: string;
-    description: string;
-    email: string;
-    internalNote: string;
-    lastUpdated: string;
-    priorityLabel: string;
-    priorityTone: SuperadminStatusTone;
-    priorityValue: Exclude<TicketPriorityFilter, 'all'>;
-    slaBreached: boolean;
-    statusValue: TicketWorkflowStatus;
-    ticketId: string;
-    title: string;
-};
-
 type TicketDraftState = {
     assignee: string;
     internalNote: string;
     statusValue: TicketWorkflowStatus;
+    replyMessage: string;
 };
 
 const assignOptions: SuperadminSelectOption[] = [
@@ -58,119 +44,7 @@ const statusControlOptions: SuperadminSelectOption[] = [
     { label: 'Closed', value: 'closed' },
 ];
 
-const supportSummaryCards = [
-    {
-        label: 'TIKET TERBUKA',
-        value: '7',
-    },
-    {
-        label: 'DISELESAIKAN HARI INI',
-        value: '3',
-    },
-    {
-        label: 'AVG RESPONSE TIME',
-        value: '2.4 jam',
-    },
-    {
-        label: 'BREACH SLA',
-        value: '2',
-        valueClassName: 'text-[#FF6B71]',
-        footer: <p className="text-[10px] text-[#FF6B71]">Perlu perhatian</p>,
-    },
-];
 
-const initialSupportTickets: SupportTicket[] = [
-    {
-        title: 'Tidak bisa login - akun terkunci setelah reset password',
-        accountName: 'PT Graha Notaris',
-        ticketId: '#TKT-2402-041',
-        lastUpdated: '2 jam yang lalu',
-        createdAt: '19 Feb 2026, 07:30',
-        email: 'budi@graha.id',
-        description:
-            'Setelah melakukan reset password melalui link email, saya tidak bisa masuk ke sistem. Muncul pesan "Account Locked". Tolong segera dibantu karena ada dokumen urgent yang harus diproses hari ini.',
-        assignee: 'Unassigned',
-        internalNote: 'Akun akan kami bantu reset manual setelah verifikasi tenant selesai.',
-        priorityLabel: 'Critical',
-        priorityTone: 'danger',
-        priorityValue: 'critical',
-        statusValue: 'open',
-        slaBreached: true,
-        accentClassName: 'bg-[#E05A5A]',
-    },
-    {
-        title: 'Dokumen tidak bisa diunduh - error 500',
-        accountName: 'KN Surya Hukum',
-        ticketId: '#TKT-2402-042',
-        lastUpdated: '4 jam yang lalu',
-        createdAt: '19 Feb 2026, 06:10',
-        email: 'ops@suryahukum.id',
-        description:
-            'Setiap kali menekan tombol unduh dokumen, sistem menampilkan error 500. Mohon bantu cek service download dan storage gateway.',
-        assignee: 'Maspek',
-        internalNote: 'Perlu log error dari service dokumen dan validasi storage tenant.',
-        priorityLabel: 'High',
-        priorityTone: 'warning',
-        priorityValue: 'high',
-        statusValue: 'inProgress',
-        slaBreached: false,
-        accentClassName: 'bg-[#E0A030]',
-    },
-    {
-        title: 'Permintaan penambahan fitur tanda tangan digital',
-        accountName: 'PT Graha Notaris',
-        ticketId: '#TKT-2402-043',
-        lastUpdated: '1 hari yang lalu',
-        createdAt: '18 Feb 2026, 16:12',
-        email: 'admin@graha.id',
-        description:
-            'Kami ingin mengetahui opsi aktivasi fitur tanda tangan digital untuk workflow dokumen internal kantor.',
-        assignee: 'Rosam',
-        internalNote: 'Masuk backlog produk, tunggu estimasi scope dari tim dev.',
-        priorityLabel: 'Medium',
-        priorityTone: 'warning',
-        priorityValue: 'medium',
-        statusValue: 'open',
-        slaBreached: false,
-        accentClassName: 'bg-[#C9AA6F]',
-    },
-    {
-        title: 'Invoice tidak terkirim ke email klien',
-        accountName: 'PT Graha Notaris',
-        ticketId: '#TKT-2402-044',
-        lastUpdated: '1 hari yang lalu',
-        createdAt: '18 Feb 2026, 11:48',
-        email: 'finance@graha.id',
-        description:
-            'Invoice bulan ini sudah terbentuk tetapi email tidak pernah diterima klien. Mohon cek proses delivery email dan queue.',
-        assignee: 'Nizam',
-        internalNote: 'Queue email sempat gagal. Perlu retry manual setelah validasi SMTP.',
-        priorityLabel: 'Critical',
-        priorityTone: 'danger',
-        priorityValue: 'critical',
-        statusValue: 'open',
-        slaBreached: true,
-        accentClassName: 'bg-[#E05A5A]',
-    },
-    {
-        title: 'Pertanyaan upgrade paket Pro ke Enterprise',
-        accountName: 'PT Graha Notaris',
-        ticketId: '#TKT-2402-045',
-        lastUpdated: '2 hari yang lalu',
-        createdAt: '17 Feb 2026, 09:00',
-        email: 'owner@graha.id',
-        description:
-            'Mohon informasi perbedaan benefit antara paket Pro dan Enterprise, termasuk proses migrasi tenant dan tambahan storage.',
-        assignee: 'Unassigned',
-        internalNote: 'Siapkan ringkasan benefit dan estimasi migrasi tenant.',
-        priorityLabel: 'Low',
-        priorityTone: 'muted',
-        priorityValue: 'low',
-        statusValue: 'open',
-        slaBreached: false,
-        accentClassName: 'bg-[#6F6F6F]',
-    },
-];
 
 const statusOptions: { label: string; value: TicketStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
@@ -208,6 +82,14 @@ function supportStatusMeta(statusValue: TicketWorkflowStatus): {
     return { label: 'Open', tone: 'warning' };
 }
 
+function normalizeTicketStatus(status?: string): TicketWorkflowStatus {
+    if (status === 'inProgress' || status === 'resolved' || status === 'closed') {
+        return status;
+    }
+
+    return 'open';
+}
+
 function SupportFilterSelect({
     ariaLabel,
     onChange,
@@ -243,33 +125,33 @@ function SupportTicketRow({
     ticket,
 }: Readonly<{
     onOpen: () => void;
-    ticket: SupportTicket;
+    ticket: SupportType;
 }>) {
-    const statusMeta = supportStatusMeta(ticket.statusValue);
+    const statusMeta = supportStatusMeta(normalizeTicketStatus(ticket.status));
 
     return (
         <button
             type="button"
             onClick={onOpen}
-            aria-label={`Buka detail tiket ${ticket.ticketId}`}
+            aria-label={`Buka detail tiket ${ticket.id}`}
             className="flex w-full gap-4 border-b border-[#303030] px-4 py-4 text-left transition-colors hover:bg-[#191C20] last:border-b-0"
         >
-            <div className={`mt-1 h-12 w-1 rounded-full ${ticket.accentClassName}`} aria-hidden="true" />
+            <div className={`mt-1 h-12 w-1 rounded-full ${ticket.status === 'open' ? 'bg-[#E0A030]' : ticket.status === 'resolved' ? 'bg-[#3CB057]' : 'bg-[#6F6F6F]'}`} aria-hidden="true" />
 
             <div className="min-w-0 flex-1">
                 <h2 className="text-[16px] font-medium leading-6 text-white">{ticket.title}</h2>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#797F8F]">
-                    <span>{ticket.accountName}</span>
-                    <span>{ticket.ticketId}</span>
-                    <span>{ticket.lastUpdated}</span>
+                    <span>{ticket.tenant_name}</span>
+                    <span>{ticket.id}</span>
+                    <span>{new Date(ticket.created_at).toLocaleDateString('id-ID')}</span>
                 </div>
             </div>
 
             <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
-                <SuperadminStatusBadge tone={ticket.priorityTone} value={ticket.priorityLabel} />
+                <SuperadminStatusBadge tone={ticket.priority === 'high' || ticket.priority === 'critical' ? 'danger' : ticket.priority === 'medium' ? 'warning' : 'muted'} value={ticket.priority} />
                 <SuperadminStatusBadge
-                    tone={ticket.slaBreached ? 'danger' : statusMeta.tone}
-                    value={ticket.slaBreached ? 'SLA Breach' : statusMeta.label}
+                    tone={statusMeta.tone}
+                    value={statusMeta.label}
                 />
             </div>
         </button>
@@ -281,68 +163,96 @@ function SupportTicketDetailModal({
     onClose,
     onDraftChange,
     onSave,
+    onReply,
     ticket,
+    replies
 }: Readonly<{
     draft: TicketDraftState;
     onClose: () => void;
     onDraftChange: (field: keyof TicketDraftState, nextValue: string) => void;
     onSave: () => void;
-    ticket: SupportTicket;
+    onReply: () => void;
+    ticket: SupportType;
+    replies: import('../../types').TicketReply[];
 }>) {
     const statusMeta = supportStatusMeta(draft.statusValue);
 
     return (
         <SuperadminModal
-            maxWidthClassName="max-w-[560px]"
+            maxWidthClassName="max-w-[700px]"
             onClose={onClose}
-            title={`Detail Tiket ${ticket.ticketId}`}
+            title={`${ticket.title}`}
         >
-            <div className="space-y-6 px-5 py-5">
-                <div className="flex flex-wrap items-center gap-2">
-                    <SuperadminStatusBadge tone={ticket.priorityTone} value={ticket.priorityLabel} />
-                    <SuperadminStatusBadge tone={statusMeta.tone} value={statusMeta.label} />
-                    {ticket.slaBreached ? <SuperadminStatusBadge tone="danger" value="SLA Breach" /> : null}
-                    <span className="ml-auto text-[10px] text-white">Dibuat: {ticket.createdAt}</span>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 px-5 py-5 h-[70vh] md:h-[600px] overflow-hidden">
+                <div className="flex flex-col h-full overflow-hidden border-r border-[#25282D] pr-4">
+                    <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+                        <div className="rounded-[8px] border border-[#212121] bg-[#0F1012] px-4 py-3">
+                            <p className="text-[12px] text-[#C9AA6F] mb-1">{ticket.reporter_email || ticket.tenant_name}</p>
+                            <p className="text-[14px] leading-5 text-white">{ticket.description}</p>
+                            <span className="text-[10px] text-[#6F6F6F] mt-2 block">{new Date(ticket.created_at).toLocaleString('id-ID')}</span>
+                        </div>
+                        
+                        {replies?.map((reply) => (
+                            <div key={reply.id} className={`rounded-[8px] px-4 py-3 w-[85%] ${reply.is_internal ? 'bg-[#191C20] border border-[#25282D] ml-auto' : 'bg-[#0F1012] border border-[#212121]'}`}>
+                                <p className={`text-[12px] mb-1 ${reply.is_internal ? 'text-white' : 'text-[#C9AA6F]'}`}>{reply.is_internal ? 'Admin' : reply.sender_email}</p>
+                                <p className="text-[14px] leading-5 text-white">{reply.message}</p>
+                                <span className="text-[10px] text-[#6F6F6F] mt-2 block">{new Date(reply.created_at).toLocaleString('id-ID')}</span>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="pt-3 border-t border-[#25282D] shrink-0">
+                        <SuperadminTextarea
+                            label="Kirim Balasan"
+                            value={draft.replyMessage}
+                            onChange={(nextValue) => onDraftChange('replyMessage', nextValue)}
+                            rows={3}
+                        />
+                        <div className="flex justify-end mt-2">
+                             <SuperadminActionButton variant="primary" onClick={onReply}>
+                                Kirim Pesan
+                            </SuperadminActionButton>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="space-y-2">
-                    <h3 className="text-[16px] text-white">{ticket.title}</h3>
-                    <p className="text-[12px] text-[#6F6F6F]">
-                        {ticket.accountName} · {ticket.email}
-                    </p>
-                </div>
+                <div className="space-y-6 h-full overflow-y-auto pl-2 pb-4">
+                    <div className="flex flex-col gap-2">
+                        <SuperadminStatusBadge tone={ticket.priority === 'urgent' ? 'danger' : ticket.priority === 'high' ? 'warning' : 'muted'} value={ticket.priority} />
+                        <SuperadminStatusBadge tone={statusMeta.tone} value={statusMeta.label} />
+                        <span className="text-[10px] text-[#6F6F6F]">Dibuat: {new Date(ticket.created_at).toLocaleString('id-ID')}</span>
+                    </div>
 
-                <div className="rounded-[8px] border border-[#212121] bg-[#0F1012] px-3 py-3 text-[14px] leading-5 text-white">
-                    {ticket.description}
-                </div>
+                    <div className="space-y-1">
+                        <p className="text-[12px] text-[#6F6F6F]">Tenant: {ticket.tenant_name}</p>
+                        <p className="text-[12px] text-[#6F6F6F]">Email: {ticket.reporter_email || '-'}</p>
+                    </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                    <SuperadminSelectField
-                        label="Assign ke"
-                        value={draft.assignee}
-                        onChange={(nextValue) => onDraftChange('assignee', nextValue)}
-                        options={assignOptions}
-                    />
-                    <SuperadminSelectField
-                        label="Status"
-                        value={draft.statusValue}
-                        onChange={(nextValue) => onDraftChange('statusValue', nextValue)}
-                        options={statusControlOptions}
-                    />
-                </div>
-
-                <SuperadminTextarea
-                    label="Internal Note / Balasan"
-                    value={draft.internalNote}
-                    onChange={(nextValue) => onDraftChange('internalNote', nextValue)}
-                    rows={2}
-                />
-
-                <div className="flex justify-end gap-3 border-t border-[#4B4B4B] pt-6">
-                    <SuperadminActionButton onClick={onClose}>Batal</SuperadminActionButton>
-                    <SuperadminActionButton variant="primary" onClick={onSave}>
-                        Simpan & balas
-                    </SuperadminActionButton>
+                    <div className="space-y-4">
+                        <SuperadminSelectField
+                            label="Assign ke"
+                            value={draft.assignee}
+                            onChange={(nextValue) => onDraftChange('assignee', nextValue)}
+                            options={assignOptions}
+                        />
+                        <SuperadminSelectField
+                            label="Status"
+                            value={draft.statusValue}
+                            onChange={(nextValue) => onDraftChange('statusValue', nextValue)}
+                            options={statusControlOptions}
+                        />
+                        <SuperadminTextarea
+                            label="Internal Note"
+                            value={draft.internalNote}
+                            onChange={(nextValue) => onDraftChange('internalNote', nextValue)}
+                            rows={2}
+                        />
+                         <div className="pt-2">
+                            <SuperadminActionButton variant="primary" className="w-full justify-center" onClick={onSave}>
+                                Simpan Detail
+                            </SuperadminActionButton>
+                        </div>
+                    </div>
                 </div>
             </div>
         </SuperadminModal>
@@ -350,47 +260,43 @@ function SupportTicketDetailModal({
 }
 
 export function SuperadminSupport() {
-    const [tickets, setTickets] = useState(initialSupportTickets);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<TicketStatusFilter>('all');
-    const [priorityFilter, setPriorityFilter] = useState<TicketPriorityFilter>('all');
+    const { 
+        tickets, 
+        stats, 
+        isLoading, 
+        search, 
+        setSearch, 
+        statusFilter, 
+        setStatusFilter,
+        priorityFilter,
+        setPriorityFilter,
+        createTicket,
+        updateTicket,
+        replies,
+        fetchReplies,
+        sendReply
+    } = useSuperadminSupport();
+    
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [createForm, setCreateForm] = useState({ title: '', description: '', priority: 'medium' });
     const [ticketDraft, setTicketDraft] = useState<TicketDraftState>({
         assignee: 'Unassigned',
         statusValue: 'open',
         internalNote: '',
+        replyMessage: '',
     });
 
-    const filteredTickets = useMemo(() => {
-        const normalizedQuery = searchQuery.trim().toLowerCase();
+    const selectedTicket = selectedTicketId === null ? null : tickets.find((ticket) => ticket.id === selectedTicketId) ?? null;
 
-        return tickets.filter((ticket) => {
-            const matchesQuery =
-                normalizedQuery.length === 0 ||
-                ticket.title.toLowerCase().includes(normalizedQuery) ||
-                ticket.accountName.toLowerCase().includes(normalizedQuery) ||
-                ticket.ticketId.toLowerCase().includes(normalizedQuery);
-            const matchesStatus =
-                statusFilter === 'all'
-                    ? true
-                    : statusFilter === 'slaBreach'
-                      ? ticket.slaBreached
-                      : ticket.statusValue === statusFilter;
-            const matchesPriority = priorityFilter === 'all' || ticket.priorityValue === priorityFilter;
-
-            return matchesQuery && matchesStatus && matchesPriority;
-        });
-    }, [priorityFilter, searchQuery, statusFilter, tickets]);
-
-    const selectedTicket =
-        selectedTicketId === null ? null : tickets.find((ticket) => ticket.ticketId === selectedTicketId) ?? null;
-
-    const openTicketDetail = (ticket: SupportTicket) => {
-        setSelectedTicketId(ticket.ticketId);
+    const openTicketDetail = (ticket: SupportType) => {
+        setSelectedTicketId(ticket.id);
+        fetchReplies(ticket.id);
         setTicketDraft({
-            assignee: ticket.assignee,
-            statusValue: ticket.statusValue,
-            internalNote: ticket.internalNote,
+            assignee: ticket.assignee || 'Unassigned',
+            statusValue: normalizeTicketStatus(ticket.status),
+            internalNote: ticket.internal_note || '',
+            replyMessage: '',
         });
     };
 
@@ -398,27 +304,51 @@ export function SuperadminSupport() {
         setSelectedTicketId(null);
     };
 
-    const handleSaveTicket = () => {
-        if (!selectedTicketId) {
-            return;
+    const handleCreateTicket = async () => {
+        if (!createForm.title.trim()) return;
+        const success = await createTicket({
+            title: createForm.title.trim(),
+            description: createForm.description.trim(),
+            priority: createForm.priority,
+        });
+        if (success) {
+            setShowCreateModal(false);
+            setCreateForm({ title: '', description: '', priority: 'medium' });
         }
-
-        setTickets((currentTickets) =>
-            currentTickets.map((ticket) =>
-                ticket.ticketId === selectedTicketId
-                    ? {
-                          ...ticket,
-                          assignee: ticketDraft.assignee,
-                          internalNote: ticketDraft.internalNote,
-                          statusValue: ticketDraft.statusValue,
-                          slaBreached: ticketDraft.statusValue === 'open' ? ticket.slaBreached : false,
-                      }
-                    : ticket,
-            ),
-        );
-
-        closeTicketDetail();
     };
+
+    const handleSaveTicket = async () => {
+        if (!selectedTicketId) return;
+
+        const success = await updateTicket(selectedTicketId, {
+            assignee: ticketDraft.assignee,
+            internal_note: ticketDraft.internalNote,
+            status: ticketDraft.statusValue,
+        });
+
+        if (success) {
+            closeTicketDetail();
+        }
+    };
+
+    const handleSendReply = async () => {
+        if (!selectedTicketId || !ticketDraft.replyMessage.trim()) return;
+
+        const success = await sendReply(selectedTicketId, ticketDraft.replyMessage, true);
+        if (success) {
+            setTicketDraft(prev => ({ ...prev, replyMessage: '' }));
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="support" title="Support">
+                <div className="flex h-64 items-center justify-center text-[#6F6F6F]">
+                    Loading...
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
         <SuperadminShell
@@ -427,6 +357,7 @@ export function SuperadminSupport() {
             headerActions={
                 <button
                     type="button"
+                    onClick={() => setShowCreateModal(true)}
                     className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#C9AA6F] px-4 text-[14px] text-[#25282D] transition-colors hover:bg-[#D7B97F]"
                 >
                     <Plus className="h-4 w-4" />
@@ -435,15 +366,23 @@ export function SuperadminSupport() {
             }
         >
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {supportSummaryCards.map((card) => (
-                    <SuperadminStatCard
-                        key={card.label}
-                        footer={card.footer}
-                        label={card.label}
-                        value={card.value}
-                        valueClassName={card.valueClassName}
-                    />
-                ))}
+                <SuperadminStatCard
+                    label="TIKET TERBUKA"
+                    value={stats?.open_tickets?.toString() || '0'}
+                />
+                <SuperadminStatCard
+                    label="IN PROGRESS"
+                    value={stats?.in_progress?.toString() || '0'}
+                />
+                <SuperadminStatCard
+                    label="RESOLVED"
+                    value={stats?.resolved?.toString() || '0'}
+                />
+                <SuperadminStatCard
+                    label="SLA BREACHED"
+                    value={stats?.sla_breached?.toString() || '0'}
+                    valueClassName="text-[#FF6B71]"
+                />
             </section>
 
             <section className="overflow-hidden rounded-[12px] border border-[#25282D] bg-[#16181C]">
@@ -454,8 +393,8 @@ export function SuperadminSupport() {
                         <input
                             type="search"
                             aria-label="Cari tiket"
-                            value={searchQuery}
-                            onChange={(event) => setSearchQuery(event.target.value)}
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
                             placeholder="Cari Tiket"
                             className="h-8 w-full min-w-0 rounded-[8px] border border-[#212121] bg-[#0E0F11] pl-9 pr-3 text-[12px] text-[#D4D4D4] outline-none transition-colors placeholder:text-[#6F6F6F] hover:border-[#3B414D] focus:border-[#C99D4B] sm:min-w-[240px] xl:min-w-[280px]"
                         />
@@ -478,13 +417,18 @@ export function SuperadminSupport() {
                 </header>
 
                 <div role="list" aria-label="Daftar tiket support">
-                    {filteredTickets.map((ticket) => (
+                    {tickets.map((ticket) => (
                         <SupportTicketRow
-                            key={ticket.ticketId}
+                            key={ticket.id}
                             ticket={ticket}
                             onOpen={() => openTicketDetail(ticket)}
                         />
                     ))}
+                    {tickets.length === 0 && (
+                        <div className="px-4 py-8 text-center text-[14px] text-[#6F6F6F]">
+                            Tidak ada data
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -493,7 +437,9 @@ export function SuperadminSupport() {
                     draft={ticketDraft}
                     onClose={closeTicketDetail}
                     onSave={handleSaveTicket}
+                    onReply={handleSendReply}
                     ticket={selectedTicket}
+                    replies={replies[selectedTicket.id] || []}
                     onDraftChange={(field, nextValue) =>
                         setTicketDraft((currentDraft) => ({
                             ...currentDraft,
@@ -501,6 +447,48 @@ export function SuperadminSupport() {
                         }))
                     }
                 />
+            ) : null}
+
+            {showCreateModal ? (
+                <SuperadminModal
+                    maxWidthClassName="max-w-[500px]"
+                    onClose={() => setShowCreateModal(false)}
+                    title="Buat Tiket Baru"
+                >
+                    <div className="space-y-4 px-5 py-5">
+                        <SuperadminTextInput
+                            label="Judul Tiket"
+                            value={createForm.title}
+                            onChange={(v) => setCreateForm((f) => ({ ...f, title: v }))}
+                        />
+                        <SuperadminTextarea
+                            label="Deskripsi"
+                            value={createForm.description}
+                            onChange={(v) => setCreateForm((f) => ({ ...f, description: v }))}
+                            rows={3}
+                        />
+                        <SuperadminSelectField
+                            label="Prioritas"
+                            value={createForm.priority}
+                            onChange={(v) => setCreateForm((f) => ({ ...f, priority: v }))}
+                            options={[
+                                { label: 'Low', value: 'low' },
+                                { label: 'Medium', value: 'medium' },
+                                { label: 'High', value: 'high' },
+                                { label: 'Urgent', value: 'urgent' },
+                            ]}
+                        />
+                        <div className="flex justify-end gap-3 border-t border-[#4B4B4B] pt-5">
+                            <SuperadminActionButton onClick={() => setShowCreateModal(false)}>Batal</SuperadminActionButton>
+                            <SuperadminActionButton
+                                variant="primary"
+                                onClick={handleCreateTicket}
+                            >
+                                Buat Tiket
+                            </SuperadminActionButton>
+                        </div>
+                    </div>
+                </SuperadminModal>
             ) : null}
         </SuperadminShell>
     );

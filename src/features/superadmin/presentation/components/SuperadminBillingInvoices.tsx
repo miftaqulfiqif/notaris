@@ -1,155 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { ChevronDown, FileText, Search } from 'lucide-react';
 import {
     SuperadminShell,
     SuperadminStatCard,
     SuperadminStatusBadge,
-    type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
-type InvoiceStatusFilter = 'all' | 'paid' | 'overdue' | 'pending' | 'success';
-type InvoiceActionType = 'pdf' | 'markPaid';
-type RevenueBar = {
-    label: string;
-    tone: 'dim' | 'soft' | 'accent';
-    value: string;
-};
-type AgingReceivableItem = {
-    amount: string;
-    label: string;
-    valueClassName?: string;
-};
-type InvoiceRecord = {
-    actionType: InvoiceActionType;
-    amount: string;
-    id: string;
-    period: string;
-    statusLabel: string;
-    statusTone: SuperadminStatusTone;
-    statusValue: Exclude<InvoiceStatusFilter, 'all'>;
-    tenant: string;
-};
+import { useSuperadminBilling } from '../../hooks/useSuperadminBilling';
+import { InvoiceRecord as InvoiceType, RevenueData } from '../../types';
 
-const billingSummaryCards = [
-    {
-        label: 'TOTAL INVOICE BULAN INI',
-        value: '284',
-    },
-    {
-        label: 'SUDAH DIBAYAR',
-        value: '246',
-        valueClassName: 'text-[#3DBA7E]',
-        footer: <p className="text-[10px] text-[#797F8F]">Rp 189 jt</p>,
-    },
-    {
-        label: 'BELUM DIBAYAR',
-        value: '13',
-        valueClassName: 'text-[#E0A030]',
-        footer: <p className="text-[10px] text-[#797F8F]">Rp 24,8 jt</p>,
-    },
-    {
-        label: 'OVERDUE (>30 HARI)',
-        value: '8',
-        valueClassName: 'text-[#FF6B71]',
-        footer: <p className="text-[10px] text-[#797F8F]">Rp 14,3 jt</p>,
-    },
-];
-
-const invoiceRecords: InvoiceRecord[] = [
-    {
-        id: '#INV-2602-001',
-        tenant: 'PT Graha Notaris',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Paid',
-        statusTone: 'success',
-        statusValue: 'paid',
-        actionType: 'pdf',
-    },
-    {
-        id: '#INV-2602-002',
-        tenant: 'KN Surya Hukum',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Overdue',
-        statusTone: 'danger',
-        statusValue: 'overdue',
-        actionType: 'markPaid',
-    },
-    {
-        id: '#INV-2602-003',
-        tenant: 'CV Legaltama',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Overdue',
-        statusTone: 'danger',
-        statusValue: 'overdue',
-        actionType: 'markPaid',
-    },
-    {
-        id: '#INV-2602-004',
-        tenant: 'Notaris Dewi A.',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Sukses',
-        statusTone: 'success',
-        statusValue: 'success',
-        actionType: 'pdf',
-    },
-    {
-        id: '#INV-2602-005',
-        tenant: 'KN Mitra Akta',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Pending',
-        statusTone: 'warning',
-        statusValue: 'pending',
-        actionType: 'markPaid',
-    },
-    {
-        id: '#INV-2602-006',
-        tenant: 'PT Akta Sentosa',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Paid',
-        statusTone: 'success',
-        statusValue: 'paid',
-        actionType: 'pdf',
-    },
-    {
-        id: '#INV-2602-007',
-        tenant: 'Firma Hukum',
-        period: 'Feb 2026',
-        amount: 'Rp 500.000',
-        statusLabel: 'Paid',
-        statusTone: 'success',
-        statusValue: 'paid',
-        actionType: 'pdf',
-    },
-];
-
-const revenueBars: RevenueBar[] = [
-    { label: 'Jan', tone: 'dim', value: 'h-[22px]' },
-    { label: 'Feb', tone: 'soft', value: 'h-[52px]' },
-    { label: 'Mar', tone: 'accent', value: 'h-[64px]' },
-    { label: 'April', tone: 'accent', value: 'h-[48px]' },
-];
-
-const agingReceivables: AgingReceivableItem[] = [
-    { label: '1-15 hari', amount: 'Rp 10,5 jt' },
-    { label: '16-30 hari', amount: 'Rp 14,3 jt', valueClassName: 'text-[#E0A030]' },
-    { label: '>30 hari', amount: 'Rp 14,3 jt', valueClassName: 'text-[#E05A5A]' },
-    { label: 'Total outstanding', amount: 'Rp 39,1 jt' },
-];
+type InvoiceStatusFilter = 'all' | 'paid' | 'overdue' | 'pending';
+type RevenueBarTone = 'dim' | 'soft' | 'accent';
 
 const statusOptions: { label: string; value: InvoiceStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
     { label: 'Paid', value: 'paid' },
     { label: 'Overdue', value: 'overdue' },
     { label: 'Pending', value: 'pending' },
-    { label: 'Sukses', value: 'success' },
 ];
 
 function SelectField({
@@ -183,17 +51,23 @@ function SelectField({
 }
 
 function InvoiceActionButton({
-    actionType,
+    status,
+    isMarkingPaid,
+    onMarkPaid
 }: Readonly<{
-    actionType: InvoiceActionType;
+    status: string;
+    isMarkingPaid: boolean;
+    onMarkPaid: () => void;
 }>) {
-    if (actionType === 'markPaid') {
+    if (status !== 'paid' && status !== 'success') {
         return (
             <button
                 type="button"
-                className="inline-flex items-center rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A]"
+                onClick={onMarkPaid}
+                disabled={isMarkingPaid}
+                className="inline-flex items-center rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A] disabled:opacity-50"
             >
-                Mark Paid
+                {isMarkingPaid ? 'Marking...' : 'Mark Paid'}
             </button>
         );
     }
@@ -210,10 +84,14 @@ function InvoiceActionButton({
 }
 
 function RevenueBarItem({
+    heightPercent,
     label,
     tone,
-    value,
-}: Readonly<RevenueBar>) {
+}: Readonly<{
+    heightPercent: number;
+    label: string;
+    tone: RevenueBarTone;
+}>) {
     const colorClassName =
         tone === 'accent'
             ? 'bg-[#C9A96E]'
@@ -223,42 +101,72 @@ function RevenueBarItem({
 
     return (
         <div className="flex flex-1 flex-col items-center justify-end gap-3">
-            <div className={`w-full rounded-[4px] ${colorClassName} ${value}`} />
+            <div className={`w-full rounded-[4px] ${colorClassName}`} style={{ height: `${Math.max(10, heightPercent)}%` }} />
             <p className="text-[12px] text-white">{label}</p>
         </div>
     );
 }
 
 export function SuperadminBillingInvoices() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>('all');
+    const {
+        invoices,
+        stats,
+        revenueTrend,
+        aging,
+        isLoading,
+        search,
+        setSearch,
+        statusFilter,
+        setStatusFilter,
+        markAsPaid,
+        isMarkingPaid
+    } = useSuperadminBilling();
 
-    const filteredInvoices = useMemo(() => {
-        const normalizedQuery = searchQuery.trim().toLowerCase();
+    const maxRevenue = Math.max(...revenueTrend.map((trendPoint) => trendPoint.revenue), 1);
+    const mappedRevenueBars = revenueTrend.map((trendPoint: RevenueData, index: number) => {
+        const heightPercent = maxRevenue > 0 ? (trendPoint.revenue / maxRevenue) * 100 : 0;
+        return {
+            heightPercent,
+            label: trendPoint.month,
+            tone: index === revenueTrend.length - 1 ? 'accent' : index === revenueTrend.length - 2 ? 'soft' : 'dim' as RevenueBarTone,
+        };
+    });
 
-        return invoiceRecords.filter((invoice) => {
-            const matchesQuery =
-                normalizedQuery.length === 0 ||
-                invoice.id.toLowerCase().includes(normalizedQuery) ||
-                invoice.tenant.toLowerCase().includes(normalizedQuery);
-            const matchesStatus = statusFilter === 'all' || invoice.statusValue === statusFilter;
+    const mappedAging = [
+        { label: '0-30 hari', amount: aging?.[0]?.value || 0 },
+        { label: '31-60 hari', amount: aging?.[1]?.value || 0, valueClassName: 'text-[#E0A030]' },
+        { label: '61-90 hari', amount: aging?.[2]?.value || 0, valueClassName: 'text-[#E05A5A]' },
+        { label: '>90 hari', amount: aging?.[3]?.value || 0, valueClassName: 'text-[#FF6B71]' },
+    ];
 
-            return matchesQuery && matchesStatus;
-        });
-    }, [searchQuery, statusFilter]);
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="billingInvoices" title="Billing & Invoice">
+                <div className="flex h-64 items-center justify-center text-[#6F6F6F]">
+                    Loading...
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
         <SuperadminShell activePage="billingInvoices" title="Billing & Invoice">
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {billingSummaryCards.map((card) => (
-                    <SuperadminStatCard
-                        key={card.label}
-                        footer={card.footer}
-                        label={card.label}
-                        value={card.value}
-                        valueClassName={card.valueClassName}
-                    />
-                ))}
+                <SuperadminStatCard
+                    label="TOTAL REVENUE"
+                    value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.total_revenue || 0)}
+                />
+                <SuperadminStatCard
+                    label="PENDING"
+                    value={stats?.pending_invoices?.toString() || '0'}
+                    valueClassName="text-[#E0A030]"
+                />
+                <SuperadminStatCard
+                    label="OVERDUE"
+                    value={stats?.overdue_invoices?.toString() || '0'}
+                    valueClassName="text-[#FF6B71]"
+                    footer={<p className="text-[10px] text-[#797F8F]">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.overdue_value || 0)}</p>}
+                />
             </section>
 
             <section className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_370px]">
@@ -271,8 +179,8 @@ export function SuperadminBillingInvoices() {
                                 <input
                                     type="search"
                                     aria-label="Cari invoice atau tenant"
-                                    value={searchQuery}
-                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
                                     placeholder="Cari Tenant, ID Transaksi"
                                     className="h-8 w-full min-w-0 rounded-[8px] border border-[#212121] bg-[#0E0F11] pl-9 pr-3 text-[12px] text-[#D4D4D4] outline-none transition-colors placeholder:text-[#6F6F6F] hover:border-[#3B414D] focus:border-[#C99D4B] sm:min-w-[220px] xl:min-w-[160px]"
                                 />
@@ -308,31 +216,42 @@ export function SuperadminBillingInvoices() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredInvoices.map((invoice) => (
+                                {invoices.map((invoice: InvoiceType) => (
                                     <tr key={invoice.id} className="align-top">
                                         <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-[#757C8B]">
                                             {invoice.id}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-white">
-                                            {invoice.tenant}
+                                            {invoice.tenant_name}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-[#757C8B]">
                                             {invoice.period}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3 text-[14px] text-white">
-                                            {invoice.amount}
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(invoice.amount)}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3">
                                             <SuperadminStatusBadge
-                                                tone={invoice.statusTone}
-                                                value={invoice.statusLabel}
+                                                tone={invoice.status === 'paid' ? 'success' : invoice.status === 'overdue' ? 'danger' : 'warning'}
+                                                value={invoice.status}
                                             />
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3 text-center">
-                                            <InvoiceActionButton actionType={invoice.actionType} />
+                                            <InvoiceActionButton 
+                                                status={invoice.status} 
+                                                isMarkingPaid={isMarkingPaid === invoice.id}
+                                                onMarkPaid={() => markAsPaid(invoice.id)}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
+                                {invoices.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-3 py-8 text-center text-[14px] text-[#6F6F6F] border-b border-[#303030]">
+                                            Tidak ada data
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -345,18 +264,19 @@ export function SuperadminBillingInvoices() {
                         </header>
                         <div className="flex flex-col items-center gap-6 px-3 py-4">
                             <div className="flex h-[120px] w-full items-end justify-center gap-4">
-                                {revenueBars.map((bar) => (
+                                {mappedRevenueBars.map((bar) => (
                                     <RevenueBarItem
+                                        heightPercent={bar.heightPercent}
                                         key={bar.label}
                                         label={bar.label}
                                         tone={bar.tone}
-                                        value={bar.value}
                                     />
                                 ))}
                             </div>
                             <div className="space-y-1 text-center">
-                                <p className="text-[24px] font-semibold text-white">Rp 218 jt</p>
-                                <p className="text-[12px] font-semibold text-[#4FB05E]">8.7% vs bulan lalu</p>
+                                <p className="text-[24px] font-semibold text-white">
+                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.total_revenue || 0)}
+                                </p>
                             </div>
                         </div>
                     </section>
@@ -366,14 +286,14 @@ export function SuperadminBillingInvoices() {
                             <h2 className="text-[14px] font-semibold text-white">Aging Receivables</h2>
                         </header>
                         <div>
-                            {agingReceivables.map((item) => (
+                            {mappedAging.map((item) => (
                                 <div
                                     key={item.label}
                                     className="flex items-center justify-between border-b border-[#303030] px-4 py-4 last:border-b-0"
                                 >
                                     <p className="text-[12px] font-light text-[#6F6F6F]">{item.label}</p>
                                     <p className={`text-[12px] font-semibold text-white ${item.valueClassName ?? ''}`}>
-                                        {item.amount}
+                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(item.amount) || 0)}
                                     </p>
                                 </div>
                             ))}

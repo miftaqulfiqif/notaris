@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Plus } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
 import {
     SuperadminActionButton,
     SuperadminModal,
@@ -15,34 +15,16 @@ import {
     SuperadminStatusBadge,
     type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useSuperadminPackages } from '../../hooks/useSuperadminPackages';
+import { PackagePlan as PackageType, PackageTenantRecord } from '../../types';
 
 type PackageStatusValue = 'published' | 'unpublished' | 'archived';
-
-type PackagePlan = {
-    documentsPerMonth: string;
-    features: string[];
-    id: string;
-    maxUsers: string;
-    monthlyPrice: number;
-    name: string;
-    statusValue: PackageStatusValue;
-    storageGb: string;
-    tenantSummary: string;
-};
 
 type PackageMetric = {
     label: string;
     value: string;
     valueClassName?: string;
-};
-
-type PackageTenantRecord = {
-    name: string;
-    packageName: string;
-    renewalDate: string;
-    startDate: string;
-    statusLabel: string;
-    statusTone: SuperadminStatusTone;
 };
 
 type PackageFormState = {
@@ -61,124 +43,7 @@ const packageStatusOptions: SuperadminSelectOption[] = [
     { label: 'Archived', value: 'archived' },
 ];
 
-const initialPackagePlans: PackagePlan[] = [
-    {
-        id: 'basic-starter',
-        name: 'Basic (Starter)',
-        monthlyPrice: 750000,
-        features: [
-            'Hingga 3 user',
-            '500 dokumen/bulan',
-            '15 GB penyimpanan',
-            'Manajemen Dokumen Terpusat',
-        ],
-        tenantSummary: '71 tenants aktif',
-        statusValue: 'published',
-        maxUsers: '3',
-        storageGb: '15',
-        documentsPerMonth: '500',
-    },
-    {
-        id: 'yearly',
-        name: 'Yearly',
-        monthlyPrice: 1500000,
-        features: [
-            'Hingga 3 user',
-            '500 dokumen/bulan',
-            '15 GB penyimpanan',
-            'Manajemen Dokumen Terpusat',
-        ],
-        tenantSummary: '71 tenants aktif',
-        statusValue: 'published',
-        maxUsers: '3',
-        storageGb: '15',
-        documentsPerMonth: '500',
-    },
-    {
-        id: 'enterprise',
-        name: 'Enterprise',
-        monthlyPrice: 5000000,
-        features: [
-            'Hingga 10 user',
-            'Unlimited dokumen',
-            '50 GB penyimpanan',
-            'Priority support',
-            'Integrasi e-sign',
-        ],
-        tenantSummary: '0 tenants aktif',
-        statusValue: 'unpublished',
-        maxUsers: '10',
-        storageGb: '50',
-        documentsPerMonth: 'Unlimited',
-    },
-];
 
-const packageTenants: PackageTenantRecord[] = [
-    {
-        name: 'PT Graha Notaris',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Sukses',
-        statusTone: 'success',
-    },
-    {
-        name: 'KN Surya Hukum',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Gagal',
-        statusTone: 'danger',
-    },
-    {
-        name: 'CV Legaltama',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Sukses',
-        statusTone: 'success',
-    },
-    {
-        name: 'Notaris Dewi A.',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Sukses',
-        statusTone: 'success',
-    },
-    {
-        name: 'KN Mitra Akta',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Pending',
-        statusTone: 'warning',
-    },
-    {
-        name: 'PT Akta Sentosa',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Dispute',
-        statusTone: 'muted',
-    },
-    {
-        name: 'Firma Hukum',
-        packageName: 'Starter',
-        startDate: 'Maret 2026',
-        renewalDate: 'Juni 2026',
-        statusLabel: 'Refund',
-        statusTone: 'info',
-    },
-];
-
-const packageMetrics: PackageMetric[] = [
-    { label: 'ARPU Starter', value: 'Rp 750.000' },
-    { label: 'ARPU Yearly', value: 'Rp 1.500.000' },
-    { label: 'ARPU Enterprise', value: 'Rp 5.000.000' },
-    { label: 'Churn Pro → turun', value: '3.2%', valueClassName: 'text-[#FFD766]' },
-    { label: 'Upgrade rate Starter→Pro', value: '8.4%', valueClassName: 'text-[#44DD5A]' },
-];
 
 const defaultPackageForm: PackageFormState = {
     name: 'Basic',
@@ -211,35 +76,64 @@ function packageStatusMeta(statusValue: PackageStatusValue): {
     return { label: 'Unpublished', tone: 'muted' };
 }
 
-function buildFormStateFromPlan(plan: PackagePlan): PackageFormState {
+function normalizePlanFeatures(features: PackageType['features']) {
+    if (Array.isArray(features)) {
+        return features;
+    }
+
+    if (typeof features === 'string') {
+        try {
+            const parsedFeatures = JSON.parse(features);
+            return Array.isArray(parsedFeatures) ? parsedFeatures : [];
+        } catch {
+            return features
+                .split('\n')
+                .map((feature) => feature.trim())
+                .filter(Boolean);
+        }
+    }
+
+    return [];
+}
+
+function buildFormStateFromPlan(plan: PackageType): PackageFormState {
     return {
         name: plan.name,
-        monthlyPrice: String(plan.monthlyPrice),
-        statusValue: plan.statusValue,
-        maxUsers: plan.maxUsers,
-        storageGb: plan.storageGb,
-        documentsPerMonth: plan.documentsPerMonth,
-        featuresText: plan.features.join('\n'),
+        monthlyPrice: String(plan.monthly_price),
+        statusValue: plan.status as PackageStatusValue,
+        maxUsers: String(plan.max_users),
+        storageGb: String(plan.storage_gb),
+        documentsPerMonth: String(plan.documents_per_month),
+        featuresText: normalizePlanFeatures(plan.features).join('\n'),
     };
 }
 
 function PackagePlanCard({
+    isDeleting,
+    onDelete,
     onEdit,
     plan,
 }: Readonly<{
-    onEdit: (plan: PackagePlan) => void;
-    plan: PackagePlan;
+    isDeleting: boolean;
+    onDelete: (plan: PackageType) => void;
+    onEdit: (plan: PackageType) => void;
+    plan: PackageType;
 }>) {
-    const statusMeta = packageStatusMeta(plan.statusValue);
+    const statusMeta = packageStatusMeta((plan.status || 'unpublished') as PackageStatusValue);
+    const planFeatures = normalizePlanFeatures(plan.features);
+    const monthlyPrice = Number(plan.monthly_price ?? plan.monthlyPrice ?? 0);
+    const activeTenants = Number(plan.active_tenants ?? 0);
+    const totalSubscriptions = Number(plan.total_subscriptions ?? 0);
+    const canDelete = plan.can_delete ?? totalSubscriptions === 0;
 
     return (
         <article className="rounded-[12px] border border-[#2A2A2A] bg-[#16181C] p-3">
             <div className="border-b border-[#323232] pb-3">
                 <div className="space-y-4 px-3 py-3">
                     <h2 className="text-[24px] font-medium text-white">{plan.name}</h2>
-                    <p className="text-[32px] font-light text-[#C9A96E]">{formatRupiah(plan.monthlyPrice)}</p>
+                    <p className="text-[32px] font-light text-[#C9A96E]">{formatRupiah(monthlyPrice)}</p>
                     <ul className="space-y-1.5">
-                        {plan.features.map((feature) => (
+                        {planFeatures.map((feature: string) => (
                             <li key={feature} className="flex items-start gap-2 text-[14px] font-light text-[#797F8F]">
                                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#3CB057]" />
                                 <span>{feature}</span>
@@ -250,7 +144,26 @@ function PackagePlanCard({
             </div>
 
             <div className="flex items-center gap-3 py-4">
-                <p className="flex-1 text-[12px] font-light text-[#797F8F]">{plan.tenantSummary}</p>
+                <div className="flex-1">
+                    <p className="text-[12px] font-light text-[#797F8F]">{`${activeTenants} tenant aktif`}</p>
+                    {!canDelete ? (
+                        <p className="mt-1 text-[11px] text-[#A27E4F]">Sudah memiliki pembeli, paket tidak bisa dihapus.</p>
+                    ) : (
+                        <p className="mt-1 text-[11px] text-[#5D6574]">Belum ada pembeli, paket bisa dihapus.</p>
+                    )}
+                </div>
+                {canDelete ? (
+                    <button
+                        type="button"
+                        aria-label={`Hapus paket ${plan.name}`}
+                        onClick={() => onDelete(plan)}
+                        disabled={isDeleting}
+                        className="inline-flex h-8 items-center gap-2 rounded-[8px] border border-[#5A2E31] bg-[#221518] px-3 text-[13px] text-[#E17D7D] transition-colors hover:border-[#E05A5A] hover:text-[#F0A0A0] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Hapus
+                    </button>
+                ) : null}
                 <button
                     type="button"
                     aria-label={`Edit paket ${plan.name}`}
@@ -342,9 +255,10 @@ function PackageFormModal({
 }
 
 export function SuperadminSubscriptionPackages() {
-    const [packagePlans, setPackagePlans] = useState(initialPackagePlans);
+    const { packages, tenants, metrics, isLoading, isDeleting, savePackage, deletePackage } = useSuperadminPackages();
     const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
     const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
+    const [packageToDelete, setPackageToDelete] = useState<PackageType | null>(null);
     const [packageForm, setPackageForm] = useState<PackageFormState>(defaultPackageForm);
 
     const openAddModal = () => {
@@ -353,7 +267,7 @@ export function SuperadminSubscriptionPackages() {
         setPackageForm(defaultPackageForm);
     };
 
-    const openEditModal = (plan: PackagePlan) => {
+    const openEditModal = (plan: PackageType) => {
         setModalMode('edit');
         setEditingPackageId(plan.id);
         setPackageForm(buildFormStateFromPlan(plan));
@@ -364,36 +278,64 @@ export function SuperadminSubscriptionPackages() {
         setEditingPackageId(null);
     };
 
-    const handleSavePackage = () => {
+    const openDeleteConfirm = (plan: PackageType) => {
+        setPackageToDelete(plan);
+    };
+
+    const closeDeleteConfirm = () => {
+        if (!isDeleting) {
+            setPackageToDelete(null);
+        }
+    };
+
+    const handleSavePackage = async () => {
         const normalizedFeatures = packageForm.featuresText
             .split('\n')
             .map((feature) => feature.trim())
             .filter(Boolean);
-        const nextPlan: PackagePlan = {
-            id: editingPackageId ?? `package-${Date.now()}`,
+
+        const dataToSave: Partial<PackageType> = {
             name: packageForm.name.trim() || 'Paket Baru',
-            monthlyPrice: Number(packageForm.monthlyPrice) || 0,
-            statusValue: packageForm.statusValue,
-            maxUsers: packageForm.maxUsers.trim() || '-',
-            storageGb: packageForm.storageGb.trim() || '-',
-            documentsPerMonth: packageForm.documentsPerMonth.trim() || '-',
-            features: normalizedFeatures.length ? normalizedFeatures : ['Belum ada fitur'],
-            tenantSummary:
-                editingPackageId === null
-                    ? '0 tenants aktif'
-                    : packagePlans.find((plan) => plan.id === editingPackageId)?.tenantSummary ?? '0 tenants aktif',
+            monthly_price: Number(packageForm.monthlyPrice) || 0,
+            status: packageForm.statusValue,
+            max_users: parseInt(packageForm.maxUsers) || 10,
+            storage_gb: parseInt(packageForm.storageGb) || 50,
+            documents_per_month: packageForm.documentsPerMonth.trim() || '1000',
+            features: JSON.stringify(normalizedFeatures.length ? normalizedFeatures : ['Belum ada fitur']),
         };
 
-        setPackagePlans((currentPlans) => {
-            if (editingPackageId === null) {
-                return [...currentPlans, nextPlan];
-            }
-
-            return currentPlans.map((plan) => (plan.id === editingPackageId ? nextPlan : plan));
-        });
-
-        closeModal();
+        const success = await savePackage(editingPackageId, dataToSave);
+        if (success) {
+            closeModal();
+        }
     };
+
+    const handleDeletePackage = async () => {
+        if (!packageToDelete?.id) {
+            return;
+        }
+
+        const success = await deletePackage(packageToDelete.id);
+        if (success) {
+            setPackageToDelete(null);
+        }
+    };
+    
+    const mappedMetrics: PackageMetric[] = metrics ? [
+        { label: 'Total MRR', value: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(metrics.total_mrr || 0) },
+        { label: 'Active Subscriptions', value: (metrics.active_subscriptions || 0).toString(), valueClassName: 'text-[#44DD5A]' },
+        { label: 'Total Packages', value: (packages.length || 0).toString() }
+    ] : [];
+
+    if (isLoading) {
+        return (
+            <SuperadminShell activePage="subscriptionPackages" title="Paket Langganan">
+                <div className="flex h-64 items-center justify-center text-[#6F6F6F]">
+                    Loading...
+                </div>
+            </SuperadminShell>
+        );
+    }
 
     return (
         <SuperadminShell
@@ -411,8 +353,14 @@ export function SuperadminSubscriptionPackages() {
             }
         >
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {packagePlans.map((plan) => (
-                    <PackagePlanCard key={plan.id} plan={plan} onEdit={openEditModal} />
+                {packages.map((plan) => (
+                    <PackagePlanCard
+                        key={plan.id}
+                        isDeleting={isDeleting && packageToDelete?.id === plan.id}
+                        plan={plan}
+                        onDelete={openDeleteConfirm}
+                        onEdit={openEditModal}
+                    />
                 ))}
             </section>
 
@@ -440,28 +388,35 @@ export function SuperadminSubscriptionPackages() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {packageTenants.map((tenant) => (
-                                    <tr key={tenant.name}>
+                                {tenants.map((tenant: PackageTenantRecord) => (
+                                    <tr key={tenant.id || tenant.tenant_name}>
                                         <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-white">
-                                            {tenant.name}
+                                            {tenant.tenant_name}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {tenant.packageName}
+                                            {tenant.package_name}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {tenant.startDate}
+                                            {new Date(tenant.start_date).toLocaleDateString('id-ID')}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {tenant.renewalDate}
+                                            {new Date(tenant.end_date).toLocaleDateString('id-ID')}
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-2.5">
                                             <SuperadminStatusBadge
-                                                tone={tenant.statusTone}
-                                                value={tenant.statusLabel}
+                                                tone={tenant.status === 'active' ? 'success' : tenant.status === 'expired' ? 'danger' : 'warning'}
+                                                value={tenant.status}
                                             />
                                         </td>
                                     </tr>
                                 ))}
+                                {tenants.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="border-b border-[#303030] px-3 py-8 text-center text-[14px] text-[#6F6F6F]">
+                                            Belum ada tenant yang berlangganan
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -473,7 +428,7 @@ export function SuperadminSubscriptionPackages() {
                     </header>
 
                     <div>
-                        {packageMetrics.map((metric) => (
+                        {mappedMetrics.map((metric) => (
                             <div
                                 key={metric.label}
                                 className="flex items-center justify-between border-b border-[#303030] px-4 py-3 last:border-b-0"
@@ -502,6 +457,23 @@ export function SuperadminSubscriptionPackages() {
                     }
                 />
             ) : null}
+
+            <ConfirmDialog
+                isOpen={!!packageToDelete}
+                title="Hapus paket"
+                message={
+                    packageToDelete
+                        ? `Apakah anda yakin ingin menghapus paket ${packageToDelete.name}? Paket yang belum pernah dibeli akan dihapus permanen.`
+                        : 'Apakah anda yakin ingin menghapus paket ini?'
+                }
+                confirmText={isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+                cancelText="Batal"
+                type="danger"
+                onConfirm={() => {
+                    void handleDeletePackage();
+                }}
+                onCancel={closeDeleteConfirm}
+            />
         </SuperadminShell>
     );
 }

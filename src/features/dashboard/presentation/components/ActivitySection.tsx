@@ -1457,10 +1457,10 @@ export function ActivitySection({
             },
         ],
         [
+            activeActivity,
             activeActivityFolderId,
             activeActivityIsFavorite,
             handleDownloadFromMenu,
-            handleMoveToTrash,
             handleOpenDetailFromMenu,
             handleRenameFromMenu,
             handleToggleFavorite,

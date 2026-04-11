@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { BrandLogo } from '@/shared/components';
+import { getAuthenticatedHomePath } from '@/features/auth/utils/user';
 
 
 export const LoginForm = () => {
@@ -14,9 +15,9 @@ export const LoginForm = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const response = await login(credentials);
-        if (response) {
-            window.location.href = '/dashboard';
+        const authenticatedUser = await login(credentials);
+        if (authenticatedUser) {
+            window.location.href = getAuthenticatedHomePath(authenticatedUser);
         }
     };
 
