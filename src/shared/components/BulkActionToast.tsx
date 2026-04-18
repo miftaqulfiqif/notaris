@@ -42,7 +42,7 @@ export function BulkActionToast({
 
     return (
         <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
-            <div className="w-full max-w-6xl rounded-2xl border border-[#B39B7D]/60 bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.15)]">
+            <div className="w-fit rounded-2xl border border-[#B39B7D]/60 bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.15)]">
                 <div className="flex flex-wrap items-center gap-3 text-[#6B5C45]">
                     <button
                         type="button"
