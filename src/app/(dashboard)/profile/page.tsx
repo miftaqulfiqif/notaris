@@ -280,7 +280,7 @@ export default function ProfilePage() {
         // Implementasi penyimpanan informasi user
         console.log('Menyimpan informasi user :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
-        window.location.reload();
+        // window.location.reload();
         setEditingSection(null);
     };
 
@@ -293,7 +293,7 @@ export default function ProfilePage() {
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
-        window.location.reload();
+        // window.location.reload();
     };
 
     const handleDeleteAccount = () => {
