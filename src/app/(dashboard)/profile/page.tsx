@@ -37,6 +37,7 @@ interface UpdateUserInfo {
     name?: string;
     gender?: string;
     phone?: string;
+    jabatan?: string;
 }
 
 interface UpdateAccountDetails {
@@ -44,6 +45,10 @@ interface UpdateAccountDetails {
     email?: string;
     password?: string;
     confirm_password?: string;
+    role?: string;
+    created_at?: string;
+    last_login?: string;
+    last_updated_password?: string;
 }
 
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
@@ -278,6 +283,7 @@ export default function ProfilePage() {
 
     const handleSaveUserInfo = (data: UpdateUserInfo) => {
         // Implementasi penyimpanan informasi user
+        data.jabatan = undefined;
         console.log('Menyimpan informasi user :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         // window.location.reload();
@@ -286,10 +292,10 @@ export default function ProfilePage() {
 
     const handleSaveAccountDetails = (data: UpdateAccountDetails) => {
         // Implementasi penyimpanan detail akun
-        // data.created_at = undefined;
-        // data.last_login = undefined;
-        // data.last_updated_password = undefined;
-        // data.role = undefined;
+        data.created_at = undefined;
+        data.last_login = undefined;
+        data.last_updated_password = undefined;
+        data.role = undefined;
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);

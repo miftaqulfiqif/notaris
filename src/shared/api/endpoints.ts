@@ -69,6 +69,7 @@ export const ENDPOINTS = {
     DASHBOARD: {
         ACTIVITIES: `${API_BASE_URL}/aktifitas`,
         RECOMMENDATIONS: `${API_BASE_URL}/aktifitas/recomendation`,
+        TYPE_ACTIVITIES: `${API_BASE_URL}/aktifitas/tipe-layanan`,
     },
     SUPERADMIN: {
         DASHBOARD: {

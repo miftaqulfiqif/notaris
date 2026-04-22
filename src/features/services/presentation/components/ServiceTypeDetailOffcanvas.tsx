@@ -11,6 +11,9 @@ import { getInitials } from '@/shared/utils/initials';
 
 interface ServiceTypeActivity {
     id: string;
+    layanan: string;
+    tipe_layanan: string;
+    folder_id: string;
     description: string;
     folder_name: string;
     object: string;
@@ -121,7 +124,7 @@ export function ServiceTypeDetailOffcanvas({
     const fetchActivities = useCallback(async (typeId: string) => {
         setIsActivitiesLoading(true);
         try {
-            const url = `${ENDPOINTS.DASHBOARD.ACTIVITIES}?tipe_layanan_id=${typeId}&limit=10`;
+            const url = `${ENDPOINTS.DASHBOARD.TYPE_ACTIVITIES}/${typeId}?limit=10`;
             const response = await apiGet<ServiceTypeActivitiesResponse>(url);
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.data ?? []);
@@ -140,6 +143,10 @@ export function ServiceTypeDetailOffcanvas({
     }, [activeTab, fetchActivities, serviceTypeId]);
 
     if (!serviceTypeId || !mounted) return null;
+
+    const handleNavigateToFolder = (layanan: string, tipeLayanan: string,folderId: string) => {
+        navigation?.navigate(`/services/${layanan}/${tipeLayanan}/${folderId}`);
+    }
 
     return createPortal(
         <>
@@ -325,7 +332,7 @@ export function ServiceTypeDetailOffcanvas({
                                                 {item.description}
                                             </p>
                                             <p className="mt-1 text-sm text-gray-500">{item.created_at}</p>
-                                            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-lg text-gray-700">
+                                            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-lg text-gray-700 cursor-pointer" onClick={() => handleNavigateToFolder(item.layanan, item.tipe_layanan, item.folder_id)}>
                                                 <Folder className="h-5 w-5" />
                                                 {item.folder_name}
                                             </div>
