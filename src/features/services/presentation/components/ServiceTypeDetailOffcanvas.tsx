@@ -9,6 +9,7 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 import type { ServiceTypeDetailData, ServiceTypeDetailResponse } from '@/features/services/types';
 import { getInitials } from '@/shared/utils/initials';
 import { useToast } from '@/shared/hooks/useToast';
+import { useRouter } from 'next/navigation';
 
 interface ServiceTypeActivity {
     id: string;
@@ -70,6 +71,7 @@ export function ServiceTypeDetailOffcanvas({
     serviceTypeName,
     onClose,
 }: ServiceTypeDetailOffcanvasProps) {
+    const router = useRouter();
     const { toast, showToast, hideToast } = useToast();
     
     const [activeTab, setActiveTab] = useState<DetailTab>('detail');
@@ -154,7 +156,7 @@ export function ServiceTypeDetailOffcanvas({
             alert('Folder telah dihapus');
             return;
         }
-        navigation?.navigate(`/services/${layanan}/${tipeLayanan}/${folderId}`);
+        router.push(`/services/${layanan}/${tipeLayanan}/${folderId}`);
     }
 
     return createPortal(
