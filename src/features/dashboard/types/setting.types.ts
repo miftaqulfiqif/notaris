@@ -8,7 +8,8 @@ export interface NotarisSetting {
 }
 
 export interface NotarisPaket {
-    paket: string | null;
+    name: string | null;
+    features: string[] | null;
 }
 
 export interface NotarisMember {
@@ -23,11 +24,19 @@ export interface NotarisNotificationSetting {
     notifikasi_email: boolean;
 }
 
+export interface NotarisPackageStorage {
+    used_storage_gb: number;
+    total_storage_gb: number;
+    remaining_storage_mb: number;
+    percentage_used: number;
+}
+
 export interface NotarisSettingData {
     setting: NotarisSetting | null;
-    paket: NotarisPaket | null;
+    subscription_package: NotarisPaket | null;
     member: NotarisMember[] | null;
     notifikasi: NotarisNotificationSetting | null;
+    package_storage: NotarisPackageStorage | null;
 }
 
 export interface NotarisSettingResponse {
