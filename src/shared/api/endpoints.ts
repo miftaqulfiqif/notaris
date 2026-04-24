@@ -16,6 +16,7 @@ export const ENDPOINTS = {
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
         FORGOT_PASSWORD: `${API_BASE_URL}/user/forgot-password`,
+        RESET_PASSWORD: `${API_BASE_URL}/user/reset-password`,
     },
     USER: {
         CREATE: `${API_BASE_URL}/user/create`,

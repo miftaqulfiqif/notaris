@@ -163,7 +163,6 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                             {row.isMasked && (
                                 <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />
                             )}
-
                         </div>
                     </div>
                 ))}
@@ -299,19 +298,22 @@ export default function ProfilePage() {
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
-        // window.location.reload();
+        window.location.reload();
     };
 
     const handleDeleteAccount = () => {
         // Implementasi penghapusan akun
         apiPost(ENDPOINTS.USER.DELETE_ACCOUNT);
         console.log('Menghapus akun');
+        window.location.reload();
     }
 
     const handleChangePassword = () => {
         // Implementasi perubahan password
         apiPost(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: profileEmail });
-        console.log('Mengubah password');
+        setPopUpChangePassword(false);
+        alert('Email untuk mengatur ulang password telah dikirim. Silakan cek inbox Anda.');
+        window.location.reload();
     }
 
     return (
