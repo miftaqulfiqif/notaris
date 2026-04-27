@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuthContext } from '@/features/auth/context/auth.context';
-import { getUserRoleName } from '@/features/auth/utils/user';
+import { getUserRoleName, isPendingPaymentUser, isSubscriptionExpiredUser } from '@/features/auth/utils/user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -25,7 +25,8 @@ export const ProtectedPath = ({
     const normalizedDisallowedRoles = disallowedRoles?.map((role) => role.toUpperCase());
     const isAllowedRole = normalizedAllowedRoles ? normalizedAllowedRoles.includes(normalizedRoleName ?? '') : true;
     const isDisallowedRole = normalizedDisallowedRoles ? normalizedDisallowedRoles.includes(normalizedRoleName ?? '') : false;
-    const hasAccess = isAuthenticated && isVerified && isAllowedRole && !isDisallowedRole;
+    const isSubscriptionBlocked = isPendingPaymentUser(user) || isSubscriptionExpiredUser(user);
+    const hasAccess = isAuthenticated && isVerified && isAllowedRole && !isDisallowedRole && !isSubscriptionBlocked;
 
     useEffect(() => {
         if (!isLoading) {
@@ -33,11 +34,13 @@ export const ProtectedPath = ({
                 router.push('/login');
             } else if (!isVerified) {
                 router.push('/verify-email');
+            } else if (isSubscriptionBlocked) {
+                router.push('/register/checkout');
             } else if (!isAllowedRole || isDisallowedRole) {
                 router.push(redirectTo);
             }
         }
-    }, [isLoading, isAuthenticated, isVerified, isAllowedRole, isDisallowedRole, redirectTo, router]);
+    }, [isLoading, isAuthenticated, isVerified, isAllowedRole, isDisallowedRole, isSubscriptionBlocked, redirectTo, router]);
 
     if (isLoading) {
         return (

@@ -28,11 +28,17 @@ type PackageMetric = {
 };
 
 type PackageFormState = {
+    annualPrice: string;
     documentsPerMonth: string;
     featuresText: string;
+    introMonthlyPrice: string;
+    listMonthlyPrice: string;
     maxUsers: string;
     monthlyPrice: string;
     name: string;
+    promoBadge: string;
+    promoEndsAt: string;
+    promoStartsAt: string;
     statusValue: PackageStatusValue;
     storageGb: string;
 };
@@ -46,8 +52,14 @@ const packageStatusOptions: SuperadminSelectOption[] = [
 
 
 const defaultPackageForm: PackageFormState = {
+    annualPrice: '1500000',
     name: 'Basic',
+    listMonthlyPrice: '750000',
+    introMonthlyPrice: '500000',
     monthlyPrice: '500000',
+    promoBadge: 'Pembelian pertama',
+    promoEndsAt: '2026-12-31',
+    promoStartsAt: '2026-01-01',
     statusValue: 'published',
     maxUsers: '10',
     storageGb: '50',
@@ -99,7 +111,13 @@ function normalizePlanFeatures(features: PackageType['features']) {
 function buildFormStateFromPlan(plan: PackageType): PackageFormState {
     return {
         name: plan.name,
+        annualPrice: String(plan.annual_price ?? plan.monthly_price * 12),
+        listMonthlyPrice: String(plan.list_monthly_price ?? plan.monthly_price),
+        introMonthlyPrice: String(plan.intro_monthly_price ?? plan.monthly_price),
         monthlyPrice: String(plan.monthly_price),
+        promoBadge: plan.promo_badge ?? '',
+        promoEndsAt: plan.promo_ends_at ? String(plan.promo_ends_at).slice(0, 10) : '',
+        promoStartsAt: plan.promo_starts_at ? String(plan.promo_starts_at).slice(0, 10) : '',
         statusValue: plan.status as PackageStatusValue,
         maxUsers: String(plan.max_users),
         storageGb: String(plan.storage_gb),
@@ -210,11 +228,29 @@ function PackageFormModal({
                         value={value.monthlyPrice}
                         onChange={(nextValue) => onChange('monthlyPrice', nextValue)}
                     />
+                    <SuperadminTextInput
+                        label="Harga Bulanan Normal"
+                        value={value.listMonthlyPrice}
+                        onChange={(nextValue) => onChange('listMonthlyPrice', nextValue)}
+                    />
                     <SuperadminSelectField
                         label="Status"
                         value={value.statusValue}
                         onChange={(nextValue) => onChange('statusValue', nextValue)}
                         options={packageStatusOptions}
+                    />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                    <SuperadminTextInput
+                        label="Harga Promo Bulan Pertama"
+                        value={value.introMonthlyPrice}
+                        onChange={(nextValue) => onChange('introMonthlyPrice', nextValue)}
+                    />
+                    <SuperadminTextInput
+                        label="Harga Perpanjangan Tahunan"
+                        value={value.annualPrice}
+                        onChange={(nextValue) => onChange('annualPrice', nextValue)}
                     />
                 </div>
 
@@ -233,6 +269,24 @@ function PackageFormModal({
                         label="Dokumen/bulan"
                         value={value.documentsPerMonth}
                         onChange={(nextValue) => onChange('documentsPerMonth', nextValue)}
+                    />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                    <SuperadminTextInput
+                        label="Label Promo"
+                        value={value.promoBadge}
+                        onChange={(nextValue) => onChange('promoBadge', nextValue)}
+                    />
+                    <SuperadminTextInput
+                        label="Promo Mulai (YYYY-MM-DD)"
+                        value={value.promoStartsAt}
+                        onChange={(nextValue) => onChange('promoStartsAt', nextValue)}
+                    />
+                    <SuperadminTextInput
+                        label="Promo Selesai (YYYY-MM-DD)"
+                        value={value.promoEndsAt}
+                        onChange={(nextValue) => onChange('promoEndsAt', nextValue)}
                     />
                 </div>
 
@@ -295,8 +349,14 @@ export function SuperadminSubscriptionPackages() {
             .filter(Boolean);
 
         const dataToSave: Partial<PackageType> = {
+            annual_price: Number(packageForm.annualPrice) || 0,
             name: packageForm.name.trim() || 'Paket Baru',
+            list_monthly_price: Number(packageForm.listMonthlyPrice) || 0,
+            intro_monthly_price: Number(packageForm.introMonthlyPrice) || 0,
             monthly_price: Number(packageForm.monthlyPrice) || 0,
+            promo_badge: packageForm.promoBadge.trim() || null,
+            promo_ends_at: packageForm.promoEndsAt || null,
+            promo_starts_at: packageForm.promoStartsAt || null,
             status: packageForm.statusValue,
             max_users: parseInt(packageForm.maxUsers) || 10,
             storage_gb: parseInt(packageForm.storageGb) || 50,

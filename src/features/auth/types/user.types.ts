@@ -13,6 +13,14 @@ export interface Notaris {
     updated_at?: string;
 }
 
+export interface UserSubscription {
+    billing_phase: string;
+    has_pending_invoice: boolean;
+    package: string | null;
+    renewal_date: string | null;
+    status: string;
+}
+
 export type UserRole = Role | string;
 
 export interface User {
@@ -31,6 +39,7 @@ export interface User {
     notaris?: Notaris | null;
     favorites?: unknown[];
     folder?: unknown[];
+    subscription?: UserSubscription | null;
 }
 
 export interface UserResponse {

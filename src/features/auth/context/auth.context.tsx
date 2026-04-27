@@ -4,12 +4,16 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { User } from '../types/user.types';
 import { useRouter } from 'next/navigation';
 import { authService, LoginCredentials } from '../services/auth.service';
+import { isPendingPaymentUser, isSubscriptionExpiredUser } from '../utils/user';
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     isVerified: boolean;
+    subscriptionStatus: string | null;
+    isPendingPayment: boolean;
+    isSubscriptionExpired: boolean;
     login: (credentials: LoginCredentials) => Promise<User | null>;
     logout: () => Promise<void>;
     checkAuth: () => Promise<User | null>;
@@ -85,6 +89,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isLoading,
             isAuthenticated: !!user,
             isVerified: !!user?.verified_at,
+            subscriptionStatus: user?.subscription?.status ?? null,
+            isPendingPayment: isPendingPaymentUser(user),
+            isSubscriptionExpired: isSubscriptionExpiredUser(user),
             login,
             logout,
             checkAuth,

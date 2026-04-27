@@ -5,18 +5,31 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(),
+    useSearchParams: jest.fn(),
 }));
 
 jest.mock('@/features/auth/context/auth.context', () => ({
     useAuthContext: jest.fn(),
 }));
 
+jest.mock('@/features/billing/hooks/usePackages', () => ({
+    usePackages: jest.fn(),
+}));
+
 const { useRouter } = jest.requireMock('next/navigation') as {
     useRouter: jest.Mock;
 };
 
+const { useSearchParams } = jest.requireMock('next/navigation') as {
+    useSearchParams: jest.Mock;
+};
+
 const { useAuthContext } = jest.requireMock('@/features/auth/context/auth.context') as {
     useAuthContext: jest.Mock;
+};
+
+const { usePackages } = jest.requireMock('@/features/billing/hooks/usePackages') as {
+    usePackages: jest.Mock;
 };
 
 describe('RegisterForm', () => {
@@ -26,7 +39,19 @@ describe('RegisterForm', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         useRouter.mockReturnValue({ push });
+        useSearchParams.mockReturnValue({
+            get: jest.fn().mockImplementation((key: string) => key === 'package' ? 'pkg-1' : null),
+        });
         useAuthContext.mockReturnValue({ checkAuth });
+        usePackages.mockReturnValue({
+            packages: [
+                {
+                    id: 'pkg-1',
+                    name: 'Paket Notarix',
+                    current_monthly_price: 500000,
+                },
+            ],
+        });
         global.fetch = jest.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
@@ -36,7 +61,7 @@ describe('RegisterForm', () => {
         }) as jest.Mock;
     });
 
-    it('submits create-notaris payload, refreshes auth, and redirects to verify email', async () => {
+    it('submits create-notaris payload with package_id, refreshes auth, and redirects to verify-email', async () => {
         const user = userEvent.setup();
 
         render(<RegisterForm />);
@@ -71,6 +96,7 @@ describe('RegisterForm', () => {
                         phone: '+628123456789',
                         password: 'rahasia123',
                         confirm_password: 'rahasia123',
+                        package_id: 'pkg-1',
                     }),
                 }),
             );

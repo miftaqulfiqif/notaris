@@ -8,10 +8,10 @@ jest.mock('next/navigation', () => ({
 }));
 
 describe('VerificationSuccessPage', () => {
-  it('navigates to login on button click', () => {
+  it('navigates to checkout on button click', () => {
     render(<VerificationSuccessPage />);
-    const button = screen.getByRole('button', { name: /login/i });
+    const button = screen.getByRole('button', { name: /lanjut ke pembayaran/i });
     fireEvent.click(button);
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(pushMock).toHaveBeenCalledWith('/register/checkout');
   });
 });

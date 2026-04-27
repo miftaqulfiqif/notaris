@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { usePackages } from '@/features/billing/hooks/usePackages';
 
 interface RegisterFormData {
     instanceName: string;
@@ -20,7 +21,9 @@ interface RegisterFormData {
 
 export const RegisterForm = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { checkAuth } = useAuthContext();
+    const { packages } = usePackages();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState<RegisterFormData>({
@@ -35,10 +38,17 @@ export const RegisterForm = () => {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const selectedPackageId = searchParams.get('package');
+    const selectedPackage = packages.find((item) => item.id === selectedPackageId);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError(null);
+
+        if (!selectedPackageId) {
+            setError('Pilih paket langganan terlebih dahulu.');
+            return;
+        }
 
         if (formData.password !== formData.confirmPassword) {
             setError('Password dan konfirmasi password tidak cocok.');
@@ -72,6 +82,7 @@ export const RegisterForm = () => {
                     phone: formData.phone,
                     password: formData.password,
                     confirm_password: formData.confirmPassword,
+                    package_id: selectedPackageId,
                 }),
             });
 
@@ -112,6 +123,35 @@ export const RegisterForm = () => {
                 <p className="text-gray-500 text-base">
                     Kelola arsip dokumen notaris secara terstruktur dan terpercaya,
                 </p>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-[#E8DED3] bg-[#FFFCF8] p-4">
+                {selectedPackage ? (
+                    <>
+                        <p className="text-xs uppercase tracking-[0.24em] text-[#8B7355]">Paket dipilih</p>
+                        <div className="mt-2 flex items-end justify-between gap-4">
+                            <div>
+                                <p className="text-lg font-semibold text-[#2D2925]">{selectedPackage.name}</p>
+                                <p className="mt-1 text-sm text-[#6E6359]">
+                                    Promo bulan pertama Rp {new Intl.NumberFormat('id-ID').format(selectedPackage.current_monthly_price)}
+                                </p>
+                            </div>
+                            <Link href="/pricing" className="text-sm font-medium text-[#8B7355] hover:text-[#6E5943]">
+                                Ganti paket
+                            </Link>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium text-[#2D2925]">Belum ada paket dipilih</p>
+                            <p className="mt-1 text-sm text-[#6E6359]">Pilih paket lebih dulu agar akun bisa dibuat dengan status pembayaran yang benar.</p>
+                        </div>
+                        <Link href="/pricing" className="inline-flex rounded-lg bg-[#7D674E] px-4 py-2 text-sm font-medium text-white">
+                            Pilih paket
+                        </Link>
+                    </div>
+                )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -285,7 +325,7 @@ export const RegisterForm = () => {
 
                 <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || !selectedPackageId}
                     className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center mt-2"
                 >
                     {isLoading ? (

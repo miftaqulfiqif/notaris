@@ -1,14 +1,13 @@
-'use client';
-
 import { RegisterForm } from "@/features/auth/presentation/components/RegisterForm";
 import Link from "next/link";
 import { PublicOnlyRoute } from "@/features/auth/presentation/components/PublicOnlyRoute";
 import { BrandLogo } from '@/shared/components';
+import { Suspense } from "react";
 
 export default function RegisterPage() {
     return (
         <PublicOnlyRoute>
-            <div className="min-h-screen bg-gradient-to-b from-blue-50/50 to-white">
+            <div className="min-h-screen bg-[#F7F5F2]">
                 <header className="w-full px-6 py-4 flex items-center justify-between">
                     <BrandLogo width={122} height={45} priority />
                     <div className="flex items-center gap-3">
@@ -23,8 +22,10 @@ export default function RegisterPage() {
                 </header>
 
                 <main className="flex flex-col items-center justify-center px-4 py-8">
-                    <div className="w-full max-w-xl bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                        <RegisterForm />
+                    <div className="w-full max-w-xl bg-white border border-[#E8DED3] rounded-[28px] p-8 shadow-[0_24px_64px_rgba(79,58,28,0.08)]">
+                        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-[#F5EFE8]" />}>
+                            <RegisterForm />
+                        </Suspense>
                     </div>
 
                     <div className="mt-8 text-center">

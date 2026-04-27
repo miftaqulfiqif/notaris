@@ -9,6 +9,9 @@ const API_BASE_URL_WITH_API_PREFIX = API_BASE_URL
     : '';
 
 export const ENDPOINTS = {
+    PUBLIC: {
+        PACKAGES: `${API_BASE_URL_WITH_API_PREFIX}/public/packages`,
+    },
     AUTH: {
         LOGIN: `${API_BASE_URL}/user/login`,
         REGISTER: `${API_BASE_URL}/user/register`,
@@ -16,6 +19,11 @@ export const ENDPOINTS = {
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
         FORGOT_PASSWORD: `${API_BASE_URL}/user/forgot-password`,
+    },
+    BILLING: {
+        CHECKOUT: `${API_BASE_URL}/user/checkout`,
+        CHARGE: `${API_BASE_URL}/user/checkout/charge`,
+        STATUS: `${API_BASE_URL}/user/checkout/status`,
     },
     USER: {
         CREATE: `${API_BASE_URL}/user/create`,

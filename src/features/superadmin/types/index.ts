@@ -73,15 +73,21 @@ export type AgingData = {
 };
 
 export type PackagePlan = {
+    annual_price?: number;
     active_tenants?: number;
     can_delete?: boolean;
     features: string[] | string;
     id: string;
+    intro_monthly_price?: number;
+    list_monthly_price?: number;
     name: string;
     monthly_price: number;
     max_users: number;
     storage_gb: number;
     documents_per_month: string;
+    promo_badge?: string | null;
+    promo_ends_at?: string | null;
+    promo_starts_at?: string | null;
     status: string;
     total_subscriptions?: number;
 };

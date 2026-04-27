@@ -7,8 +7,8 @@ import successIllustration from "@/assets/images/success_illustration.png";
 export default function VerificationSuccessPage() {
     const router = useRouter();
 
-    const handleLogin = () => {
-        router.push('/login');
+    const handleContinue = () => {
+        router.push('/register/checkout');
     };
 
     return (
@@ -26,14 +26,14 @@ export default function VerificationSuccessPage() {
                 </div>
 
                 <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">
-                    Akun Anda telah berhasil dibuat
+                    Email Anda berhasil diverifikasi
                 </h1>
 
                 <button
-                    onClick={handleLogin}
+                    onClick={handleContinue}
                     className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all flex items-center justify-center"
                 >
-                    Login
+                    Lanjut ke pembayaran
                 </button>
             </div>
         </div>
