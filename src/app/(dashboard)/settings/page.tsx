@@ -10,6 +10,7 @@ import { Toast } from '@/shared/components/Toast';
 import { useToast } from '@/shared/hooks/useToast';
 import type {
     NotarisMember,
+    NotarisPackageStorage,
     NotarisSetting,
     NotarisSettingResponse,
     SettingViewMode,
@@ -94,6 +95,8 @@ export default function SettingsPage() {
     const [halamanAwal, setHalamanAwal] = useState('dashboard');
     const [ukuranFont, setUkuranFont] = useState('sedang');
     const [activePackage, setActivePackage] = useState<string | null>(null);
+    const [featuresPackage, setFeaturesPackage] = useState<string[] | null>(null);
+    const [packageStorage, setPackageStorage] = useState<NotarisPackageStorage | null>(null);
     const [teamMembers, setTeamMembers] = useState<NotarisMember[]>([]);
     const [emailNotificationEnabled, setEmailNotificationEnabled] = useState(false);
     const [inAppNotificationEnabled, setInAppNotificationEnabled] = useState(true);
@@ -135,7 +138,9 @@ export default function SettingsPage() {
                         normalizedUkuranFont,
                     ),
                 );
-                setActivePackage(payload.paket?.paket ?? null);
+                setActivePackage(payload.subscription_package?.name ?? null);
+                setFeaturesPackage(payload.subscription_package?.features ?? null);
+                setPackageStorage(payload.package_storage ?? null);
                 setTeamMembers(members);
                 setInitialMemberAccessMap(toMemberAccessMap(members));
                 setInAppNotificationEnabled(Boolean(payload.notifikasi?.notifikasi_dalam_aplikasi));
@@ -156,6 +161,8 @@ export default function SettingsPage() {
             mounted = false;
         };
     }, []);
+
+    console.log('package storage:', packageStorage);
 
     const packageLabel = useMemo(
         () => (activePackage ? formatLabel(activePackage) : 'Belum ada paket aktif'),
@@ -286,6 +293,13 @@ export default function SettingsPage() {
         }
     };
 
+    const formatStorage = (gb: number) => {
+        if (gb < 1) {
+            return `${(gb * 1024).toFixed(0)} MB`;
+        }
+        return `${gb.toFixed(2)} GB`;
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -304,16 +318,29 @@ export default function SettingsPage() {
                         <div className="mt-6 mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Setting</h1>
                             <div className="flex flex-wrap items-center gap-3">
-                                <div className="h-4 w-36 rounded-full bg-gray-200 overflow-hidden">
-                                    <div className="h-full w-[12%] rounded-full bg-[#7A6A53]" />
-                                </div>
-                                <span className="text-sm text-gray-500">1%</span>
-                                <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700">
-                                    5 GB dari 15 GB telah digunakan
-                                </span>
-                                <button className="rounded-xl border border-gray-200 bg-gray-100 px-5 py-2 text-sm text-gray-400">
-                                    Beli penyimpanan
-                                </button>
+                            {/* Progress bar */}
+                            <div className="h-4 w-36 rounded-full bg-gray-200 overflow-hidden">
+                                <div
+                                className="h-full rounded-full bg-[#7A6A53]"
+                                style={{ width: `${packageStorage?.percentage_used ?? 0}%` }}
+                                />
+                            </div>
+
+                            {/* Percentage */}
+                            <span className="text-sm text-gray-500">
+                                {(packageStorage?.percentage_used ?? 0).toFixed(2)}%
+                            </span>
+
+                            {/* Info text */}
+                            <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700">
+                                {formatStorage(packageStorage?.used_storage_gb ?? 0)} dari{" "}
+                                {packageStorage?.total_storage_gb ?? 0} GB telah digunakan
+                            </span>
+
+                            {/* Button */}
+                            <button className="rounded-xl border border-gray-200 bg-gray-100 px-5 py-2 text-sm text-gray-400">
+                                Beli penyimpanan
+                            </button>
                             </div>
                         </div>
 
@@ -476,7 +503,7 @@ export default function SettingsPage() {
                                         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
                                             {packageLabel}
                                         </div>
-                                        {activePackage && packageFeatures.map((feature) => (
+                                        {activePackage && featuresPackage?.map((feature) => (
                                             <div key={feature} className="flex items-start gap-3 text-gray-800">
                                                 <Check className="mt-0.5 h-4 w-4 text-[#6E5F49]" />
                                                 <span className="text-lg">{feature}</span>

@@ -8,9 +8,15 @@ import { apiGet } from '@/shared/api/api-client';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 import type { ServiceTypeDetailData, ServiceTypeDetailResponse } from '@/features/services/types';
 import { getInitials } from '@/shared/utils/initials';
+import { useToast } from '@/shared/hooks/useToast';
+import { useRouter } from 'next/navigation';
 
 interface ServiceTypeActivity {
     id: string;
+    layanan: string;
+    tipe_layanan: string;
+    folder_id: string;
+    is_deleted: boolean;
     description: string;
     folder_name: string;
     object: string;
@@ -65,6 +71,9 @@ export function ServiceTypeDetailOffcanvas({
     serviceTypeName,
     onClose,
 }: ServiceTypeDetailOffcanvasProps) {
+    const router = useRouter();
+    const { toast, showToast, hideToast } = useToast();
+    
     const [activeTab, setActiveTab] = useState<DetailTab>('detail');
     const [detail, setDetail] = useState<ServiceTypeDetailData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -121,7 +130,7 @@ export function ServiceTypeDetailOffcanvas({
     const fetchActivities = useCallback(async (typeId: string) => {
         setIsActivitiesLoading(true);
         try {
-            const url = `${ENDPOINTS.DASHBOARD.ACTIVITIES}?tipe_layanan_id=${typeId}&limit=10`;
+            const url = `${ENDPOINTS.DASHBOARD.TYPE_ACTIVITIES}/${typeId}?limit=10`;
             const response = await apiGet<ServiceTypeActivitiesResponse>(url);
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.data ?? []);
@@ -140,6 +149,15 @@ export function ServiceTypeDetailOffcanvas({
     }, [activeTab, fetchActivities, serviceTypeId]);
 
     if (!serviceTypeId || !mounted) return null;
+
+    const handleNavigateToFolder = (layanan: string, tipeLayanan: string, folderId: string, isFolderDeleted: boolean) => {
+        if (isFolderDeleted) {
+            showToast({ message: 'Folder telah dihapus', variant: 'error' });
+            alert('Folder telah dihapus');
+            return;
+        }
+        router.push(`/services/${layanan}/${tipeLayanan}/${folderId}`);
+    }
 
     return createPortal(
         <>
@@ -325,7 +343,7 @@ export function ServiceTypeDetailOffcanvas({
                                                 {item.description}
                                             </p>
                                             <p className="mt-1 text-sm text-gray-500">{item.created_at}</p>
-                                            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-lg text-gray-700">
+                                            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-lg text-gray-700 cursor-pointer" onClick={() => handleNavigateToFolder(item.layanan, item.tipe_layanan, item.folder_id, item.is_deleted)}>
                                                 <Folder className="h-5 w-5" />
                                                 {item.folder_name}
                                             </div>

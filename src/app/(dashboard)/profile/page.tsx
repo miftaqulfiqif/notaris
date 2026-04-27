@@ -37,6 +37,7 @@ interface UpdateUserInfo {
     name?: string;
     gender?: string;
     phone?: string;
+    jabatan?: string;
 }
 
 interface UpdateAccountDetails {
@@ -44,6 +45,10 @@ interface UpdateAccountDetails {
     email?: string;
     password?: string;
     confirm_password?: string;
+    role?: string;
+    created_at?: string;
+    last_login?: string;
+    last_updated_password?: string;
 }
 
 function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }: InfoCardProps) {
@@ -158,7 +163,6 @@ function InfoCard({ title, rows, isEditing, onEdit, onCancel, onSave, editable }
                             {row.isMasked && (
                                 <EyeOff className="h-4 w-4 shrink-0 text-gray-400" />
                             )}
-
                         </div>
                     </div>
                 ))}
@@ -278,18 +282,19 @@ export default function ProfilePage() {
 
     const handleSaveUserInfo = (data: UpdateUserInfo) => {
         // Implementasi penyimpanan informasi user
+        data.jabatan = undefined;
         console.log('Menyimpan informasi user :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
-        window.location.reload();
+        // window.location.reload();
         setEditingSection(null);
     };
 
     const handleSaveAccountDetails = (data: UpdateAccountDetails) => {
         // Implementasi penyimpanan detail akun
-        // data.created_at = undefined;
-        // data.last_login = undefined;
-        // data.last_updated_password = undefined;
-        // data.role = undefined;
+        data.created_at = undefined;
+        data.last_login = undefined;
+        data.last_updated_password = undefined;
+        data.role = undefined;
         console.log('Menyimpan detail akun :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
         setEditingSection(null);
@@ -300,12 +305,15 @@ export default function ProfilePage() {
         // Implementasi penghapusan akun
         apiPost(ENDPOINTS.USER.DELETE_ACCOUNT);
         console.log('Menghapus akun');
+        window.location.reload();
     }
 
     const handleChangePassword = () => {
         // Implementasi perubahan password
         apiPost(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email: profileEmail });
-        console.log('Mengubah password');
+        setPopUpChangePassword(false);
+        alert('Email untuk mengatur ulang password telah dikirim. Silakan cek inbox Anda.');
+        window.location.reload();
     }
 
     return (

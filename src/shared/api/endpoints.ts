@@ -19,6 +19,7 @@ export const ENDPOINTS = {
         CURRENT: `${API_BASE_URL}/user/current`,
         LOGOUT: `${API_BASE_URL}/user/logout`,
         FORGOT_PASSWORD: `${API_BASE_URL}/user/forgot-password`,
+        RESET_PASSWORD: `${API_BASE_URL}/user/reset-password`,
     },
     BILLING: {
         CHECKOUT: `${API_BASE_URL}/user/checkout`,
@@ -77,6 +78,7 @@ export const ENDPOINTS = {
     DASHBOARD: {
         ACTIVITIES: `${API_BASE_URL}/aktifitas`,
         RECOMMENDATIONS: `${API_BASE_URL}/aktifitas/recomendation`,
+        TYPE_ACTIVITIES: `${API_BASE_URL}/aktifitas/tipe-layanan`,
     },
     SUPERADMIN: {
         DASHBOARD: {
