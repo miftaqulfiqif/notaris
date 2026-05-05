@@ -28,10 +28,10 @@ export function LandingNavbar({
     const navItems = useMemo<NavItem[]>(
         () =>
             items ?? [
-                { label: 'Fitur', href: '#fitur' },
-                { label: 'Solusi', href: '#solusi' },
-                { label: 'Harga', href: '#harga' },
-                { label: 'Hubungi sales', href: '#kontak' },
+                { label: 'Fitur', href: '/#fitur' },
+                { label: 'Solusi', href: '/#solusi' },
+                { label: 'Harga', href: '/harga' },
+                { label: 'Hubungi sales', href: '/#kontak' },
             ],
         [items],
     );

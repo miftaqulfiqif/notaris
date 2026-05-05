@@ -16,6 +16,8 @@ import {
     type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useToast } from '@/shared/hooks/useToast';
+import { downloadCsv } from '../../utils/export';
 import { useSuperadminPackages } from '../../hooks/useSuperadminPackages';
 import { PackagePlan as PackageType, PackageTenantRecord } from '../../types';
 
@@ -314,6 +316,7 @@ export function SuperadminSubscriptionPackages() {
     const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
     const [packageToDelete, setPackageToDelete] = useState<PackageType | null>(null);
     const [packageForm, setPackageForm] = useState<PackageFormState>(defaultPackageForm);
+    const { showToast } = useToast();
 
     const openAddModal = () => {
         setModalMode('add');
@@ -430,6 +433,14 @@ export function SuperadminSubscriptionPackages() {
                         <h2 className="text-[14px] text-white">Tenant per Paket</h2>
                         <button
                             type="button"
+                            onClick={() => {
+                                if (tenants.length > 0) {
+                                    downloadCsv(tenants as unknown as Record<string, unknown>[], 'tenant_paket_langganan');
+                                    showToast({ variant: 'success', message: 'Data tenant per paket berhasil diekspor' });
+                                } else {
+                                    showToast({ variant: 'error', message: 'Belum ada data tenant untuk diekspor' });
+                                }
+                            }}
                             className="text-[14px] text-[#C9AA6F] transition-colors hover:text-[#E3C28A]"
                         >
                             Ekspor

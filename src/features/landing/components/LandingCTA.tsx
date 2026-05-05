@@ -1,40 +1,43 @@
 'use client';
 
+import Image from 'next/image';
 import { ArrowUpRight, File } from 'lucide-react';
 
 export function LandingCTA() {
     return (
-        <section className="px-4 py-4 sm:py-6">
-            <div className="mx-auto max-w-5xl rounded-3xl bg-gradient-to-br from-[#6B5C48] to-[#4A3F33] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-                <div className="grid lg:grid-cols-2 gap-0">
-                    {/* Left — form */}
-                    <div className="p-8 lg:p-12">
-                        <h2 className="text-xl sm:text-2xl font-semibold text-white leading-snug">
+        <section id="demo" className="px-4 py-4 sm:py-6">
+            <div className="mx-auto max-w-[1160px] overflow-hidden rounded-[12px] bg-[#6B5C48] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+                <div className="relative grid gap-0 lg:grid-cols-[0.86fr_1.14fr]">
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute bottom-[-240px] right-[8%] hidden h-[700px] w-[700px] rounded-full bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.045)_0_82px,rgba(255,255,255,0.018)_82px_164px)] lg:block"
+                    />
+
+                    <div className="relative z-10 p-6 sm:p-8 lg:px-7 lg:py-8">
+                        <h2 className="text-xl font-bold leading-snug text-white sm:text-2xl">
                             Siap untuk Memulai Bersama Notarix?
                         </h2>
 
-                        <form className="mt-8 space-y-4" onSubmit={(e) => e.preventDefault()}>
+                        <form className="mt-7 space-y-4" onSubmit={(e) => e.preventDefault()}>
                             {[
-                                { label: 'Nama Lengkap', type: 'text', placeholder: 'Masukkan nama lengkap' },
-                                { label: 'Email', type: 'email', placeholder: 'Masukkan email' },
-                                { label: 'Nomor HP', type: 'tel', placeholder: 'Masukkan nomor HP' },
-                                { label: 'Pesan', type: 'text', placeholder: 'Tulis pesan Anda', multiline: true },
-                            ].map((field, i) => (
-                                <div key={i}>
-                                    <label className="block text-xs font-medium text-white/70 mb-1.5">
-                                        {field.label}
-                                    </label>
+                                { type: 'text', placeholder: 'Nama Instansi' },
+                                { type: 'text', placeholder: 'Alamat kantor', multiline: true },
+                                { type: 'text', placeholder: 'Nama PIC' },
+                                { type: 'email', placeholder: 'Email instansi' },
+                                { type: 'text', placeholder: 'Deskripsikan kebutuhan mu', multiline: true },
+                            ].map((field) => (
+                                <div key={field.placeholder}>
                                     {'multiline' in field && field.multiline ? (
                                         <textarea
                                             placeholder={field.placeholder}
-                                            rows={3}
-                                            className="w-full rounded-lg bg-white/10 px-3.5 py-2.5 text-sm text-white placeholder-white/40 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 transition-colors resize-none"
+                                            rows={field.placeholder === 'Alamat kantor' ? 2 : 3}
+                                            className="min-h-[65px] w-full resize-none rounded-[6px] border border-[#6B5C48] bg-[#5E4E39] px-3 py-2.5 text-sm text-white placeholder-[#9B896E] transition-colors focus:outline-none focus:ring-2 focus:ring-white/25"
                                         />
                                     ) : (
                                         <input
                                             type={field.type}
                                             placeholder={field.placeholder}
-                                            className="w-full rounded-lg bg-white/10 px-3.5 py-2.5 text-sm text-white placeholder-white/40 ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 transition-colors"
+                                            className="h-8 w-full rounded-[6px] border border-[#6B5C48] bg-[#5E4E39] px-3 text-sm text-white placeholder-[#9B896E] transition-colors focus:outline-none focus:ring-2 focus:ring-white/25"
                                         />
                                     )}
                                 </div>
@@ -42,7 +45,7 @@ export function LandingCTA() {
 
                             <button
                                 type="submit"
-                                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-[#3B332A] hover:bg-white/90 transition-colors"
+                                className="inline-flex items-center gap-2 rounded-[8px] bg-[#6B5C48] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5E4E39] focus:outline-none focus:ring-2 focus:ring-white/30"
                             >
                                 Ajukan Demo
                                 <ArrowUpRight className="h-4 w-4" />
@@ -50,47 +53,22 @@ export function LandingCTA() {
                         </form>
                     </div>
 
-                    {/* Right — laptop mockup */}
-                    <div className="hidden lg:flex items-end justify-center p-8 lg:p-12 relative">
-                        {/* Notarix branding */}
-                        <div className="absolute top-8 right-12 flex items-center gap-2 text-white/80">
-                            <File className="h-5 w-5" />
-                            <span className="text-base font-semibold tracking-wide">Notarix<sup className="text-[8px] ml-0.5">®</sup></span>
+                    <div className="relative z-10 hidden items-start justify-end p-8 lg:flex">
+                        <div className="absolute right-10 top-8 flex items-center gap-2 text-white">
+                            <File className="h-8 w-8" />
+                            <span className="text-[30px] font-extrabold tracking-tight">
+                                Notarix<sup className="ml-0.5 text-[9px]">®</sup>
+                            </span>
                         </div>
 
-                        {/* Stylised laptop */}
-                        <div className="w-full max-w-sm">
-                            <div className="rounded-t-xl bg-[#2A2318] p-1">
-                                <div className="rounded-t-lg bg-[#F9F7F5] p-3 h-48 flex items-center justify-center relative overflow-hidden">
-                                    {/* Mock dashboard look */}
-                                    <div className="absolute inset-0 p-3">
-                                        <div className="h-full rounded-lg bg-white/60 ring-1 ring-black/5 p-3">
-                                            <div className="flex gap-1 mb-2">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
-                                                <div className="h-1.5 w-1.5 rounded-full bg-[#EAB308]" />
-                                                <div className="h-1.5 w-1.5 rounded-full bg-[#22C55E]" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="h-2 w-3/4 rounded bg-[#E8DFD3]" />
-                                                <div className="h-2 w-1/2 rounded bg-[#E8DFD3]" />
-                                                <div className="h-2 w-2/3 rounded bg-[#E8DFD3]" />
-                                                <div className="grid grid-cols-3 gap-1 mt-3">
-                                                    <div className="h-8 rounded bg-[#F3F0EC]" />
-                                                    <div className="h-8 rounded bg-[#F3F0EC]" />
-                                                    <div className="h-8 rounded bg-[#F3F0EC]" />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-1">
-                                                    <div className="h-6 rounded bg-[#F3F0EC]" />
-                                                    <div className="h-6 rounded bg-[#F3F0EC]" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Laptop base */}
-                            <div className="mx-auto h-3 w-[105%] -ml-[2.5%] rounded-b-lg bg-[#1F1A14] shadow-lg" />
-                            <div className="mx-auto h-1 w-[85%] rounded-b-md bg-[#171310]" />
+                        <div className="mt-20 w-full max-w-[522px]">
+                            <Image
+                                src="/landing/macbook-air.png"
+                                alt="Preview dashboard Notarix di laptop"
+                                width={522}
+                                height={392}
+                                className="h-auto w-full object-contain"
+                            />
                         </div>
                     </div>
                 </div>

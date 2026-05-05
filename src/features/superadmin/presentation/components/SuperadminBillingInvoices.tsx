@@ -1,23 +1,25 @@
 'use client';
 
-import { ChevronDown, FileText, Search } from 'lucide-react';
+import { ChevronDown, Search, Download } from 'lucide-react';
 import {
     SuperadminShell,
     SuperadminStatCard,
     SuperadminStatusBadge,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
+import { useToast } from '@/shared/hooks/useToast';
 import { useSuperadminBilling } from '../../hooks/useSuperadminBilling';
 import { InvoiceRecord as InvoiceType, RevenueData } from '../../types';
+import { downloadInvoicePdf } from '../../utils/export';
 
 type InvoiceStatusFilter = 'all' | 'paid' | 'overdue' | 'pending';
 type RevenueBarTone = 'dim' | 'soft' | 'accent';
 
 const statusOptions: { label: string; value: InvoiceStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
-    { label: 'Paid', value: 'paid' },
-    { label: 'Overdue', value: 'overdue' },
-    { label: 'Pending', value: 'pending' },
+    { label: 'Lunas', value: 'paid' },
+    { label: 'Jatuh Tempo', value: 'overdue' },
+    { label: 'Tertunda', value: 'pending' },
 ];
 
 function SelectField({
@@ -52,33 +54,23 @@ function SelectField({
 
 function InvoiceActionButton({
     status,
-    isMarkingPaid,
-    onMarkPaid
+    onDownload
 }: Readonly<{
     status: string;
-    isMarkingPaid: boolean;
-    onMarkPaid: () => void;
+    onDownload: () => void;
 }>) {
     if (status !== 'paid' && status !== 'success') {
-        return (
-            <button
-                type="button"
-                onClick={onMarkPaid}
-                disabled={isMarkingPaid}
-                className="inline-flex items-center rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A] disabled:opacity-50"
-            >
-                {isMarkingPaid ? 'Marking...' : 'Mark Paid'}
-            </button>
-        );
+        return null;
     }
 
     return (
         <button
             type="button"
+            onClick={onDownload}
             className="inline-flex items-center gap-1 rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A]"
         >
-            pdf
-            <ChevronDown className="h-4 w-4" />
+            unduh
+            <Download className="h-4 w-4" />
         </button>
     );
 }
@@ -121,8 +113,9 @@ export function SuperadminBillingInvoices() {
         markAsPaid,
         isMarkingPaid
     } = useSuperadminBilling();
+    const { showToast } = useToast();
 
-    const maxRevenue = Math.max(...revenueTrend.map((trendPoint) => trendPoint.revenue), 1);
+    const maxRevenue = revenueTrend.length > 0 ? Math.max(...revenueTrend.map((trendPoint) => trendPoint.revenue), 1) : 1;
     const mappedRevenueBars = revenueTrend.map((trendPoint: RevenueData, index: number) => {
         const heightPercent = maxRevenue > 0 ? (trendPoint.revenue / maxRevenue) * 100 : 0;
         return {
@@ -153,19 +146,24 @@ export function SuperadminBillingInvoices() {
         <SuperadminShell activePage="billingInvoices" title="Billing & Invoice">
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <SuperadminStatCard
-                    label="TOTAL REVENUE"
-                    value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.total_revenue || 0)}
+                    label="TOTAL INVOICE"
+                    value={stats?.total_invoices?.toString() || '0'}
                 />
                 <SuperadminStatCard
-                    label="PENDING"
+                    label="TERTUNDA"
                     value={stats?.pending_invoices?.toString() || '0'}
                     valueClassName="text-[#E0A030]"
                 />
                 <SuperadminStatCard
-                    label="OVERDUE"
+                    label="JATUH TEMPO"
                     value={stats?.overdue_invoices?.toString() || '0'}
                     valueClassName="text-[#FF6B71]"
                     footer={<p className="text-[10px] text-[#797F8F]">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.overdue_value || 0)}</p>}
+                />
+                <SuperadminStatCard
+                    label="SUDAH DIBAYAR"
+                    value={stats?.paid_invoices?.toString() || '0'}
+                    valueClassName="text-[#4ADE80]"
                 />
             </section>
 
@@ -194,13 +192,6 @@ export function SuperadminBillingInvoices() {
                             />
                         </div>
 
-                        <button
-                            type="button"
-                            className="inline-flex h-8 w-full items-center justify-center gap-2 self-start rounded-[8px] border border-[#797F8F] bg-[#16181C] px-3 text-[14px] text-[#797F8F] transition-colors hover:border-[#C99D4B] hover:text-[#C99D4B] sm:w-auto sm:justify-start"
-                        >
-                            <FileText className="h-4 w-4" />
-                            Kirim invoice manual
-                        </button>
                     </div>
 
                     <div className="overflow-x-auto px-3 py-3 sm:px-4">
@@ -212,7 +203,7 @@ export function SuperadminBillingInvoices() {
                                     <th className="border-b border-[#303030] px-3 py-3 font-normal">Periode</th>
                                     <th className="border-b border-[#303030] px-3 py-3 font-normal">Jumlah</th>
                                     <th className="border-b border-[#303030] px-3 py-3 font-normal">Status</th>
-                                    <th className="border-b border-[#303030] px-3 py-3 text-center font-normal">Action</th>
+                                    <th className="border-b border-[#303030] px-3 py-3 text-center font-normal">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -239,8 +230,7 @@ export function SuperadminBillingInvoices() {
                                         <td className="border-b border-[#303030] px-3 py-3 text-center">
                                             <InvoiceActionButton 
                                                 status={invoice.status} 
-                                                isMarkingPaid={isMarkingPaid === invoice.id}
-                                                onMarkPaid={() => markAsPaid(invoice.id)}
+                                                onDownload={() => downloadInvoicePdf(invoice)}
                                             />
                                         </td>
                                     </tr>
@@ -263,16 +253,22 @@ export function SuperadminBillingInvoices() {
                             <h2 className="text-[14px] font-semibold text-white">Pendapatan Bulanan</h2>
                         </header>
                         <div className="flex flex-col items-center gap-6 px-3 py-4">
-                            <div className="flex h-[120px] w-full items-end justify-center gap-4">
-                                {mappedRevenueBars.map((bar) => (
-                                    <RevenueBarItem
-                                        heightPercent={bar.heightPercent}
-                                        key={bar.label}
-                                        label={bar.label}
-                                        tone={bar.tone}
-                                    />
-                                ))}
-                            </div>
+                            {revenueTrend.length > 0 ? (
+                                <div className="flex h-[120px] w-full items-end justify-center gap-4">
+                                    {mappedRevenueBars.map((bar) => (
+                                        <RevenueBarItem
+                                            heightPercent={bar.heightPercent}
+                                            key={bar.label}
+                                            label={bar.label}
+                                            tone={bar.tone}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex h-[120px] w-full items-center justify-center text-[12px] text-[#6F6F6F]">
+                                    Belum ada data pendapatan
+                                </div>
+                            )}
                             <div className="space-y-1 text-center">
                                 <p className="text-[24px] font-semibold text-white">
                                     {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(stats?.total_revenue || 0)}

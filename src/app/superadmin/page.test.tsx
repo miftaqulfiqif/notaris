@@ -2,6 +2,18 @@ import userEvent from '@testing-library/user-event';
 import { render, screen, within } from '@testing-library/react';
 import SuperadminPage from './page';
 
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: jest.fn()
+    })
+}));
+
+jest.mock('@/shared/hooks/useToast', () => ({
+    useToast: () => ({
+        showToast: jest.fn()
+    })
+}));
+
 jest.mock('@/features/superadmin/hooks/useSuperadminDashboard', () => ({
     useSuperadminDashboard: () => ({
         stats: { active_tenants: 284, monthly_revenue: 218000000, total_transactions: 1250, open_tickets: 2 },

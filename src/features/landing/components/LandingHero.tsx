@@ -95,25 +95,25 @@ export function LandingHero() {
 
             {/* Decorative avatars with real photos */}
             <FloatingAvatar
-                src="/images/avatars/avatar-1.png"
+                src="/landing/hero-avatar-1.png"
                 alt="User"
                 className="left-6 top-14 sm:left-12 sm:top-12 [animation-delay:-1.2s]"
                 cursorClassName="bottom-0 right-[-4px] rotate-180"
             />
             <FloatingAvatar
-                src="/images/avatars/avatar-2.png"
+                src="/landing/hero-avatar-2.png"
                 alt="User"
                 className="right-8 top-10 sm:right-14 sm:top-8 [animation-delay:-2.4s]"
                 cursorClassName="bottom-0 left-[-4px] -rotate-90"
             />
             <FloatingAvatar
-                src="/images/avatars/avatar-3.png"
+                src="/landing/hero-avatar-3.png"
                 alt="User"
                 className="left-[28%] bottom-10 sm:left-[26%] sm:bottom-8 [animation-delay:-3.4s]"
                 cursorClassName="top-0 right-[-6px] rotate-90"
             />
             <FloatingAvatar
-                src="/images/avatars/avatar-4.png"
+                src="/landing/hero-avatar-4.png"
                 alt="User"
                 className="right-[14%] bottom-6 sm:right-[18%] sm:bottom-4 [animation-delay:-0.6s]"
                 cursorClassName="top-0 left-[-4px]"

@@ -11,6 +11,8 @@ import {
     SuperadminStatCard,
     SuperadminStatusBadge,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
+import { useToast } from '@/shared/hooks/useToast';
+import { downloadCsv } from '../../utils/export';
 import { useSuperadminTransactions } from '../../hooks/useSuperadminTransactions';
 import { TransactionRecord as TransactionRecordType } from '../../types';
 
@@ -160,6 +162,7 @@ export function SuperadminTransactions() {
         setPeriodFilter,
         refundTransaction 
     } = useSuperadminTransactions();
+    const { showToast } = useToast();
 
     const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
@@ -252,6 +255,14 @@ export function SuperadminTransactions() {
 
                     <button
                         type="button"
+                        onClick={() => {
+                            if (transactions.length > 0) {
+                                downloadCsv(transactions as unknown as Record<string, unknown>[], 'data_transaksi');
+                                showToast({ variant: 'success', message: 'Data transaksi berhasil diekspor' });
+                            } else {
+                                showToast({ variant: 'error', message: 'Belum ada data transaksi untuk diekspor' });
+                            }
+                        }}
                         className="inline-flex h-8 w-full items-center justify-center gap-2 self-start rounded-[8px] border border-[#797F8F] bg-[#16181C] px-3 text-[14px] text-[#797F8F] transition-colors hover:border-[#C99D4B] hover:text-[#C99D4B] sm:w-auto sm:justify-start"
                     >
                         <Download className="h-4 w-4" />

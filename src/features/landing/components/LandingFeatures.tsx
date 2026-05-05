@@ -42,12 +42,12 @@ function FeatureOrganized() {
     return (
         <FeatureCardShell>
             <div className="grid lg:grid-cols-[0.84fr_1.16fr]">
-                <div className="flex flex-col justify-between gap-10 px-7 py-8 sm:px-10 sm:py-10 lg:px-7 lg:py-9 xl:px-10 xl:py-12">
-                    <div className="max-w-[360px]">
-                        <h3 className="text-[2rem] font-extrabold tracking-[-0.04em] text-[#6E5C46] sm:text-[2.25rem]">
+                <div className="flex flex-col justify-between gap-8 px-6 py-7 sm:px-8 sm:py-8 lg:px-7 lg:py-8">
+                    <div className="max-w-[330px]">
+                        <h3 className="text-[22px] font-bold text-[#6E5C46] sm:text-[24px]">
                             Terorganisir Cepat
                         </h3>
-                        <p className="mt-4 text-base leading-[1.55] text-[#786750] sm:text-[1.06rem]">
+                        <p className="mt-4 text-sm leading-[1.55] text-[#786750]">
                             Semua aktivitas, file, dan status layanan dalam satu tampilan yang membantu tim mengambil
                             keputusan lebih cepat. Hemat waktu monitoring, percepat penyelesaian tugas.
                         </p>
@@ -56,7 +56,7 @@ function FeatureOrganized() {
                     <div>
                         <a
                             href="#demo"
-                            className="inline-flex items-center gap-2 rounded-[10px] bg-[#7A6548] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#66543D]"
+                            className="inline-flex items-center gap-2 rounded-[8px] bg-[#7A6548] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#66543D]"
                         >
                             Request Demo
                             <ArrowUpRight className="h-4 w-4" />
@@ -96,11 +96,11 @@ function FeaturePreviewCard({
 }: Readonly<FeaturePreviewCardProps>) {
     return (
         <FeatureCardShell className="h-full">
-            <div className="px-6 pb-6 pt-7 text-center sm:px-8 sm:pb-8 sm:pt-8">
-                <h3 className="text-[1.95rem] font-extrabold tracking-[-0.04em] text-[#6E5C46] sm:text-[2.15rem]">
+            <div className="px-6 pb-5 pt-6 text-center sm:px-8">
+                <h3 className="text-[22px] font-bold text-[#6E5C46] sm:text-[24px]">
                     {title}
                 </h3>
-                <p className="mx-auto mt-4 max-w-[420px] text-[1rem] leading-[1.55] text-[#786750]">
+                <p className="mx-auto mt-3 max-w-[420px] text-sm leading-[1.55] text-[#786750]">
                     {description}
                 </p>
             </div>
@@ -122,22 +122,22 @@ function FeaturePreviewCard({
 
 export function LandingFeatures() {
     return (
-        <section id="fitur" className={`${manrope.className} px-4 py-[4.5rem] sm:px-6 sm:py-24`}>
+        <section id="fitur" className={`${manrope.className} px-4 pb-12 pt-6 sm:px-6 sm:pb-16 sm:pt-8`}>
             <div className="mx-auto max-w-[1160px]">
                 <div className="flex justify-center">
                     <SectionBadge />
                 </div>
 
-                <div className="mx-auto mt-8 max-w-[820px] text-center">
-                    <h2 className="text-[2.3rem] font-extrabold leading-[1.18] tracking-[-0.05em] text-[#6E5C46] sm:text-[3rem] lg:text-[3.55rem]">
+                <div className="mx-auto mt-8 max-w-[720px] text-center">
+                    <h2 className="text-[24px] font-bold leading-[1.35] text-[#6E5C46] sm:text-[28px] lg:text-[32px]">
                         {sectionTitle}
                     </h2>
-                    <p className="mx-auto mt-5 max-w-[650px] text-base leading-[1.55] text-[#7D684D] sm:text-[1.08rem]">
+                    <p className="mx-auto mt-4 max-w-[560px] text-sm leading-[1.55] text-[#7D684D]">
                         {sectionDescription}
                     </p>
                 </div>
 
-                <div className="mt-12 space-y-4 sm:space-y-5">
+                <div className="mt-10 space-y-4 sm:space-y-5">
                     <FeatureOrganized />
 
                     <div className="grid gap-4 md:grid-cols-2 sm:gap-5">

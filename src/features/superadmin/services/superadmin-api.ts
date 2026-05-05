@@ -75,10 +75,12 @@ export const superadminApi = {
         apiPost<ApiResponse<T.TicketReply>>(ENDPOINTS.SUPERADMIN.TICKETS.REPLIES(id), data),
 
     // REPORTS
-    getReports: () => 
-        apiGet<ApiResponse<T.ReportRecord[]>>(ENDPOINTS.SUPERADMIN.REPORTS.LIST),
+    getReports: (page: number = 1, limit: number = 10) => 
+        apiGet<ApiResponse<T.ReportRecord[]>>(`${ENDPOINTS.SUPERADMIN.REPORTS.LIST}?page=${page}&limit=${limit}`),
     generateReport: (data: T.ReportGenerateRequest) => 
         apiPost<{ data?: unknown; message?: string; report?: T.ReportRecord }>(ENDPOINTS.SUPERADMIN.REPORTS.GENERATE, data),
+    downloadReport: (id: string) =>
+        apiGet<{ data?: unknown; report?: T.ReportRecord }>(ENDPOINTS.SUPERADMIN.REPORTS.DOWNLOAD(id)),
     getScheduledReports: () => 
         apiGet<ApiResponse<T.ScheduledReport[]>>(ENDPOINTS.SUPERADMIN.REPORTS.SCHEDULED),
     createScheduledReport: (data: T.ScheduledReportRequest) => 
