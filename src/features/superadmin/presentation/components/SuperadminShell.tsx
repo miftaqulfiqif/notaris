@@ -9,6 +9,7 @@ import { superadminApi } from '@/features/superadmin/services/superadmin-api';
 import { getUserRoleName } from '@/features/auth/utils/user';
 import { SuperadminNotificationPopover } from '@/features/superadmin/presentation/components/SuperadminNotificationPopover';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useToast } from '@/shared/hooks/useToast';
 
 export type SuperadminPageId =
     | 'dashboard'
@@ -154,6 +155,7 @@ function SidebarAction({
     item: SidebarItem;
     onNavigate?: () => void;
 }>) {
+    const { showToast } = useToast();
     const isActive = item.id === activePage;
     const sharedClassName = `flex w-full items-center gap-3 rounded-[8px] px-3 py-3 text-left text-[14px] transition-colors ${
         isActive
@@ -186,7 +188,16 @@ function SidebarAction({
     }
 
     return (
-        <button type="button" className={sharedClassName}>
+        <button 
+            type="button" 
+            className={sharedClassName}
+            onClick={() => {
+                if (!item.href) {
+                    showToast({ variant: 'info', message: `Fitur ${item.label} segera hadir` });
+                }
+                onNavigate?.();
+            }}
+        >
             {content}
         </button>
     );
@@ -281,7 +292,7 @@ function UserCard() {
         <>
             <div className="rounded-[8px] bg-[#0F1012] p-3">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-gradient-to-br from-[#C99D4B] via-[#8D6A38] to-[#3E2E18] text-sm font-semibold text-white">
+                    <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-linear-to-br from-[#C99D4B] via-[#8D6A38] to-[#3E2E18] text-sm font-semibold text-white">
                         {getUserInitials(user?.name)}
                     </div>
                     <div className="min-w-0">

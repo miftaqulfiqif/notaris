@@ -1,9 +1,51 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import type { BillingTransaction } from '../../types/billing.types';
 
 export function PaymentInstructions({ transaction }: Readonly<{ transaction: BillingTransaction | null }>) {
     const instructions = transaction?.instruction_payload;
+    const qrValue = typeof instructions?.qr_url === 'string' ? instructions.qr_url.trim() : '';
+    const isQrRemoteImage = qrValue.startsWith('http');
+    const [generatedQr, setGeneratedQr] = useState<{
+        dataUrl: string | null;
+        failed: boolean;
+        value: string;
+    } | null>(null);
+
+    useEffect(() => {
+        let isActive = true;
+
+        if (!qrValue || isQrRemoteImage) {
+            return () => {
+                isActive = false;
+            };
+        }
+
+        QRCode.toDataURL(qrValue, {
+            errorCorrectionLevel: 'M',
+            margin: 1,
+            width: 220,
+        })
+            .then((dataUrl) => {
+                if (isActive) {
+                    setGeneratedQr({ dataUrl, failed: false, value: qrValue });
+                }
+            })
+            .catch(() => {
+                if (isActive) {
+                    setGeneratedQr({ dataUrl: null, failed: true, value: qrValue });
+                }
+            });
+
+        return () => {
+            isActive = false;
+        };
+    }, [isQrRemoteImage, qrValue]);
+
+    const generatedQrSrc = generatedQr?.value === qrValue ? generatedQr.dataUrl : null;
+    const qrGenerationFailed = generatedQr?.value === qrValue ? generatedQr.failed : false;
 
     if (!transaction || !instructions) {
         return (
@@ -15,17 +57,21 @@ export function PaymentInstructions({ transaction }: Readonly<{ transaction: Bil
 
     return (
         <div className="rounded-[24px] border border-[#E9E1D8] bg-white p-6 shadow-[0_24px_64px_rgba(79,58,28,0.1)]">
-            {instructions.qr_url ? (
+            {qrValue ? (
                 <div className="flex flex-col items-center">
-                    {instructions.qr_url.startsWith('http') ? (
+                    {isQrRemoteImage || generatedQrSrc ? (
                         <img
-                            src={instructions.qr_url}
+                            src={isQrRemoteImage ? qrValue : generatedQrSrc ?? ''}
                             alt="QR pembayaran"
                             className="h-[220px] w-[220px] rounded-2xl border border-[#ECE4DB] bg-white object-contain p-3"
                         />
+                    ) : !isQrRemoteImage && !qrGenerationFailed ? (
+                        <div className="rounded-2xl border border-[#ECE4DB] bg-[#FFFCF8] px-4 py-3 text-sm text-[#6E6359]">
+                            Menyiapkan QR pembayaran...
+                        </div>
                     ) : (
                         <pre className="w-full overflow-auto rounded-2xl border border-[#ECE4DB] bg-[#FFFCF8] p-4 text-xs text-[#2D2925]">
-                            {instructions.qr_url}
+                            {qrValue}
                         </pre>
                     )}
                 </div>

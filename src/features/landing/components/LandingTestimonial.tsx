@@ -1,31 +1,38 @@
 'use client';
 
-import { UserRound } from 'lucide-react';
+import Image from 'next/image';
+import { MessageCircle } from 'lucide-react';
 
 export function LandingTestimonial() {
     return (
-        <section className="py-16 sm:py-20 px-4">
-            <div className="mx-auto max-w-3xl text-center">
-                {/* Decorative quote marks */}
-                <div className="flex justify-center mb-8">
-                    <span className="text-4xl text-[#98856B] font-serif select-none">&ldquo;&rdquo;</span>
+        <section className="px-4 py-12 sm:py-16">
+            <div className="mx-auto max-w-[1000px] text-center">
+                <div className="mb-8 flex justify-center">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-[#EBEBEB] bg-white px-4 py-2 text-sm font-semibold text-[#6B5C48]">
+                        <MessageCircle className="h-4 w-4 stroke-[1.8]" />
+                        Testimonial
+                    </span>
                 </div>
 
-                <blockquote className="text-lg sm:text-xl md:text-2xl font-medium italic text-[#2A2318] leading-relaxed">
+                <p className="text-4xl font-bold leading-none text-[#6B5C48]">&ldquo;</p>
+                <blockquote className="mx-auto mt-2 max-w-[920px] text-[24px] font-bold leading-[1.4] tracking-[-0.04em] text-[#6B5C48] sm:text-[30px] lg:text-[36px]">
                     &ldquo;Sejak menggunakan sistem ini, pengelolaan dokumen dan
                     aktivitas tim jadi jauh lebih rapi. Fitur notifikasi dan audit
                     activity membantu saya memastikan setiap perubahan
                     tercatat dengan jelas.&rdquo;
                 </blockquote>
 
-                {/* Avatar + name */}
-                <div className="mt-8 flex flex-col items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#8A7A62] to-[#D0BDA0] flex items-center justify-center shadow-md ring-2 ring-white">
-                        <UserRound className="h-6 w-6 text-white/90" />
-                    </div>
+                <div className="mt-8 flex flex-col items-center gap-2.5">
+                    <Image
+                        src="/landing/testimonial-1.png"
+                        alt="Rina Mahardika"
+                        width={56}
+                        height={56}
+                        className="h-14 w-14 rounded-full object-cover"
+                    />
                     <div>
-                        <p className="text-sm font-semibold text-[#2A2318]">Rina Mahardhika</p>
-                        <p className="text-xs text-[#7A7067]">Notaris</p>
+                        <p className="text-base font-semibold tracking-[-0.04em] text-[#6B5C48]">Rina Mahardika</p>
+                        <p className="text-sm font-medium tracking-[-0.04em] text-[#6B5C48]">Notaris</p>
                     </div>
                 </div>
             </div>

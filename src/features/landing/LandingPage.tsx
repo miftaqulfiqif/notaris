@@ -8,18 +8,10 @@ import { LandingTestimonial } from '@/features/landing/components/LandingTestimo
 
 export function LandingPage() {
     return (
-        <main
-            className="min-h-screen"
-            style={{
-                background:
-                    'radial-gradient(1200px 600px at 50% 0%, rgba(152,133,107,0.20), rgba(245,242,238,1) 55%)',
-            }}
-        >
-            <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
-                {/* Navbar serves as the folder tab */}
+        <main className="min-h-screen bg-white">
+            <div className="mx-auto w-full max-w-[1240px] px-4 py-8 sm:px-6 sm:py-10 lg:px-[60px] lg:py-11">
                 <LandingNavbar />
-                
-                {/* Main brown hero card, sitting exactly below the navbar tab */}
+
                 <LandingCard className="rounded-tl-none rounded-tr-[22px] rounded-b-[22px] -mt-[1px]">
                     <LandingHero />
                 </LandingCard>

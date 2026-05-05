@@ -10,6 +10,9 @@ import {
 
 import { useSuperadminDashboard } from '../../hooks/useSuperadminDashboard';
 import { TrendDataPoint, RecentTransaction } from '../../types';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/shared/hooks/useToast';
+import { downloadCsv } from '../../utils/export';
 
 function buildChartPath(values: number[]) {
     const width = 520;
@@ -17,7 +20,7 @@ function buildChartPath(values: number[]) {
     const maxValue = Math.max(...values, 1);
 
     const points = values.map((value, index) => {
-        const x = (index / (values.length - 1)) * width;
+        const x = values.length > 1 ? (index / (values.length - 1)) * width : width / 2;
         const y = height - (value / maxValue) * height;
 
         return { x, y };
@@ -31,10 +34,11 @@ function buildChartPath(values: number[]) {
     return { areaPath, linePath };
 }
 
-function HeaderAction({ label }: Readonly<{ label: string }>) {
+function HeaderAction({ label, onClick }: Readonly<{ label: string; onClick?: () => void }>) {
     return (
         <button
             type="button"
+            onClick={onClick}
             className="inline-flex items-center gap-1 rounded-[8px] px-3 py-1 text-[12px] text-[#C9AA6F] transition-colors hover:bg-[#1B1E23] hover:text-[#DFC28E] sm:text-[14px]"
         >
             <span>{label}</span>
@@ -45,6 +49,8 @@ function HeaderAction({ label }: Readonly<{ label: string }>) {
 export function SuperadminDashboard() {
     const [isAlertVisible, setIsAlertVisible] = useState(true);
     const { stats, trend, recentTransactions, isLoading, error } = useSuperadminDashboard();
+    const { showToast } = useToast();
+    const router = useRouter();
     
     const chartValuesData = trend && trend.length ? trend.map((t: TrendDataPoint) => t.revenue) : [0];
     const xAxisLabelsData = trend && trend.length ? trend.map((t: TrendDataPoint) => t.date) : ['Belum ada data'];
@@ -161,15 +167,25 @@ export function SuperadminDashboard() {
                 <article className="rounded-[12px] border border-[#25282D] bg-[#16181C]">
                     <div className="flex flex-col gap-3 border-b border-[#303030] p-4 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-[16px] font-semibold text-white">Tren transaksi - 30 hari terakhir</h2>
-                        <HeaderAction label="Ekspor CSV" />
+                        <HeaderAction 
+                            label="Ekspor CSV" 
+                            onClick={() => {
+                                if (trend && trend.length) {
+                                    downloadCsv(trend as unknown as Record<string, unknown>[], 'tren_transaksi_30_hari');
+                                    showToast({ variant: 'success', message: 'Data berhasil diekspor' });
+                                } else {
+                                    showToast({ variant: 'error', message: 'Belum ada data untuk diekspor' });
+                                }
+                            }} 
+                        />
                     </div>
 
                     <div className="p-4">
                         <div className="relative h-[220px] overflow-hidden rounded-[10px] bg-[#16181C]">
                             <div className="absolute left-0 top-4 flex h-[148px] w-8 flex-col justify-between text-[11px] text-[rgba(56,60,71,0.87)]">
-                                <span>60</span>
-                                <span>40</span>
-                                <span>20</span>
+                                <span>{Math.max(...chartValuesData, 1)}</span>
+                                <span>{Math.round(Math.max(...chartValuesData, 1) * 0.66)}</span>
+                                <span>{Math.round(Math.max(...chartValuesData, 1) * 0.33)}</span>
                                 <span>0</span>
                             </div>
 
@@ -205,8 +221,8 @@ export function SuperadminDashboard() {
                             </div>
 
                             <div className="ml-8 mt-3 flex justify-between text-[11px] text-[rgba(56,60,71,0.87)]">
-                                {xAxisLabelsData.map((label: string) => (
-                                    <span key={label}>{label}</span>
+                                {xAxisLabelsData.map((label: string, index: number) => (
+                                    <span key={`${label}-${index}`}>{label}</span>
                                 ))}
                             </div>
                         </div>
@@ -225,7 +241,12 @@ export function SuperadminDashboard() {
                 <article className="rounded-[12px] border border-[#25282D] bg-[#16181C]">
                     <div className="flex flex-col gap-3 border-b border-[#303030] p-4 sm:flex-row sm:items-center sm:justify-between">
                         <h2 className="text-[16px] font-semibold text-white">Notifikasi</h2>
-                        <HeaderAction label="Lihat semua" />
+                        <HeaderAction 
+                            label="Lihat semua" 
+                            onClick={() => {
+                                showToast({ variant: 'info', message: 'Fitur halaman notifikasi lengkap segera hadir' });
+                            }}
+                        />
                     </div>
                     <div className="px-4 py-4 text-center text-[#6F6F6F] text-sm">
                         Belum ada notifikasi baru
@@ -236,7 +257,10 @@ export function SuperadminDashboard() {
             <section className="rounded-[12px] border border-[#25282D] bg-[#16181C]">
                 <div className="flex flex-col gap-3 border-b border-[#303030] p-4 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-[16px] font-semibold text-white">Transaksi terbaru</h2>
-                    <HeaderAction label="Lihat semua" />
+                    <HeaderAction 
+                        label="Lihat semua" 
+                        onClick={() => router.push('/superadmin/transaksi')}
+                    />
                 </div>
 
                 <div className="overflow-x-auto p-4">

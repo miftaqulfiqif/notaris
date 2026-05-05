@@ -115,6 +115,7 @@ export const ENDPOINTS = {
         REPORTS: {
             LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports`,
             GENERATE: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/generate`,
+            DOWNLOAD: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/${id}/download`,
             SCHEDULED: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/scheduled`,
             CREATE_SCHEDULED: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/reports/scheduled`,
         },

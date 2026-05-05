@@ -12,6 +12,9 @@ export function useSuperadminReports() {
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isScheduling, setIsScheduling] = useState(false);
+    const [page, setPage] = useState(1);
+    const limit = 10;
+    const [paginationMeta, setPaginationMeta] = useState({ totalItems: 0, totalPages: 0 });
     const [error, setError] = useState<string | null>(null);
     const { showToast } = useToast();
 
@@ -20,11 +23,17 @@ export function useSuperadminReports() {
         setError(null);
         try {
             const [reportsRes, scheduledRes] = await Promise.all([
-                superadminApi.getReports(),
+                superadminApi.getReports(page, limit),
                 superadminApi.getScheduledReports()
             ]);
 
             setRecentReports(reportsRes.data);
+            if (reportsRes.meta) {
+                setPaginationMeta({
+                    totalItems: reportsRes.meta.total || 0,
+                    totalPages: reportsRes.meta.totalPages || 1
+                });
+            }
             setScheduledReports(scheduledRes.data);
         } catch (error) {
             setError(getErrorMessage(error, 'Failed to fetch reports data'));
@@ -35,7 +44,7 @@ export function useSuperadminReports() {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, page]);
 
     const generateReport = async (data: ReportGenerateRequest) => {
         setIsGenerating(true);
@@ -67,6 +76,16 @@ export function useSuperadminReports() {
         }
     };
 
+    const downloadReport = async (id: string) => {
+        try {
+            const res = await superadminApi.downloadReport(id);
+            return { success: true, data: res.data };
+        } catch (error) {
+            showToast({ variant: 'error', message: getErrorMessage(error, 'Gagal mengunduh laporan') });
+            return { success: false, data: null };
+        }
+    };
+
     return { 
         recentReports, 
         scheduledReports, 
@@ -75,7 +94,11 @@ export function useSuperadminReports() {
         isScheduling,
         error, 
         generateReport,
+        downloadReport,
         scheduleReport,
-        refetch: fetchData 
+        refetch: fetchData,
+        page,
+        setPage,
+        paginationMeta
     };
 }

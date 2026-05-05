@@ -8,6 +8,8 @@ import {
     type SuperadminStatusTone,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
+import { useToast } from '@/shared/hooks/useToast';
+import { downloadCsv } from '../../utils/export';
 import { useSuperadminTenants } from '../../hooks/useSuperadminTenants';
 
 type TenantStatusFilter = 'all' | 'active' | 'suspended' | 'trial';
@@ -79,6 +81,7 @@ export function SuperadminTenants() {
         statusFilter, 
         setStatusFilter 
     } = useSuperadminTenants();
+    const { showToast } = useToast();
     
     // Fallback UI mapping for Tenant records
     const mappedTenants = tenants.map(t => ({
@@ -162,6 +165,14 @@ export function SuperadminTenants() {
 
                     <button
                         type="button"
+                        onClick={() => {
+                            if (mappedTenants.length > 0) {
+                                downloadCsv(mappedTenants as unknown as Record<string, unknown>[], 'data_tenants');
+                                showToast({ variant: 'success', message: 'Data tenant berhasil diekspor' });
+                            } else {
+                                showToast({ variant: 'error', message: 'Belum ada data tenant untuk diekspor' });
+                            }
+                        }}
                         className="inline-flex h-8 w-full items-center justify-center gap-2 self-start rounded-[8px] border border-[#797F8F] bg-[#16181C] px-3 text-[14px] text-[#797F8F] transition-colors hover:border-[#C99D4B] hover:text-[#C99D4B] sm:w-auto sm:justify-start"
                     >
                         <Download className="h-4 w-4" />
@@ -218,6 +229,7 @@ export function SuperadminTenants() {
                                     <td className="border-b border-[#303030] px-3 py-3 text-center">
                                         <button
                                             type="button"
+                                            onClick={() => showToast({ variant: 'info', message: 'Fitur halaman detail tenant segera hadir' })}
                                             className="inline-flex items-center rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A]"
                                         >
                                             Detail

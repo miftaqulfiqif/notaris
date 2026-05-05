@@ -17,14 +17,22 @@ export function useSuperadminBilling(initialSearch = '', initialStatus = 'all') 
     const { showToast } = useToast();
 
     const [search, setSearch] = useState(initialSearch);
+    const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
     const [statusFilter, setStatusFilter] = useState(initialStatus);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [search]);
 
     const fetchBillingData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const [invoicesRes, statsRes, revenueRes, agingRes] = await Promise.all([
-                superadminApi.getInvoices({ search, status: statusFilter }),
+                superadminApi.getInvoices({ search: debouncedSearch, status: statusFilter }),
                 superadminApi.getInvoiceStats(),
                 superadminApi.getInvoiceRevenueTrend(),
                 superadminApi.getInvoiceAging()
@@ -39,7 +47,7 @@ export function useSuperadminBilling(initialSearch = '', initialStatus = 'all') 
         } finally {
             setIsLoading(false);
         }
-    }, [search, statusFilter]);
+    }, [debouncedSearch, statusFilter]);
 
     useEffect(() => {
         fetchBillingData();

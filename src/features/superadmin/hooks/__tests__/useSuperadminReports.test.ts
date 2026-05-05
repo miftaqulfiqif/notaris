@@ -61,13 +61,29 @@ describe('useSuperadminReports', () => {
             report_type: 'test',
         };
 
-        let response: Awaited<ReturnType<typeof result.current.generateReport>>;
+        let response: Awaited<ReturnType<typeof result.current.generateReport>> = { success: false, data: null };
         await waitFor(async () => {
             response = await result.current.generateReport(request);
         });
 
-        expect(response.success).toBe(true);
+        expect(response!.success).toBe(true);
         expect(superadminApi.generateReport).toHaveBeenCalledWith(request);
+    });
+
+    it('should download report successfully', async () => {
+        (superadminApi.getReports as jest.Mock).mockResolvedValue({ data: [] });
+        (superadminApi.getScheduledReports as jest.Mock).mockResolvedValue({ data: [] });
+        (superadminApi.downloadReport as jest.Mock).mockResolvedValue({ data: [] });
+
+        const { result } = renderHook(() => useSuperadminReports());
+
+        let response: Awaited<ReturnType<typeof result.current.downloadReport>> = { success: false, data: null };
+        await waitFor(async () => {
+            response = await result.current.downloadReport('1');
+        });
+
+        expect(response!.success).toBe(true);
+        expect(superadminApi.downloadReport).toHaveBeenCalledWith('1');
     });
 
     it('should schedule report successfully', async () => {

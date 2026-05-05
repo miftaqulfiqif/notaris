@@ -1,6 +1,12 @@
 export interface ApiResponse<T> {
     data: T;
     message?: string;
+    meta?: {
+        total?: number;
+        page?: number;
+        limit?: number;
+        totalPages?: number;
+    };
 }
 
 export type SuperadminDashboardStats = {
@@ -56,8 +62,10 @@ export type InvoiceRecord = {
 
 export type InvoiceStats = {
     total_revenue: number;
+    total_invoices?: number;
     pending_invoices: number;
     overdue_invoices: number;
+    paid_invoices: number;
     overdue_value: number;
 };
 

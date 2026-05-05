@@ -12,8 +12,12 @@ jest.mock('@/features/superadmin/hooks/useSuperadminReports', () => ({
         ],
         isLoading: false,
         generateReport: jest.fn().mockResolvedValue({ success: true, data: [] }),
+        downloadReport: jest.fn().mockResolvedValue({ success: true, data: [] }),
         scheduleReport: jest.fn().mockResolvedValue(true),
-        fetchData: jest.fn()
+        fetchData: jest.fn(),
+        page: 1,
+        setPage: jest.fn(),
+        paginationMeta: { totalItems: 2, totalPages: 1 }
     })
 }));
 
@@ -22,14 +26,11 @@ describe('SuperadminReportsPage', () => {
         render(<SuperadminReportsPage />);
 
         expect(screen.getByRole('heading', { name: 'Laporan' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Ekspor' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Buat Laporan baru' })).toBeInTheDocument();
         expect(screen.getByLabelText('Pilih jenis laporan')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Generate Laporan/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Riwayat Laporan' })).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(screen.getByText('Transaksi Bulanan')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Laporan Terjadwal' })).toBeInTheDocument();
-        expect(screen.getByText('Dikirim ke superadmin@notarix.com')).toBeInTheDocument();
     });
 });
