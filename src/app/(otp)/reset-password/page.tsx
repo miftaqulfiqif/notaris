@@ -1,7 +1,7 @@
 'use client';
 
+import { Suspense } from 'react'
 import { ResetPasswordForm } from "@/features/auth/presentation/components/ResetPasswordForm";
-import { PublicOnlyRoute } from "@/features/auth/presentation/components/PublicOnlyRoute";
 
 import { Suspense } from 'react';
 
