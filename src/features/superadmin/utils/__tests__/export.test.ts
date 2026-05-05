@@ -10,8 +10,8 @@ describe('downloadCsv', () => {
     beforeEach(() => {
         // Mock DOM methods
         mockCreateElement = jest.spyOn(document, 'createElement');
-        mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation(() => null as any);
-        mockRemoveChild = jest.spyOn(document.body, 'removeChild').mockImplementation(() => null as any);
+        mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation(() => null as unknown as HTMLAnchorElement);
+        mockRemoveChild = jest.spyOn(document.body, 'removeChild').mockImplementation(() => null as unknown as HTMLAnchorElement);
         
         mockCreateObjectURL = jest.fn().mockReturnValue('blob:test-url');
         mockRevokeObjectURL = jest.fn();
@@ -20,10 +20,13 @@ describe('downloadCsv', () => {
         global.URL.revokeObjectURL = mockRevokeObjectURL;
         
         // Mock window.URL if needed
-        (window as any).URL = {
-            createObjectURL: mockCreateObjectURL,
-            revokeObjectURL: mockRevokeObjectURL,
-        };
+        Object.defineProperty(window, 'URL', {
+            value: {
+                createObjectURL: mockCreateObjectURL,
+                revokeObjectURL: mockRevokeObjectURL,
+            },
+            writable: true
+        });
     });
 
     afterEach(() => {
@@ -32,8 +35,8 @@ describe('downloadCsv', () => {
 
     it('returns false when data is empty or undefined', () => {
         expect(downloadCsv([], 'test')).toBe(false);
-        expect(downloadCsv(undefined as any, 'test')).toBe(false);
-        expect(downloadCsv(null as any, 'test')).toBe(false);
+        expect(downloadCsv(undefined as unknown as Record<string, unknown>[], 'test')).toBe(false);
+        expect(downloadCsv(null as unknown as Record<string, unknown>[], 'test')).toBe(false);
     });
 
     it('creates and clicks a download link with correct CSV content', () => {
