@@ -2,14 +2,8 @@
 
 import Link from 'next/link';
 import { ArrowUpRight, Check, MessageCircle, Plus } from 'lucide-react';
-
-const pricingFeatures = [
-    '15GB storage untuk meyimpan file',
-    '2 pengguna',
-    'Manajemen Dokumen Terpusat',
-    'Riwayat Aktivitas & Audit Trail',
-    'Keamanan & Backup',
-];
+import { usePackages } from '@/features/billing/hooks/usePackages';
+import type { BillingPackage } from '@/features/billing/types/billing.types';
 
 const faqs = [
     {
@@ -25,7 +19,7 @@ const faqs = [
     {
         question: 'Berapa banyak dokumen yang bisa saya simpan, dan apakah ada batas kuota?',
         answer:
-            'Paket ini menyediakan 15GB storage. Jika kebutuhan kantor bertambah, tim kami dapat membantu menyesuaikan kapasitas layanan.',
+            'Kuota storage tergantung paket yang Anda pilih. Jika kebutuhan kantor bertambah, tim kami dapat membantu menyesuaikan kapasitas layanan.',
     },
     {
         question: 'Apakah ada masa uji coba gratis sebelum saya memutuskan berlangganan?',
@@ -35,7 +29,7 @@ const faqs = [
     {
         question: 'Bisakah lebih dari satu staf di kantor menggunakan Notarix secara bersamaan?',
         answer:
-            'Bisa. Paket ini mendukung 2 pengguna untuk membantu notaris dan staf bekerja di workspace yang sama.',
+            'Bisa. Jumlah pengguna tergantung paket yang Anda pilih untuk membantu notaris dan staf bekerja di workspace yang sama.',
     },
     {
         question: 'Apakah Notarix bisa diakses dari smartphone atau tablet saat di luar kantor?',
@@ -44,33 +38,47 @@ const faqs = [
     },
 ];
 
-function PricingCard() {
+const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID').format(value);
+
+function LandingPricingCard({ packageItem }: Readonly<{ packageItem: BillingPackage }>) {
     return (
         <article className="w-full max-w-[301px] rounded-[16px] border border-[#E4E4E4] bg-white p-[14px] shadow-[26px_39px_24px_rgba(0,0,0,0.07),7px_10px_13px_rgba(0,0,0,0.08)]">
             <div className="border-b border-[#E1E1E1] py-[18px]">
-                <span className="inline-flex rounded-[8px] border border-[#ECECEC] px-2 py-2 text-sm text-[#292D32]">
-                    Pembelian pertama
-                </span>
+                {packageItem.promo_badge ? (
+                    <span className="inline-flex rounded-[8px] border border-[#ECECEC] px-2 py-2 text-sm text-[#292D32]">
+                        {packageItem.promo_badge}
+                    </span>
+                ) : (
+                    <span className="inline-flex rounded-[8px] border border-[#ECECEC] px-2 py-2 text-sm text-[#292D32]">
+                        {packageItem.name}
+                    </span>
+                )}
 
                 <div className="mt-[18px] space-y-1">
-                    <div className="flex flex-wrap items-center gap-3 text-[#919191]">
-                        <span className="text-sm line-through">Rp 750.000</span>
-                        <span className="text-xs">berlaku sampai bulan juni</span>
-                    </div>
+                    {packageItem.is_promo_active && packageItem.list_monthly_price > packageItem.current_monthly_price && (
+                        <div className="flex flex-wrap items-center gap-3 text-[#919191]">
+                            <span className="text-sm line-through">Rp {formatCurrency(packageItem.list_monthly_price)}</span>
+                            {packageItem.promo_ends_at && (
+                                <span className="text-xs">
+                                    berlaku sampai {new Date(packageItem.promo_ends_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
+                                </span>
+                            )}
+                        </div>
+                    )}
                     <div className="flex items-end gap-1 text-[#292D32]">
                         <span className="pb-1 text-sm">Rp</span>
-                        <span className="text-[28px] leading-none">500.000</span>
+                        <span className="text-[28px] leading-none">{formatCurrency(packageItem.current_monthly_price)}</span>
                         <span className="pb-1 text-sm">/ Bulan</span>
                     </div>
                 </div>
             </div>
 
             <p className="mt-[14px] text-xs font-light leading-normal text-[#464646]">
-                Pembayaran selanjutnya sebesar Rp 1.500.000 (atau setara Rp 125.000/bulan)
+                Pembayaran selanjutnya sebesar Rp {formatCurrency(packageItem.annual_price)} (atau setara Rp {formatCurrency(Math.round(packageItem.annual_price / 12))}/bulan)
             </p>
 
             <ul className="mt-[14px] space-y-2 border-b border-[#E1E1E1] pb-[18px]">
-                {pricingFeatures.map((feature) => (
+                {packageItem.features.map((feature) => (
                     <li key={feature} className="flex items-center gap-2.5 text-sm text-[#292D32]">
                         <Check className="h-5 w-5 shrink-0 stroke-[1.7]" />
                         <span>{feature}</span>
@@ -90,7 +98,29 @@ function PricingCard() {
     );
 }
 
+function PricingCardSkeleton() {
+    return (
+        <div className="w-full max-w-[301px] rounded-[16px] border border-[#E4E4E4] bg-white p-[14px] shadow-[26px_39px_24px_rgba(0,0,0,0.07),7px_10px_13px_rgba(0,0,0,0.08)]">
+            <div className="border-b border-[#E1E1E1] py-[18px]">
+                <div className="h-8 w-32 animate-spin rounded-[8px] bg-[#F0EDE8]" />
+                <div className="mt-[18px] space-y-2">
+                    <div className="h-4 w-24 animate-spin rounded bg-[#F0EDE8]" />
+                    <div className="h-9 w-40 animate-spin rounded bg-[#F0EDE8]" />
+                </div>
+            </div>
+            <div className="mt-[14px] h-4 w-full animate-spin rounded bg-[#F0EDE8]" />
+            <div className="mt-[14px] space-y-2 border-b border-[#E1E1E1] pb-[18px]">
+                {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-5 w-full animate-spin rounded bg-[#F0EDE8]" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function LandingPricing() {
+    const { packages, isLoading, error } = usePackages();
+
     return (
         <section id="harga" className="w-full">
             <div className="mx-auto max-w-[1240px]">
@@ -99,8 +129,22 @@ export function LandingPricing() {
                         aria-hidden="true"
                         className="pointer-events-none absolute bottom-[-340px] left-1/2 h-[795px] w-[795px] -translate-x-1/2 rounded-full bg-[repeating-radial-gradient(circle,rgba(255,255,255,0.045)_0_132px,rgba(255,255,255,0.018)_132px_264px)]"
                     />
-                    <div className="relative z-10">
-                        <PricingCard />
+                    <div className="relative z-10 flex flex-wrap items-start justify-center gap-6">
+                        {isLoading ? (
+                            <PricingCardSkeleton />
+                        ) : error ? (
+                            <div className="rounded-xl bg-white/10 px-6 py-4 text-sm text-white">
+                                Gagal memuat paket. Silakan muat ulang halaman.
+                            </div>
+                        ) : packages.length === 0 ? (
+                            <div className="rounded-xl bg-white/10 px-6 py-4 text-sm text-white">
+                                Belum ada paket tersedia.
+                            </div>
+                        ) : (
+                            packages.map((pkg) => (
+                                <LandingPricingCard key={pkg.id} packageItem={pkg} />
+                            ))
+                        )}
                     </div>
                 </div>
 
