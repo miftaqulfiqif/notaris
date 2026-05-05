@@ -75,6 +75,8 @@ function InvoiceActionButton({
     );
 }
 
+const BAR_MAX_HEIGHT = 100;
+
 function RevenueBarItem({
     heightPercent,
     label,
@@ -91,9 +93,11 @@ function RevenueBarItem({
               ? 'bg-[rgba(201,169,110,0.6)]'
               : 'bg-[rgba(201,169,110,0.27)]';
 
+    const barHeight = Math.max(8, Math.round((heightPercent / 100) * BAR_MAX_HEIGHT));
+
     return (
-        <div className="flex flex-1 flex-col items-center justify-end gap-3">
-            <div className={`w-full rounded-[4px] ${colorClassName}`} style={{ height: `${Math.max(10, heightPercent)}%` }} />
+        <div className="flex flex-1 flex-col items-center justify-end gap-2">
+            <div className={`w-full rounded-[4px] ${colorClassName}`} style={{ height: `${barHeight}px` }} />
             <p className="text-[12px] text-white">{label}</p>
         </div>
     );
@@ -254,7 +258,7 @@ export function SuperadminBillingInvoices() {
                         </header>
                         <div className="flex flex-col items-center gap-6 px-3 py-4">
                             {revenueTrend.length > 0 ? (
-                                <div className="flex h-[120px] w-full items-end justify-center gap-4">
+                                <div className="flex h-[120px] w-full items-end justify-center gap-3">
                                     {mappedRevenueBars.map((bar) => (
                                         <RevenueBarItem
                                             heightPercent={bar.heightPercent}
