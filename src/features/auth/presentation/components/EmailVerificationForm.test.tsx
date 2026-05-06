@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EmailVerificationForm } from './EmailVerificationForm';
 import { ENDPOINTS } from '@/shared/api/endpoints';
@@ -50,6 +50,10 @@ describe('EmailVerificationForm', () => {
             }) as jest.Mock;
     });
 
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     it('requests OTP on mount, verifies the code, and redirects to success', async () => {
         const user = userEvent.setup();
 
@@ -69,7 +73,7 @@ describe('EmailVerificationForm', () => {
         await waitFor(() => {
             expect(screen.getAllByRole('textbox')[0]).toBeEnabled();
         });
-        expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeInTheDocument();
+        expect(screen.getByText('01:00')).toBeInTheDocument();
 
         const otpInputs = screen.getAllByRole('textbox');
         for (const [index, input] of otpInputs.entries()) {
@@ -98,6 +102,30 @@ describe('EmailVerificationForm', () => {
         await waitFor(() => {
             expect(checkAuth).toHaveBeenCalledTimes(1);
             expect(push).toHaveBeenCalledWith('/verification-success');
+        });
+    });
+
+    it('keeps resend cooldown at one minute and catches up after window focus', async () => {
+        let now = 1_000_000;
+        jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+        render(<EmailVerificationForm />);
+
+        await waitFor(() => {
+            expect(screen.getByText('01:00')).toBeInTheDocument();
+        });
+
+        const resendButton = screen.getByRole('button', { name: 'Kirim ulang' });
+        expect(resendButton).toBeDisabled();
+
+        now += 61_000;
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('00:00')).toBeInTheDocument();
+            expect(resendButton).toBeEnabled();
         });
     });
 });
