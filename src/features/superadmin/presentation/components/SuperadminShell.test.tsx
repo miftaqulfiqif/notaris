@@ -10,7 +10,6 @@ jest.mock('@/features/auth/context/auth.context', () => ({
 jest.mock('@/features/superadmin/services/superadmin-api', () => ({
     superadminApi: {
         getPackages: jest.fn(),
-        getTicketStats: jest.fn(),
     },
 }));
 
@@ -20,7 +19,6 @@ const { useOptionalAuthContext } = jest.requireMock('@/features/auth/context/aut
 const { superadminApi } = jest.requireMock('@/features/superadmin/services/superadmin-api') as {
     superadminApi: {
         getPackages: jest.Mock;
-        getTicketStats: jest.Mock;
     };
 };
 
@@ -43,7 +41,6 @@ describe('SuperadminShell', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         superadminApi.getPackages.mockResolvedValue({ data: [] });
-        superadminApi.getTicketStats.mockResolvedValue({ data: { open_tickets: 0 } });
     });
 
     it('renders real superadmin profile data from auth context', async () => {
@@ -57,7 +54,6 @@ describe('SuperadminShell', () => {
 
         await waitFor(() => {
             expect(superadminApi.getPackages).toHaveBeenCalledTimes(1);
-            expect(superadminApi.getTicketStats).toHaveBeenCalledTimes(1);
         });
 
         expect(screen.getByText('Super Admin')).toBeInTheDocument();
@@ -90,7 +86,6 @@ describe('SuperadminShell', () => {
 
         await waitFor(() => {
             expect(superadminApi.getPackages).toHaveBeenCalledTimes(1);
-            expect(superadminApi.getTicketStats).toHaveBeenCalledTimes(1);
         });
 
         await user.click(screen.getByRole('button', { name: 'Keluar' }));
@@ -112,12 +107,6 @@ describe('SuperadminShell', () => {
                 { id: 'pkg-2', name: 'Pro' },
             ],
         });
-        superadminApi.getTicketStats.mockResolvedValue({
-            data: {
-                open_tickets: 4,
-            },
-        });
-
         render(
             <SuperadminShell activePage="dashboard" title="Dashboard">
                 <div>Dashboard content</div>
@@ -125,11 +114,12 @@ describe('SuperadminShell', () => {
         );
 
         const packageLink = screen.getByRole('link', { name: /Paket Langganan/i });
-        const supportLink = screen.getByRole('link', { name: /Support/i });
+        expect(screen.getByRole('link', { name: /Metode Pembayaran/i })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Support/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Integrasi & API/i })).not.toBeInTheDocument();
 
         await waitFor(() => {
             expect(within(packageLink).getByText('2')).toBeInTheDocument();
-            expect(within(supportLink).getByText('4')).toBeInTheDocument();
         });
     });
 
@@ -144,10 +134,9 @@ describe('SuperadminShell', () => {
 
         await waitFor(() => {
             expect(superadminApi.getPackages).toHaveBeenCalledTimes(1);
-            expect(superadminApi.getTicketStats).toHaveBeenCalledTimes(1);
         });
 
         expect(within(screen.getByRole('link', { name: /Paket Langganan/i })).queryByText('0')).not.toBeInTheDocument();
-        expect(within(screen.getByRole('link', { name: /Support/i })).queryByText('0')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Support/i })).not.toBeInTheDocument();
     });
 });

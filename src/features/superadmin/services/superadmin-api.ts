@@ -96,4 +96,10 @@ export const superadminApi = {
         apiGet<ApiResponse<T.TransactionDetail>>(ENDPOINTS.SUPERADMIN.TRANSACTIONS.DETAIL(id)),
     refundTransaction: (id: string) => 
         apiPost<ApiResponse<T.TransactionRecord>>(ENDPOINTS.SUPERADMIN.TRANSACTIONS.REFUND(id)),
+
+    // PAYMENT METHODS
+    getPaymentMethods: () =>
+        apiGet<ApiResponse<T.PaymentMethodGroup[]>>(ENDPOINTS.SUPERADMIN.PAYMENT_METHODS.LIST),
+    updatePaymentMethod: (code: string, data: { is_enabled: boolean }) =>
+        apiPatch<ApiResponse<T.PaymentMethodGroup[]>>(ENDPOINTS.SUPERADMIN.PAYMENT_METHODS.UPDATE(code), data),
 };

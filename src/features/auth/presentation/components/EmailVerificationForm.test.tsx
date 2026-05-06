@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EmailVerificationForm } from './EmailVerificationForm';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import { storeOtpSession } from '@/features/auth/utils/otp-session';
 
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(),
@@ -25,6 +26,7 @@ describe('EmailVerificationForm', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        window.localStorage.clear();
         useRouter.mockReturnValue({ push });
         useAuthContext.mockReturnValue({
             user: {
@@ -38,7 +40,7 @@ describe('EmailVerificationForm', () => {
                 json: async () => ({
                     message: 'OTP berhasil dikirim',
                     data: {
-                        ttl_ms: 120000,
+                        ttl_ms: 300000,
                     },
                 }),
             })
@@ -73,7 +75,8 @@ describe('EmailVerificationForm', () => {
         await waitFor(() => {
             expect(screen.getAllByRole('textbox')[0]).toBeEnabled();
         });
-        expect(screen.getByText('01:00')).toBeInTheDocument();
+        expect(screen.getByText('05:00')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Kirim ulang (01:00)' })).toBeDisabled();
 
         const otpInputs = screen.getAllByRole('textbox');
         for (const [index, input] of otpInputs.entries()) {
@@ -112,10 +115,10 @@ describe('EmailVerificationForm', () => {
         render(<EmailVerificationForm />);
 
         await waitFor(() => {
-            expect(screen.getByText('01:00')).toBeInTheDocument();
+            expect(screen.getByText('05:00')).toBeInTheDocument();
         });
 
-        const resendButton = screen.getByRole('button', { name: 'Kirim ulang' });
+        const resendButton = screen.getByRole('button', { name: 'Kirim ulang (01:00)' });
         expect(resendButton).toBeDisabled();
 
         now += 61_000;
@@ -124,8 +127,38 @@ describe('EmailVerificationForm', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('00:00')).toBeInTheDocument();
+            expect(screen.getByText('03:59')).toBeInTheDocument();
             expect(resendButton).toBeEnabled();
         });
+    });
+
+    it('restores active OTP timers after refresh without requesting a new OTP', async () => {
+        let now = 1_000_000;
+        jest.spyOn(Date, 'now').mockImplementation(() => now);
+        storeOtpSession({
+            email: 'johny@example.com',
+            otpExpiresAt: now + 240_000,
+            resendAvailableAt: now + 30_000,
+        });
+
+        render(<EmailVerificationForm />);
+
+        await waitFor(() => {
+            expect(screen.getByText('04:00')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Kirim ulang (00:30)' })).toBeDisabled();
+        });
+
+        expect(global.fetch).not.toHaveBeenCalled();
+
+        now += 31_000;
+        act(() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('03:29')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Kirim ulang' })).toBeEnabled();
+        });
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 });

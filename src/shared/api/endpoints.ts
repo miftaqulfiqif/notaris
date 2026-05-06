@@ -124,6 +124,10 @@ export const ENDPOINTS = {
             STATS: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/stats`,
             DETAIL: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/${id}`,
             REFUND: (id: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/transactions/${id}/refund`,
+        },
+        PAYMENT_METHODS: {
+            LIST: `${API_BASE_URL_WITH_API_PREFIX}/superadmin/payment-methods`,
+            UPDATE: (code: string) => `${API_BASE_URL_WITH_API_PREFIX}/superadmin/payment-methods/${code}`,
         }
     }
 } as const;
