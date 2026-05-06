@@ -5,8 +5,15 @@ import { useRouter } from 'next/navigation';
 import { Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { ENDPOINTS } from '@/shared/api/endpoints';
+import {
+    getStoredOtpSession,
+    removeStoredOtpSession,
+    storeOtpSession,
+} from '@/features/auth/utils/otp-session';
+import type { StoredOtpSession } from '@/features/auth/utils/otp-session';
 
 const RESEND_OTP_COOLDOWN_SECONDS = 60;
+const OTP_ACTIVE_SECONDS = 5 * 60;
 
 interface OtpRequestResponse {
     message?: string;
@@ -23,25 +30,86 @@ export const EmailVerificationForm = () => {
     const [otpSent, setOtpSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-    const [timeLeft, setTimeLeft] = useState(RESEND_OTP_COOLDOWN_SECONDS);
+    const [otpTimeLeft, setOtpTimeLeft] = useState(0);
+    const [resendTimeLeft, setResendTimeLeft] = useState(0);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const didAutoRequestRef = useRef(false);
+    const otpExpiresAtRef = useRef<number | null>(null);
     const resendAvailableAtRef = useRef<number | null>(null);
 
-    const syncTimeLeft = useCallback(() => {
-        if (!resendAvailableAtRef.current) {
-            setTimeLeft(0);
+    const syncTimers = useCallback(() => {
+        if (!otpExpiresAtRef.current) {
+            setOtpTimeLeft(0);
+            setResendTimeLeft(0);
+            setOtpSent(false);
             return;
         }
 
-        const remainingSeconds = Math.max(
+        const remainingOtpSeconds = Math.max(
             0,
-            Math.ceil((resendAvailableAtRef.current - Date.now()) / 1000),
+            Math.ceil((otpExpiresAtRef.current - Date.now()) / 1000),
         );
-        setTimeLeft(remainingSeconds);
-    }, []);
+        const remainingResendSeconds = resendAvailableAtRef.current
+            ? Math.max(0, Math.ceil((resendAvailableAtRef.current - Date.now()) / 1000))
+            : 0;
+
+        setOtpTimeLeft(remainingOtpSeconds);
+        setResendTimeLeft(remainingResendSeconds);
+        setOtpSent(remainingOtpSeconds > 0);
+
+        if (remainingOtpSeconds <= 0 && user?.email) {
+            removeStoredOtpSession(user.email);
+        }
+    }, [user?.email]);
+
+    const applyOtpSession = useCallback((session: StoredOtpSession) => {
+        otpExpiresAtRef.current = session.otpExpiresAt;
+        resendAvailableAtRef.current = session.resendAvailableAt;
+        syncTimers();
+    }, [syncTimers]);
+
+    const restoreOtpSession = useCallback(() => {
+        if (!user?.email) return false;
+
+        const session = getStoredOtpSession(user.email);
+        if (!session || session.otpExpiresAt <= Date.now()) {
+            removeStoredOtpSession(user.email);
+            return false;
+        }
+
+        applyOtpSession(session);
+        return true;
+    }, [applyOtpSession, user?.email]);
+
+    const createOtpSession = useCallback((ttlMs?: number) => {
+        if (!user?.email) return;
+
+        const now = Date.now();
+        const session: StoredOtpSession = {
+            email: user.email,
+            otpExpiresAt: now + (ttlMs ?? OTP_ACTIVE_SECONDS * 1000),
+            resendAvailableAt: now + RESEND_OTP_COOLDOWN_SECONDS * 1000,
+        };
+
+        storeOtpSession(session);
+        applyOtpSession(session);
+    }, [applyOtpSession, user?.email]);
+
+    const clearOtpSession = useCallback(() => {
+        if (user?.email) {
+            removeStoredOtpSession(user.email);
+        }
+
+        otpExpiresAtRef.current = null;
+        resendAvailableAtRef.current = null;
+        setOtpSent(false);
+        setOtpTimeLeft(0);
+        setResendTimeLeft(0);
+    }, [user?.email]);
 
     const requestOtp = useCallback(async () => {
+        if (!user?.email) return;
+
         setIsRequesting(true);
         setError(null);
         try {
@@ -56,34 +124,34 @@ export const EmailVerificationForm = () => {
             const data: OtpRequestResponse = await response.json().catch(() => ({}));
 
             if (response.ok) {
-                setOtpSent(true);
-                resendAvailableAtRef.current = Date.now() + RESEND_OTP_COOLDOWN_SECONDS * 1000;
-                syncTimeLeft();
+                createOtpSession(data.data?.ttl_ms);
             } else {
                 setError(data.message || 'Gagal mengirim kode OTP. Silakan coba lagi.');
-                setOtpSent(false);
+                clearOtpSession();
             }
         } catch {
             setError('Terjadi kesalahan. Silakan coba lagi.');
-            setOtpSent(false);
+            clearOtpSession();
         } finally {
             setIsRequesting(false);
         }
-    }, [syncTimeLeft]);
+    }, [clearOtpSession, createOtpSession, user?.email]);
 
     useEffect(() => {
         if (!user?.email || didAutoRequestRef.current) return;
 
         didAutoRequestRef.current = true;
+        if (restoreOtpSession()) return;
+
         void requestOtp();
-    }, [requestOtp, user?.email]);
+    }, [requestOtp, restoreOtpSession, user?.email]);
 
     useEffect(() => {
-        if (timeLeft <= 0 || !otpSent) return;
+        if (!otpSent) return;
 
-        const timer = window.setInterval(syncTimeLeft, 1000);
-        const handleVisibilityChange = () => syncTimeLeft();
-        const handleFocus = () => syncTimeLeft();
+        const timer = window.setInterval(syncTimers, 1000);
+        const handleVisibilityChange = () => syncTimers();
+        const handleFocus = () => syncTimers();
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('focus', handleFocus);
@@ -93,7 +161,7 @@ export const EmailVerificationForm = () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('focus', handleFocus);
         };
-    }, [otpSent, syncTimeLeft, timeLeft]);
+    }, [otpSent, syncTimers]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -135,7 +203,7 @@ export const EmailVerificationForm = () => {
     };
 
     const handleResend = () => {
-        if (isRequesting || isVerifying || (otpSent && timeLeft > 0)) return;
+        if (isRequesting || isVerifying || resendTimeLeft > 0) return;
         setOtp(['', '', '', '', '', '']);
         void requestOtp();
     };
@@ -159,6 +227,7 @@ export const EmailVerificationForm = () => {
             });
 
             if (response.ok) {
+                clearOtpSession();
                 await checkAuth();
                 router.push('/verification-success');
             } else {
@@ -185,7 +254,7 @@ export const EmailVerificationForm = () => {
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">Verifikasi Email</h1>
                     <span className="text-gray-400 font-mono text-lg">
-                        {otpSent ? formatTime(timeLeft) : (isRequesting ? 'Mengirim...' : '--:--')}
+                        {otpSent ? formatTime(otpTimeLeft) : (isRequesting ? 'Mengirim...' : '--:--')}
                     </span>
                 </div>
 
@@ -214,7 +283,7 @@ export const EmailVerificationForm = () => {
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
                                 onPaste={handlePaste}
-                                disabled={isVerifying || !otpSent}
+                                disabled={isVerifying || !otpSent || otpTimeLeft <= 0}
                                 className="w-12 h-14 text-center text-xl font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B39B7D] focus:border-transparent transition-all disabled:opacity-50"
                             />
                         ))}
@@ -222,7 +291,7 @@ export const EmailVerificationForm = () => {
 
                     <button
                         type="submit"
-                        disabled={otp.join('').length !== 6 || isVerifying || !otpSent}
+                        disabled={otp.join('').length !== 6 || isVerifying || !otpSent || otpTimeLeft <= 0}
                         className="w-full py-3.5 px-4 bg-[#8B7355] hover:bg-[#7A6548] text-white font-medium rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                         {isVerifying ? (
@@ -238,10 +307,10 @@ export const EmailVerificationForm = () => {
                     <button
                         type="button"
                         onClick={handleResend}
-                        disabled={isRequesting || isVerifying || (otpSent && timeLeft > 0)}
+                        disabled={isRequesting || isVerifying || resendTimeLeft > 0}
                         className="text-sm font-semibold text-[#8B7355] hover:text-[#7A6548] transition-colors disabled:opacity-50"
                     >
-                        Kirim ulang
+                        {resendTimeLeft > 0 ? `Kirim ulang (${formatTime(resendTimeLeft)})` : 'Kirim ulang'}
                     </button>
                 </div>
             </div>

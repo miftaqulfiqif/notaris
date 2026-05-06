@@ -17,6 +17,7 @@ export type SuperadminPageId =
     | 'tenants'
     | 'billingInvoices'
     | 'subscriptionPackages'
+    | 'paymentMethods'
     | 'reports'
     | 'support';
 export type SuperadminStatusTone = 'danger' | 'success' | 'warning' | 'muted' | 'info';
@@ -42,7 +43,6 @@ type SidebarSection = {
 
 type SidebarBadgeCounts = {
     subscriptionPackages: number;
-    support: number;
 };
 
 type SuperadminStatCardProps = {
@@ -56,7 +56,6 @@ const WITA_TIME_ZONE = 'Asia/Makassar';
 
 const emptySidebarBadgeCounts: SidebarBadgeCounts = {
     subscriptionPackages: 0,
-    support: 0,
 };
 
 const toSidebarBadge = (count: number) => (count > 0 ? String(count) : undefined);
@@ -80,19 +79,13 @@ const buildSidebarSections = (badgeCounts: SidebarBadgeCounts): SidebarSection[]
                 id: 'subscriptionPackages',
                 label: 'Paket Langganan',
             },
+            { href: '/superadmin/metode-pembayaran', id: 'paymentMethods', label: 'Metode Pembayaran' },
         ],
     },
     {
         label: 'OPERASIONAL',
         items: [
             { href: '/superadmin/laporan', id: 'reports', label: 'Laporan' },
-            {
-                badge: toSidebarBadge(badgeCounts.support),
-                href: '/superadmin/support',
-                id: 'support',
-                label: 'Support',
-            },
-            { label: 'Integrasi & API' },
         ],
     },
 ];
@@ -434,10 +427,7 @@ export function SuperadminShell({
 
         const fetchSidebarBadgeCounts = async () => {
             try {
-                const [packagesResponse, ticketStatsResponse] = await Promise.all([
-                    superadminApi.getPackages(),
-                    superadminApi.getTicketStats(),
-                ]);
+                const packagesResponse = await superadminApi.getPackages();
 
                 if (!mounted) {
                     return;
@@ -445,7 +435,6 @@ export function SuperadminShell({
 
                 setSidebarBadgeCounts({
                     subscriptionPackages: packagesResponse.data?.length ?? 0,
-                    support: ticketStatsResponse.data?.open_tickets ?? 0,
                 });
             } catch {
                 if (!mounted) {

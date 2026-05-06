@@ -212,3 +212,15 @@ export type TransactionStats = {
     pending_count: number;
     refund_count: number;
 };
+
+export type PaymentMethodChannel = {
+    code: string;
+    is_enabled: boolean;
+    label: string;
+};
+
+export type PaymentMethodGroup = {
+    channels: PaymentMethodChannel[];
+    group: string;
+    label: string;
+};
