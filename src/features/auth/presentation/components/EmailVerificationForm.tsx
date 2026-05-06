@@ -6,6 +6,8 @@ import { Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '@/features/auth/context/auth.context';
 import { ENDPOINTS } from '@/shared/api/endpoints';
 
+const RESEND_OTP_COOLDOWN_SECONDS = 60;
+
 interface OtpRequestResponse {
     message?: string;
     data?: {
@@ -21,9 +23,23 @@ export const EmailVerificationForm = () => {
     const [otpSent, setOtpSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-    const [timeLeft, setTimeLeft] = useState(300);
+    const [timeLeft, setTimeLeft] = useState(RESEND_OTP_COOLDOWN_SECONDS);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const didAutoRequestRef = useRef(false);
+    const resendAvailableAtRef = useRef<number | null>(null);
+
+    const syncTimeLeft = useCallback(() => {
+        if (!resendAvailableAtRef.current) {
+            setTimeLeft(0);
+            return;
+        }
+
+        const remainingSeconds = Math.max(
+            0,
+            Math.ceil((resendAvailableAtRef.current - Date.now()) / 1000),
+        );
+        setTimeLeft(remainingSeconds);
+    }, []);
 
     const requestOtp = useCallback(async () => {
         setIsRequesting(true);
@@ -41,11 +57,8 @@ export const EmailVerificationForm = () => {
 
             if (response.ok) {
                 setOtpSent(true);
-                const ttlSeconds = Math.max(
-                    1,
-                    Math.ceil((data.data?.ttl_ms ?? 300000) / 1000),
-                );
-                setTimeLeft(ttlSeconds);
+                resendAvailableAtRef.current = Date.now() + RESEND_OTP_COOLDOWN_SECONDS * 1000;
+                syncTimeLeft();
             } else {
                 setError(data.message || 'Gagal mengirim kode OTP. Silakan coba lagi.');
                 setOtpSent(false);
@@ -56,7 +69,7 @@ export const EmailVerificationForm = () => {
         } finally {
             setIsRequesting(false);
         }
-    }, []);
+    }, [syncTimeLeft]);
 
     useEffect(() => {
         if (!user?.email || didAutoRequestRef.current) return;
@@ -68,12 +81,19 @@ export const EmailVerificationForm = () => {
     useEffect(() => {
         if (timeLeft <= 0 || !otpSent) return;
 
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
+        const timer = window.setInterval(syncTimeLeft, 1000);
+        const handleVisibilityChange = () => syncTimeLeft();
+        const handleFocus = () => syncTimeLeft();
 
-        return () => clearInterval(timer);
-    }, [timeLeft, otpSent]);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            window.clearInterval(timer);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, [otpSent, syncTimeLeft, timeLeft]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
