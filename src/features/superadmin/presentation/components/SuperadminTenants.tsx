@@ -12,12 +12,13 @@ import { useToast } from '@/shared/hooks/useToast';
 import { downloadCsv } from '../../utils/export';
 import { useSuperadminTenants } from '../../hooks/useSuperadminTenants';
 
-type TenantStatusFilter = 'all' | 'active' | 'suspended' | 'trial';
+type TenantStatusFilter = 'all' | 'active' | 'suspended' | 'trial' | 'inactive';
 type TenantPackageTone = 'basic' | 'starter' | 'professional' | 'enterprise';
 
 const statusOptions: { label: string; value: TenantStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
     { label: 'Aktif', value: 'active' },
+    { label: 'Non Aktif', value: 'inactive' },
     { label: 'Suspend', value: 'suspended' },
     { label: 'Trial', value: 'trial' },
 ];

@@ -12,7 +12,7 @@ import { useSuperadminBilling } from '../../hooks/useSuperadminBilling';
 import { InvoiceRecord as InvoiceType, RevenueData } from '../../types';
 import { downloadInvoicePdf } from '../../utils/export';
 
-type InvoiceStatusFilter = 'all' | 'paid' | 'overdue' | 'pending';
+type InvoiceStatusFilter = 'all' | 'paid' | 'overdue' | 'pending' | 'expired';
 type RevenueBarTone = 'dim' | 'soft' | 'accent';
 
 const statusOptions: { label: string; value: InvoiceStatusFilter }[] = [
@@ -20,6 +20,7 @@ const statusOptions: { label: string; value: InvoiceStatusFilter }[] = [
     { label: 'Lunas', value: 'paid' },
     { label: 'Jatuh Tempo', value: 'overdue' },
     { label: 'Tertunda', value: 'pending' },
+    { label: 'Expired', value: 'expired' },
 ];
 
 function SelectField({

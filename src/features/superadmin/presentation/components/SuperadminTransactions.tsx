@@ -16,7 +16,7 @@ import { downloadCsv } from '../../utils/export';
 import { useSuperadminTransactions } from '../../hooks/useSuperadminTransactions';
 import { TransactionRecord as TransactionRecordType } from '../../types';
 
-type TransactionStatusFilter = 'all' | 'success' | 'failed' | 'pending' | 'dispute' | 'refund';
+type TransactionStatusFilter = 'all' | 'success' | 'failed' | 'pending' | 'dispute' | 'refund' | 'settled' | 'expired';
 type TransactionMethodFilter = 'all' | 'transfer_bank' | 'qris';
 type TransactionPeriodFilter = '30days' | 'today' | '7days' | 'month';
 
@@ -29,11 +29,12 @@ const periodOptions: { label: string; value: TransactionPeriodFilter }[] = [
 
 const statusOptions: { label: string; value: TransactionStatusFilter }[] = [
     { label: 'Semua status', value: 'all' },
-    { label: 'Sukses', value: 'success' },
-    { label: 'Gagal', value: 'failed' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Dispute', value: 'dispute' },
-    { label: 'Refund', value: 'refund' },
+    { label: 'Settled', value: 'settled' },
+    { label: 'Expired', value: 'expired' },
+    // { label: 'Gagal', value: 'failed' },
+    // { label: 'Pending', value: 'pending' },
+    // { label: 'Dispute', value: 'dispute' },
+    // { label: 'Refund', value: 'refund' },
 ];
 
 const methodOptions: { label: string; value: TransactionMethodFilter }[] = [
