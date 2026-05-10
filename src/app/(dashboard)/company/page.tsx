@@ -19,6 +19,7 @@ import { FolderDetailOffcanvas } from '@/features/services/presentation/componen
 import { useUploadModal } from '@/features/dashboard/context/UploadModalContext';
 import folderIcon from '@/assets/icons/folder.png';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useAuthContext } from '@/features/auth';
 
 interface CompanyItem {
     id: string;
@@ -257,6 +258,7 @@ function CompanyStatusPopover({
 export default function CompanyPage() {
     const router = useRouter();
     const { openModal } = useUploadModal();
+    const { user } = useAuthContext();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [activeTab, setActiveTab] = useState<'baru' | 'favorite'>('baru');
     const [items, setItems] = useState<CompanyItem[]>([]);
@@ -919,20 +921,23 @@ export default function CompanyPage() {
                         )}
                         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <h1 className="text-2xl font-bold text-gray-900">Perusahaan</h1>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    openModal({
-                                        onSuccess: () => {
-                                            void refreshCompanyItems();
-                                        },
-                                    })
-                                }
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
-                            >
-                                <Plus className="h-5 w-5" />
-                                Tambah Baru
-                            </button>
+                            {user?.access === "READ_ONLY" ? null : (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        openModal({
+                                            onSuccess: () => {
+                                                void refreshCompanyItems();
+                                            },
+                                        })
+                                    }
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-base font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
+                                >
+                                    <Plus className="h-5 w-5" />
+                                    Tambah Baru
+                                </button>
+                            )}
+
                         </div>
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

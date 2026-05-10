@@ -18,6 +18,7 @@ import { FileItem, FilesResponse } from '@/features/services/types/file.types';
 import { FileTable } from '@/features/services/presentation/components/FileTable';
 import { FileGrid } from '@/features/services/presentation/components/FileGrid';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 
 type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
 
@@ -65,6 +66,7 @@ export default function FolderDetailPage({
     params: Promise<{ slug: string; typeSlug: string; folderId: string }>
 }) {
     const { slug, typeSlug, folderId } = use(params);
+    const { user } = useAuthContext();
     const { openModal } = useUploadModal();
     const { openModal: openEditFolderModal } = useEditFolderModal();
     const { setPreSelection } = useDragDropContext();
@@ -265,13 +267,15 @@ export default function FolderDetailPage({
                                 <div className="space-y-6 max-w-2xl">
                                     <div className="flex items-center gap-3">
                                         <h1 className="font-bold text-gray-900 text-3xl">{folder?.folder_name}</h1>
-                                        <button
-                                            onClick={handleEditFolder}
-                                            disabled={!folder}
-                                            className="text-gray-400 hover:text-gray-600 disabled:opacity-50 transition-colors"
-                                        >
-                                            <Pencil className="w-5 h-5" />
-                                        </button>
+                                        {user?.access === "READ_ONLY" ? null : (
+                                            <button
+                                                onClick={handleEditFolder}
+                                                disabled={!folder}
+                                                className="text-gray-400 hover:text-gray-600 disabled:opacity-50 transition-colors"
+                                            >
+                                                <Pencil className="w-5 h-5" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="gap-y-3 grid grid-cols-[140px_auto] text-sm">
@@ -285,34 +289,36 @@ export default function FolderDetailPage({
                                         <div className="flex items-center gap-2 text-gray-900">
                                             :{' '}
                                             <div className="relative inline-flex items-center gap-2" ref={statusDropdownRef}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (isUpdatingStatus) return;
-                                                        setIsStatusDropdownOpen((prev) => !prev);
-                                                    }}
-                                                    disabled={!folder || isUpdatingStatus}
-                                                    aria-label="Ubah status folder"
-                                                    className="inline-flex rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer hover:opacity-90"
-                                                >
-                                                    <StatusBadge status={resolvedFolderStatus} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (isUpdatingStatus) return;
-                                                        setIsStatusDropdownOpen((prev) => !prev);
-                                                    }}
-                                                    disabled={!folder || isUpdatingStatus}
-                                                    aria-label="Buka pilihan status folder"
-                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    {isStatusDropdownOpen ? (
-                                                        <ChevronUp className="h-4 w-4" />
-                                                    ) : (
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    )}
-                                                </button>
+                                                 <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isUpdatingStatus) return;
+                                                            setIsStatusDropdownOpen((prev) => !prev);
+                                                        }}
+                                                        disabled={!folder || isUpdatingStatus}
+                                                        aria-label="Ubah status folder"
+                                                        className="inline-flex rounded-md transition-opacity disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer hover:opacity-90"
+                                                    >
+                                                        <StatusBadge status={resolvedFolderStatus} />
+                                                    </button>
+                                                {user?.access === "READ_ONLY" ? null : (    
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isUpdatingStatus) return;
+                                                            setIsStatusDropdownOpen((prev) => !prev);
+                                                        }}
+                                                        disabled={!folder || isUpdatingStatus}
+                                                        aria-label="Buka pilihan status folder"
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        {isStatusDropdownOpen ? (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                )}  
 
                                                 {isStatusDropdownOpen && (
                                                     <div className="absolute left-0 top-[calc(100%+10px)] z-40 w-48 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
@@ -347,13 +353,16 @@ export default function FolderDetailPage({
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={handleUploadDefault}
-                                    className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                    <span>Tambah File Baru</span>
-                                </button>
+                                {user?.access === "READ_ONLY" ? null : (
+                                    <button
+                                        onClick={handleUploadDefault}
+                                        className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                        <span>Tambah File Baru</span>
+                                    </button>
+                                )}
+
                             </div>
                         </div>
 

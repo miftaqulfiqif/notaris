@@ -12,6 +12,7 @@ import { ActivityDetailSidebar } from '@/features/dashboard/presentation/compone
 import Link from 'next/link';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 
 const toSlug = (value: string) =>
     value
@@ -22,6 +23,7 @@ const toSlug = (value: string) =>
 
 export default function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
+    const { user } = useAuthContext();
     const { openModal } = useUploadModal();
     const { setPreSelection } = useDragDropContext();
     const { services } = useSidebar();
@@ -93,16 +95,19 @@ export default function ServicePage({ params }: { params: Promise<{ slug: string
                             <span className="font-semibold text-gray-500">{serviceName}</span>
                         </div>
 
-                        <button
-                            onClick={() => openModal({
-                                layananId: currentService?.id,
-                                layananName: currentService?.name,
-                            })}
-                            className="flex justify-center items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl w-full sm:w-auto font-semibold text-gray-900 transition-all cursor-pointer shrink-0"
-                        >
-                            <Plus className="w-5 h-5" />
-                            <span>Tambah Baru</span>
-                        </button>
+                        {user?.access === "READ_ONLY" ? null : (
+                            <button
+                                onClick={() => openModal({
+                                    layananId: currentService?.id,
+                                    layananName: currentService?.name,
+                                })}
+                                className="flex justify-center items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl w-full sm:w-auto font-semibold text-gray-900 transition-all cursor-pointer shrink-0"
+                            >
+                                <Plus className="w-5 h-5" />
+                                <span>Tambah Baru</span>
+                            </button>
+                        )}
+
                     </div>
 
                     <ServiceFolderGrid />

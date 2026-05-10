@@ -20,6 +20,7 @@ import type {
     UpdateNotarisMemberPayloadItem,
     UpdateNotarisMemberResponse,
 } from '@/features/dashboard/types';
+import { useAuthContext } from '@/features/auth';
 
 const packageFeatures = [
     '15GB storage untuk meyimpan file',
@@ -30,8 +31,9 @@ const packageFeatures = [
 ];
 
 const memberAccessOptions = [
-    { value: 'read_only', label: 'Read Only' },
-    { value: 'access_penuh', label: 'Access Penuh' },
+    { value: 'READ_ONLY', label: 'Read Only' },
+    { value: 'FULL_ACCESS', label: 'Access Penuh' },
+    { value: 'NO_ACCESS', label: 'Tanpa Akses' },
 ];
 
 const halamanAwalOptions = [
@@ -90,6 +92,7 @@ const fallbackSetting: NotarisSetting = {
 };
 
 export default function SettingsPage() {
+    const { user } = useAuthContext();
     const [defaultView, setDefaultView] = useState<SettingViewMode>('list');
     const [generalView, setGeneralView] = useState<SettingViewMode>('grid');
     const [halamanAwal, setHalamanAwal] = useState('dashboard');
@@ -108,7 +111,7 @@ export default function SettingsPage() {
     const [error, setError] = useState<string | null>(null);
     const [isSavingChanges, setIsSavingChanges] = useState(false);
     const { toast, showToast, hideToast } = useToast();
-
+    
     useEffect(() => {
         let mounted = true;
 
@@ -300,6 +303,8 @@ export default function SettingsPage() {
         return `${gb.toFixed(2)} GB`;
     };
 
+    console.log("User: ", user);
+    
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
             <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
@@ -382,7 +387,7 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                                        {/* <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                                             <div>
                                                 <p className="text-lg font-medium text-gray-900">Umum</p>
                                                 <p className="text-sm text-gray-500">Umum</p>
@@ -411,9 +416,9 @@ export default function SettingsPage() {
                                                     List
                                                 </label>
                                             </div>
-                                        </div>
+                                        </div> */}
 
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                        {/* <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Halaman awal</p>
                                             <div className="relative w-full sm:w-44">
                                                 <select
@@ -430,7 +435,7 @@ export default function SettingsPage() {
                                                 </select>
                                                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                                             </div>
-                                        </div>
+                                        </div> */}
 
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                             <p className="text-lg font-medium text-gray-900">Ukuran Font</p>
@@ -473,12 +478,11 @@ export default function SettingsPage() {
                                                     </div>
                                                     <div className="relative w-40">
                                                         <select
-                                                            value={member.access ?? ''}
+                                                            value={member.access ?? 'NO_ACCESS'}
                                                             onChange={(event) => handleMemberAccessChange(member.id, event.target.value)}
-                                                            disabled={isSavingChanges}
+                                                            disabled={user?.role !== "KEPALA NOTARIS" || member.id === user?.id || isSavingChanges}
                                                             className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pr-10 text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
                                                         >
-                                                            <option value="">Tanpa akses</option>
                                                             {memberAccessOptions.map((option) => (
                                                                 <option key={option.value} value={option.value}>
                                                                     {option.label}
@@ -510,11 +514,13 @@ export default function SettingsPage() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="border-t border-gray-200 px-5 py-4 flex justify-end">
-                                        <button className="rounded-xl bg-[#7A6A53] px-6 py-2.5 text-base font-medium text-white hover:bg-[#685942] transition-colors">
-                                            Upgrade paket langganan
-                                        </button>
-                                    </div>
+                                    {user?.role !== "KEPALA NOTARIS" ? null : (
+                                        <div className="border-t border-gray-200 px-5 py-4 flex justify-end">
+                                            <button className="rounded-xl bg-[#7A6A53] px-6 py-2.5 text-base font-medium text-white hover:bg-[#685942] transition-colors">
+                                                Upgrade paket langganan
+                                            </button>
+                                        </div>
+                                    )}
                                 </section>
 
                                 <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
@@ -544,7 +550,7 @@ export default function SettingsPage() {
                                             </button>
                                         </div>
 
-                                        <div className="flex items-start justify-between gap-4">
+                                        {/* <div className="flex items-start justify-between gap-4">
                                             <div>
                                                 <p className="text-lg font-medium text-gray-900">Notifikasi Email</p>
                                                 <p className="mt-1 text-sm text-gray-500">Kirim pemberitahuan melalui email.</p>
@@ -562,7 +568,7 @@ export default function SettingsPage() {
                                                     }`}
                                                 />
                                             </button>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </section>
                             </div>

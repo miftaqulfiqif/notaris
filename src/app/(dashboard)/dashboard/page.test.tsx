@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import DashboardPage from './page';
 
 jest.mock('@/features/auth/context/auth.context', () => ({
-  useAuthContext: () => ({ user: { name: 'Test User' } }),
+  useAuthContext: () => ({ user: { name: 'Test User', access: "FULL_ACCESS" } }),
 }));
 
 jest.mock('@/features/dashboard/context/UploadModalContext', () => ({

@@ -13,6 +13,7 @@ import { FolderTable } from '@/features/services/presentation/components/FolderT
 import { FolderItem, FoldersResponse } from '@/features/services/types';
 import { useSidebar } from '@/layout/providers/SidebarContext';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
+import { useAuthContext } from '@/features/auth/context/auth.context';
 
 const normalizeFolders = (response: FoldersResponse): FolderItem[] => {
     if (Array.isArray(response.data)) {
@@ -45,6 +46,7 @@ export default function ServiceTypeDetailPage({
     params: Promise<{ slug: string; typeSlug: string }>
 }) {
     const { slug, typeSlug } = use(params);
+    const { user } = useAuthContext();
     const { openModal } = useUploadModal();
     const { setPreSelection } = useDragDropContext();
     const { services, isLoadingServices = false } = useSidebar();
@@ -172,19 +174,22 @@ export default function ServiceTypeDetailPage({
                                 <h1 className="font-bold text-gray-900 text-3xl">{typeName}</h1>
                             </div>
 
-                            <button
-                                onClick={() => openModal({
-                                    layananId: currentService?.id,
-                                    layananName: currentService?.name,
-                                    tipeLayananId: typeId || undefined,
-                                    tipeLayananName: typeName,
-                                    onSuccess: () => setRefreshKey(prev => prev + 1),
-                                })}
-                                className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>Tambah Baru</span>
-                            </button>
+                            { user?.access === "READ_ONLY" ? null : (
+                                <button
+                                    onClick={() => openModal({
+                                        layananId: currentService?.id,
+                                        layananName: currentService?.name,
+                                        tipeLayananId: typeId || undefined,
+                                        tipeLayananName: typeName,
+                                        onSuccess: () => setRefreshKey(prev => prev + 1),
+                                    })}
+                                    className="flex items-center gap-2 bg-white hover:bg-gray-50 shadow-sm px-6 py-3 border border-gray-200 hover:border-gray-300 rounded-xl font-semibold text-gray-900 transition-all cursor-pointer"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>Tambah Baru</span>
+                                </button>
+                            )}
+
                         </div>
 
                         <div className="mb-6">
@@ -237,19 +242,22 @@ export default function ServiceTypeDetailPage({
                                     item baru untuk mulai bekerja lebih cepat dari konteks {typeName}.
                                 </p>
                                 <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                                    <button
-                                        type="button"
-                                        onClick={() => openModal({
-                                            layananId: currentService?.id,
-                                            layananName: currentService?.name,
-                                            tipeLayananId: typeId || undefined,
-                                            tipeLayananName: typeName,
-                                            onSuccess: () => setRefreshKey(prev => prev + 1),
-                                        })}
-                                        className="inline-flex items-center justify-center rounded-xl bg-[#7A6A53] px-5 py-3 text-sm font-semibold text-white hover:bg-[#685942]"
-                                    >
-                                        Tambah Baru
-                                    </button>
+                                    {user?.access === "READ_ONLY" ? null : (
+                                        <button
+                                            type="button"
+                                            onClick={() => openModal({
+                                                layananId: currentService?.id,
+                                                layananName: currentService?.name,
+                                                tipeLayananId: typeId || undefined,
+                                                tipeLayananName: typeName,
+                                                onSuccess: () => setRefreshKey(prev => prev + 1),
+                                            })}
+                                            className="inline-flex items-center justify-center rounded-xl bg-[#7A6A53] px-5 py-3 text-sm font-semibold text-white hover:bg-[#685942]"
+                                        >
+                                            Tambah Baru
+                                        </button>
+                                    )}
+
                                     <Link
                                         href={`/services/${slug}`}
                                         className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"

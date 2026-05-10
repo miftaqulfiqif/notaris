@@ -2,6 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import SettingsPage from './page';
 import { apiGet } from '@/shared/api/api-client';
 
+jest.mock('@/features/auth/context/auth.context', () => ({
+  useAuthContext: () => ({ user: { access: "FULL_ACCESS" } }),
+}));
+
 jest.mock('@/layout/DashboardHeader', () => ({
   DashboardHeader: () => <div data-testid="dashboard-header" />,
 }));

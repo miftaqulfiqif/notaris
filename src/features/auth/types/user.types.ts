@@ -36,6 +36,7 @@ export interface User {
     created_at?: string;
     updated_at?: string;
     role?: UserRole | null;
+    access: string;
     notaris?: Notaris | null;
     favorites?: unknown[];
     folder?: unknown[];

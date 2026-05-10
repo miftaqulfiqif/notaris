@@ -7,6 +7,10 @@ import { ENDPOINTS } from '@/shared/api/endpoints';
 const mockPush = jest.fn();
 const mockOpenUploadModal = jest.fn();
 
+jest.mock('@/features/auth/context/auth.context', () => ({
+  useAuthContext: () => ({ user: { access: "FULL_ACCESS" } }),
+}));
+
 jest.mock('next/navigation', () => ({
     useRouter: () => ({
         push: mockPush,

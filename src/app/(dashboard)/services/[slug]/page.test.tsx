@@ -2,6 +2,10 @@ import { Suspense } from 'react';
 import { render, screen } from '@testing-library/react';
 import ServicePage from './page';
 
+jest.mock('@/features/auth/context/auth.context', () => ({
+  useAuthContext: () => ({ user: { access: "FULL_ACCESS" } }),
+}));
+
 jest.mock('@/layout/DashboardHeader', () => ({
   DashboardHeader: () => <div data-testid="dashboard-header" />,
 }));

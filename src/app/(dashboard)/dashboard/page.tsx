@@ -73,13 +73,16 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                             </div>
-                            <button
-                                onClick={() => openModal()}
-                                className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>Tambah Baru</span>
-                            </button>
+
+                            {user?.access === "READ_ONLY" ? null : (
+                                <button
+                                    onClick={() => openModal()}
+                                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>Tambah Baru</span>
+                                </button>
+                            )}
                         </div>
 
                         <FolderGrid />
