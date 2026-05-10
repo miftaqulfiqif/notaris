@@ -291,7 +291,7 @@ export function DashboardHeader() {
                     }
                 }
             })();
-        }, 250);
+        }, 300);
 
         return () => {
             window.clearTimeout(timeoutId);

@@ -114,7 +114,7 @@ export default function TrashPage() {
                         <div className="flex items-center justify-between mb-6 mt-6">
                             <h1 className="text-2xl font-bold text-gray-900">Sampah</h1>
 
-                            <div className="flex items-center gap-4">
+                            {/* <div className="flex items-center gap-4">
                                 <div className="flex items-center bg-gray-100 rounded-lg p-1">
                                     <button
                                         onClick={() => setViewMode('grid')}
@@ -131,7 +131,7 @@ export default function TrashPage() {
                                         <List className="w-5 h-5" />
                                     </button>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
 
                         {hasTrashItems && (
