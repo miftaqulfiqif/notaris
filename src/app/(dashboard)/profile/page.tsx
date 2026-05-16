@@ -281,16 +281,14 @@ export default function ProfilePage() {
     ];
 
     const handleSaveUserInfo = (data: UpdateUserInfo) => {
-        // Implementasi penyimpanan informasi user
         data.jabatan = undefined;
         console.log('Menyimpan informasi user :', data);
         apiPatch(ENDPOINTS.USER.EDIT_USER_ACCOUNT, data);
-        // window.location.reload();
+        window.location.reload();
         setEditingSection(null);
     };
 
     const handleSaveAccountDetails = (data: UpdateAccountDetails) => {
-        // Implementasi penyimpanan detail akun
         data.created_at = undefined;
         data.last_login = undefined;
         data.last_updated_password = undefined;
@@ -302,7 +300,6 @@ export default function ProfilePage() {
     };
 
     const handleDeleteAccount = () => {
-        // Implementasi penghapusan akun
         apiPost(ENDPOINTS.USER.DELETE_ACCOUNT);
         console.log('Menghapus akun');
         window.location.reload();
