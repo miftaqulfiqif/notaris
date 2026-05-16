@@ -1,6 +1,11 @@
 'use client';
 
+import { useState, type ReactNode } from 'react';
 import { ChevronDown, Download, Search } from 'lucide-react';
+import {
+    SuperadminActionButton,
+    SuperadminModal,
+} from '@/features/superadmin/presentation/components/SuperadminOverlay';
 import {
     SuperadminShell,
     SuperadminStatCard,
@@ -11,6 +16,7 @@ import {
 import { useToast } from '@/shared/hooks/useToast';
 import { downloadCsv } from '../../utils/export';
 import { useSuperadminTenants } from '../../hooks/useSuperadminTenants';
+import type { TenantRecord } from '../../types';
 
 type TenantStatusFilter = 'all' | 'active' | 'suspended' | 'trial';
 type TenantPackageTone = 'basic' | 'starter' | 'professional' | 'enterprise';
@@ -71,6 +77,148 @@ function TenantPackageBadge({
     );
 }
 
+const formatDate = (value?: string | null) => {
+    if (!value) {
+        return '-';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '-';
+    }
+
+    return date.toLocaleDateString('id-ID');
+};
+
+const formatCurrency = (value?: number | null) =>
+    new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+    }).format(value ?? 0);
+
+const tenantStatusLabels: Record<string, string> = {
+    active: 'Aktif',
+    canceled: 'Dibatalkan',
+    expired: 'Kedaluwarsa',
+    inactive: 'Tidak Aktif',
+    paid: 'Lunas',
+    pending: 'Menunggu',
+    pending_payment: 'Menunggu Pembayaran',
+    suspended: 'Ditangguhkan',
+    trial: 'Trial',
+};
+
+const formatTenantStatus = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (tenantStatusLabels[normalizedStatus]) {
+        return tenantStatusLabels[normalizedStatus];
+    }
+
+    return normalizedStatus
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+const getTenantStatusTone = (status: string): SuperadminStatusTone => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (normalizedStatus === 'active' || normalizedStatus === 'paid') {
+        return 'success';
+    }
+
+    if (normalizedStatus === 'trial' || normalizedStatus === 'pending' || normalizedStatus === 'pending_payment') {
+        return 'warning';
+    }
+
+    if (normalizedStatus === 'inactive' || normalizedStatus === 'canceled') {
+        return 'muted';
+    }
+
+    return 'danger';
+};
+
+const getTenantPackageTone = (packageName: string) =>
+    (packageName.toLowerCase().includes('starter') ? 'starter' : 'basic') as TenantPackageTone;
+
+function TenantDetailItem({
+    label,
+    value,
+    valueClassName = 'text-white',
+}: Readonly<{
+    label: string;
+    value: ReactNode;
+    valueClassName?: string;
+}>) {
+    return (
+        <div className="space-y-1">
+            <p className="text-[12px] uppercase text-[#6F6F6F]">{label}</p>
+            <div className={`text-[14px] leading-5 ${valueClassName}`}>{value}</div>
+        </div>
+    );
+}
+
+function TenantDetailModal({
+    onClose,
+    tenant,
+}: Readonly<{
+    onClose: () => void;
+    tenant: TenantRecord;
+}>) {
+    return (
+        <SuperadminModal maxWidthClassName="max-w-[640px]" onClose={onClose} title="Detail Tenant">
+            <div className="space-y-5 px-4 py-4">
+                <div className="rounded-[12px] border border-[#25282D] bg-[#0F1012] px-4 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                            <p className="break-words text-[18px] font-medium text-white">{tenant.name}</p>
+                            <p className="mt-1 text-[13px] text-[#757C8B]">
+                                {tenant.company_name || tenant.notaris_name || 'Notaris & PPAT'}
+                            </p>
+                        </div>
+                        <SuperadminStatusBadge
+                            tone={getTenantStatusTone(tenant.status)}
+                            value={formatTenantStatus(tenant.status)}
+                        />
+                    </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 sm:gap-x-10">
+                    <div className="space-y-4">
+                        <TenantDetailItem label="ID Tenant" value={tenant.id} />
+                        <TenantDetailItem label="Email Kontak" value={tenant.contact_email || '-'} />
+                        <TenantDetailItem label="Telepon Kontak" value={tenant.contact_phone || '-'} />
+                        <TenantDetailItem label="Nama Kontak" value={tenant.contact_name || '-'} />
+                        <TenantDetailItem label="Alamat" value={tenant.address || '-'} valueClassName="text-[#D4D4D4]" />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <p className="text-[12px] uppercase text-[#6F6F6F]">Paket</p>
+                            <TenantPackageBadge label={tenant.package} tone={getTenantPackageTone(tenant.package)} />
+                        </div>
+                        <TenantDetailItem label="Jumlah User" value={`${tenant.users_count} user aktif`} />
+                        <TenantDetailItem label="Total Transaksi" value={formatCurrency(tenant.total_transaction)} />
+                        <TenantDetailItem label="Tanggal Dibuat" value={formatDate(tenant.created_at ?? tenant.joined_date)} />
+                        <TenantDetailItem label="Tanggal Bergabung" value={formatDate(tenant.joined_date)} />
+                    </div>
+                </div>
+
+                <div className="grid gap-4 rounded-[12px] border border-[#25282D] bg-[#0F1012] px-4 py-4 sm:grid-cols-2">
+                    <TenantDetailItem label="Mulai Langganan" value={formatDate(tenant.subscription_start_date)} />
+                    <TenantDetailItem label="Akhir Langganan" value={formatDate(tenant.subscription_end_date)} />
+                </div>
+
+                <div className="flex justify-end pb-1">
+                    <SuperadminActionButton onClick={onClose}>Tutup</SuperadminActionButton>
+                </div>
+            </div>
+        </SuperadminModal>
+    );
+}
+
 export function SuperadminTenants() {
     const { 
         tenants, 
@@ -82,6 +230,7 @@ export function SuperadminTenants() {
         setStatusFilter 
     } = useSuperadminTenants();
     const { showToast } = useToast();
+    const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
     
     // Fallback UI mapping for Tenant records
     const mappedTenants = tenants.map(t => ({
@@ -90,15 +239,20 @@ export function SuperadminTenants() {
         subtitle: 'Notaris & PPAT',
         contactEmail: t.contact_email || 'Belum tersedia',
         contactPhone: t.contact_phone || '-',
-        createdAt: new Date(t.created_at || t.joined_date).toLocaleDateString('id-ID'),
+        createdAt: formatDate(t.created_at || t.joined_date),
         packageLabel: t.package,
-        packageTone: (t.package.toLowerCase().includes('starter') ? 'starter' : 'basic') as TenantPackageTone,
-        joinedAt: new Date(t.joined_date).toLocaleDateString('id-ID'),
+        packageTone: getTenantPackageTone(t.package),
+        joinedAt: formatDate(t.joined_date),
         activity: `${t.users_count} user aktif`,
-        statusLabel: t.status,
-        statusTone: (t.status === 'active' ? 'success' : t.status === 'trial' ? 'warning' : 'danger') as SuperadminStatusTone,
+        statusLabel: formatTenantStatus(t.status),
+        statusTone: getTenantStatusTone(t.status),
         usersCount: t.users_count
     }));
+
+    const selectedTenant =
+        selectedTenantId === null
+            ? null
+            : tenants.find((tenant) => tenant.id === selectedTenantId) ?? null;
 
     if (isLoading) {
         return (
@@ -229,7 +383,7 @@ export function SuperadminTenants() {
                                     <td className="border-b border-[#303030] px-3 py-3 text-center">
                                         <button
                                             type="button"
-                                            onClick={() => showToast({ variant: 'info', message: 'Fitur halaman detail tenant segera hadir' })}
+                                            onClick={() => setSelectedTenantId(tenant.id)}
                                             className="inline-flex items-center rounded-[8px] px-3 py-1 text-[14px] text-[#C9AA6F] transition-colors hover:bg-[#1E2127] hover:text-[#E3C28A]"
                                         >
                                             Detail
@@ -248,6 +402,13 @@ export function SuperadminTenants() {
                     </table>
                 </div>
             </section>
+
+            {selectedTenant ? (
+                <TenantDetailModal
+                    tenant={selectedTenant}
+                    onClose={() => setSelectedTenantId(null)}
+                />
+            ) : null}
         </SuperadminShell>
     );
 }
