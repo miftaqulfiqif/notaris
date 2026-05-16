@@ -32,14 +32,21 @@ export type RecentTransaction = {
 };
 
 export type TenantRecord = {
+    address?: string | null;
+    company_name?: string | null;
     contact_email?: string | null;
+    contact_name?: string | null;
     contact_phone?: string | null;
     created_at?: string;
     id: string;
     name: string;
+    notaris_name?: string | null;
     package: string;
     status: string;
     joined_date: string;
+    subscription_end_date?: string | null;
+    subscription_start_date?: string | null;
+    total_transaction?: number;
     users_count: number;
 };
 

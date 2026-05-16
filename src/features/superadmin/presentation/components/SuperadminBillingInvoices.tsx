@@ -7,7 +7,6 @@ import {
     SuperadminStatusBadge,
 } from '@/features/superadmin/presentation/components/SuperadminShell';
 
-import { useToast } from '@/shared/hooks/useToast';
 import { useSuperadminBilling } from '../../hooks/useSuperadminBilling';
 import { InvoiceRecord as InvoiceType, RevenueData } from '../../types';
 import { downloadInvoicePdf } from '../../utils/export';
@@ -76,6 +75,46 @@ function InvoiceActionButton({
     );
 }
 
+const invoiceStatusLabels: Record<string, string> = {
+    canceled: 'Dibatalkan',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+    overdue: 'Jatuh Tempo',
+    paid: 'Lunas',
+    pending: 'Tertunda',
+    pending_payment: 'Menunggu Pembayaran',
+    success: 'Berhasil',
+    unpaid: 'Belum Dibayar',
+};
+
+const formatInvoiceStatus = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (invoiceStatusLabels[normalizedStatus]) {
+        return invoiceStatusLabels[normalizedStatus];
+    }
+
+    return normalizedStatus
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+const getInvoiceStatusTone = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (normalizedStatus === 'paid' || normalizedStatus === 'success') {
+        return 'success';
+    }
+
+    if (normalizedStatus === 'overdue' || normalizedStatus === 'expired' || normalizedStatus === 'failed') {
+        return 'danger';
+    }
+
+    return 'warning';
+};
+
 const BAR_MAX_HEIGHT = 100;
 
 function RevenueBarItem({
@@ -115,10 +154,7 @@ export function SuperadminBillingInvoices() {
         setSearch,
         statusFilter,
         setStatusFilter,
-        markAsPaid,
-        isMarkingPaid
     } = useSuperadminBilling();
-    const { showToast } = useToast();
 
     const maxRevenue = revenueTrend.length > 0 ? Math.max(...revenueTrend.map((trendPoint) => trendPoint.revenue), 1) : 1;
     const mappedRevenueBars = revenueTrend.map((trendPoint: RevenueData, index: number) => {
@@ -228,8 +264,8 @@ export function SuperadminBillingInvoices() {
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3">
                                             <SuperadminStatusBadge
-                                                tone={invoice.status === 'paid' ? 'success' : invoice.status === 'overdue' ? 'danger' : 'warning'}
-                                                value={invoice.status}
+                                                tone={getInvoiceStatusTone(invoice.status)}
+                                                value={formatInvoiceStatus(invoice.status)}
                                             />
                                         </td>
                                         <td className="border-b border-[#303030] px-3 py-3 text-center">

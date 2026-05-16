@@ -52,6 +52,54 @@ const formatTransactionMethod = (method: string) => {
     return method.toUpperCase();
 };
 
+const transactionStatusLabels: Record<string, string> = {
+    canceled: 'Dibatalkan',
+    dispute: 'Dispute',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+    pending: 'Menunggu',
+    pending_payment: 'Menunggu Pembayaran',
+    refund: 'Refund',
+    refunded: 'Sudah Direfund',
+    success: 'Berhasil',
+};
+
+const formatTransactionStatus = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (transactionStatusLabels[normalizedStatus]) {
+        return transactionStatusLabels[normalizedStatus];
+    }
+
+    return normalizedStatus
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+const getTransactionStatusTone = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    if (normalizedStatus === 'success') {
+        return 'success';
+    }
+
+    if (normalizedStatus === 'failed' || normalizedStatus === 'expired' || normalizedStatus === 'canceled') {
+        return 'danger';
+    }
+
+    if (normalizedStatus === 'pending' || normalizedStatus === 'pending_payment') {
+        return 'warning';
+    }
+
+    if (normalizedStatus === 'dispute') {
+        return 'info';
+    }
+
+    return 'muted';
+};
+
 function SelectField({
     ariaLabel,
     onChange,
@@ -108,8 +156,6 @@ function TransactionDetailModal({
     onRefund: () => void;
     transaction: TransactionRecordType;
 }>) {
-    const statusMeta = transaction.status === 'success' ? 'success' : transaction.status === 'failed' ? 'danger' : transaction.status === 'pending' ? 'warning' : 'muted';
-
     return (
         <SuperadminModal maxWidthClassName="max-w-[532px]" onClose={onClose} title="Detail">
             <div className="space-y-5 px-4 py-4">
@@ -127,7 +173,10 @@ function TransactionDetailModal({
                     <div className="space-y-4">
                         <div className="space-y-1">
                             <p className="text-[12px] uppercase text-[#6F6F6F]">Status</p>
-                            <SuperadminStatusBadge tone={statusMeta} value={transaction.status} />
+                            <SuperadminStatusBadge
+                                tone={getTransactionStatusTone(transaction.status)}
+                                value={formatTransactionStatus(transaction.status)}
+                            />
                         </div>
                         <TransactionDetailItem label="Jumlah" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(transaction.amount)} />
                         <TransactionDetailItem label="Tanggal" value={new Date(transaction.date).toLocaleDateString('id-ID')} />
@@ -300,8 +349,8 @@ export function SuperadminTransactions() {
                                         </td>
                                         <td className="px-3 py-4">
                                             <SuperadminStatusBadge
-                                                tone={transaction.status === 'success' ? 'success' : transaction.status === 'failed' ? 'danger' : transaction.status === 'pending' ? 'warning' : 'muted'}
-                                                value={transaction.status}
+                                                tone={getTransactionStatusTone(transaction.status)}
+                                                value={formatTransactionStatus(transaction.status)}
                                             />
                                         </td>
                                         <td className="px-3 py-4">

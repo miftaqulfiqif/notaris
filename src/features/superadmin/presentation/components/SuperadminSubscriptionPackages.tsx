@@ -46,9 +46,9 @@ type PackageFormState = {
 };
 
 const packageStatusOptions: SuperadminSelectOption[] = [
-    { label: 'Published', value: 'published' },
-    { label: 'Unpublished', value: 'unpublished' },
-    { label: 'Archived', value: 'archived' },
+    { label: 'Dipublikasikan', value: 'published' },
+    { label: 'Belum Dipublikasikan', value: 'unpublished' },
+    { label: 'Diarsipkan', value: 'archived' },
 ];
 
 
@@ -75,19 +75,63 @@ function formatRupiah(value: number) {
     return `Rp ${new Intl.NumberFormat('id-ID').format(value)}`;
 }
 
-function packageStatusMeta(statusValue: PackageStatusValue): {
+const humanizeStatus = (status: string) => {
+    const normalizedStatus = status.trim().toLowerCase();
+
+    return normalizedStatus
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+function packageStatusMeta(statusValue: string): {
     label: string;
     tone: SuperadminStatusTone;
 } {
-    if (statusValue === 'published') {
+    const normalizedStatus = statusValue.trim().toLowerCase();
+
+    if (normalizedStatus === 'published' || normalizedStatus === 'active') {
         return { label: 'Aktif', tone: 'success' };
     }
 
-    if (statusValue === 'archived') {
-        return { label: 'Archived', tone: 'danger' };
+    if (normalizedStatus === 'archived' || normalizedStatus === 'inactive') {
+        return { label: normalizedStatus === 'archived' ? 'Diarsipkan' : 'Tidak Aktif', tone: 'danger' };
     }
 
-    return { label: 'Unpublished', tone: 'muted' };
+    if (normalizedStatus === 'unpublished' || normalizedStatus === 'draft') {
+        return { label: 'Belum Dipublikasikan', tone: 'muted' };
+    }
+
+    return { label: humanizeStatus(statusValue), tone: 'muted' };
+}
+
+function subscriptionStatusMeta(statusValue: string): {
+    label: string;
+    tone: SuperadminStatusTone;
+} {
+    const normalizedStatus = statusValue.trim().toLowerCase();
+
+    if (normalizedStatus === 'active' || normalizedStatus === 'paid') {
+        return { label: 'Aktif', tone: 'success' };
+    }
+
+    if (normalizedStatus === 'expired') {
+        return { label: 'Kedaluwarsa', tone: 'danger' };
+    }
+
+    if (normalizedStatus === 'pending' || normalizedStatus === 'pending_payment') {
+        return {
+            label: normalizedStatus === 'pending_payment' ? 'Menunggu Pembayaran' : 'Menunggu',
+            tone: 'warning',
+        };
+    }
+
+    if (normalizedStatus === 'canceled' || normalizedStatus === 'inactive') {
+        return { label: normalizedStatus === 'canceled' ? 'Dibatalkan' : 'Tidak Aktif', tone: 'muted' };
+    }
+
+    return { label: humanizeStatus(statusValue), tone: 'muted' };
 }
 
 function normalizePlanFeatures(features: PackageType['features']) {
@@ -139,7 +183,7 @@ function PackagePlanCard({
     onEdit: (plan: PackageType) => void;
     plan: PackageType;
 }>) {
-    const statusMeta = packageStatusMeta((plan.status || 'unpublished') as PackageStatusValue);
+    const statusMeta = packageStatusMeta(plan.status || 'unpublished');
     const planFeatures = normalizePlanFeatures(plan.features);
     const monthlyPrice = Number(plan.monthly_price ?? 0);
     const activeTenants = Number(plan.active_tenants ?? 0);
@@ -459,28 +503,32 @@ export function SuperadminSubscriptionPackages() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {tenants.map((tenant: PackageTenantRecord) => (
-                                    <tr key={tenant.id || tenant.tenant_name}>
-                                        <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-white">
-                                            {tenant.tenant_name}
-                                        </td>
-                                        <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {tenant.package_name}
-                                        </td>
-                                        <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {new Date(tenant.start_date).toLocaleDateString('id-ID')}
-                                        </td>
-                                        <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
-                                            {new Date(tenant.end_date).toLocaleDateString('id-ID')}
-                                        </td>
-                                        <td className="border-b border-[#303030] px-3 py-2.5">
-                                            <SuperadminStatusBadge
-                                                tone={tenant.status === 'active' ? 'success' : tenant.status === 'expired' ? 'danger' : 'warning'}
-                                                value={tenant.status}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
+                                {tenants.map((tenant: PackageTenantRecord) => {
+                                    const statusMeta = subscriptionStatusMeta(tenant.status);
+
+                                    return (
+                                        <tr key={tenant.id || tenant.tenant_name}>
+                                            <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-white">
+                                                {tenant.tenant_name}
+                                            </td>
+                                            <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
+                                                {tenant.package_name}
+                                            </td>
+                                            <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
+                                                {new Date(tenant.start_date).toLocaleDateString('id-ID')}
+                                            </td>
+                                            <td className="border-b border-[#303030] px-3 py-2.5 text-[14px] text-[#757C8B]">
+                                                {new Date(tenant.end_date).toLocaleDateString('id-ID')}
+                                            </td>
+                                            <td className="border-b border-[#303030] px-3 py-2.5">
+                                                <SuperadminStatusBadge
+                                                    tone={statusMeta.tone}
+                                                    value={statusMeta.label}
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {tenants.length === 0 && (
                                     <tr>
                                         <td colSpan={5} className="border-b border-[#303030] px-3 py-8 text-center text-[14px] text-[#6F6F6F]">
