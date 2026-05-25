@@ -663,6 +663,8 @@ export function DashboardHeader() {
     };
 
     const handleNotificationClick = (notification: NotificationItem) => {
+        if (notification.actionKey === 'delete_folder' || notification.actionKey === 'delete_document' || notification.actionKey === 'delete_folder_permanent' || notification.actionKey === 'delete_document_permanent' ) return;
+
         setIsNotificationOpen(false);
         void openNotification(notification);
     };
@@ -918,12 +920,12 @@ export function DashboardHeader() {
                                         >
                                             <X className="w-6 h-6" />
                                         </button>
-                                        <button
+                                        {/* <button
                                             className="text-gray-700 hover:text-gray-900 transition-colors"
                                             aria-label="Pengaturan notifikasi"
                                         >
                                             <Settings className="w-6 h-6" />
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
 
@@ -952,7 +954,7 @@ export function DashboardHeader() {
                                                 key={notification.id}
                                                 type="button"
                                                 onClick={() => handleNotificationClick(notification)}
-                                                disabled={Boolean(navigatingNotificationId)}
+                                                disabled={ Boolean(navigatingNotificationId) || notification.actionKey === 'Menghapus folder' }
                                                 className={`flex w-full items-center gap-4 border-b border-gray-200 px-6 py-4 text-left transition-colors ${notification.unread ? 'bg-[#F4F2EF]' : 'bg-[#F7F7F7]'
                                                     } ${
                                                     navigatingNotificationId

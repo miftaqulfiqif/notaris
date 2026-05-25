@@ -19,6 +19,7 @@ import { FileTable } from '@/features/services/presentation/components/FileTable
 import { FileGrid } from '@/features/services/presentation/components/FileGrid';
 import { useServiceTypes } from '@/features/services/context/ServiceTypesContext';
 import { useAuthContext } from '@/features/auth/context/auth.context';
+import { useRouter } from 'next/navigation';
 
 type FolderStatusValue = 'selesai' | 'tertunda' | 'proses';
 
@@ -102,6 +103,8 @@ export default function FolderDetailPage({
     const typeName = currentServiceType?.name || typeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     const resolvedFolderStatus = normalizeFolderStatus(folder?.status);
 
+    const router = useRouter();
+
     const handleUpdateStatus = useCallback(async (nextStatus: FolderStatusValue) => {
         if (!folder || isUpdatingStatus) return;
 
@@ -160,6 +163,11 @@ export default function FolderDetailPage({
                 setFolder(data.data);
             } catch (err) {
                 console.error('Failed to fetch folder detail', err);
+                showToast({message: 'Gagal memuat detail folder. Mengalihkan ke dashboard.', variant: 'error'});
+
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 3000);
             }
         };
 

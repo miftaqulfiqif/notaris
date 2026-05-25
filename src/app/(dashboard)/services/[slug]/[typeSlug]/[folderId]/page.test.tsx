@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import FolderDetailPage from './page';
 import { apiGet } from '@/shared/api/api-client';
 
+
 jest.mock('@/features/auth/context/auth.context', () => ({
   useAuthContext: () => ({ user: { access: "FULL_ACCESS" } }),
 }));
@@ -46,6 +47,24 @@ jest.mock('@/features/services/presentation/components/FileTable', () => ({
 
 jest.mock('@/features/services/presentation/components/FileGrid', () => ({
   FileGrid: () => <div data-testid="file-grid" />,
+}));
+
+jest.mock("next/navigation", () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: jest.fn(),
+        refresh: jest.fn(),
+        back: jest.fn(),
+        forward: jest.fn(),
+        prefetch: jest.fn(),
+    }),
+    useParams: () => ({
+        slug: "test-slug",
+        typeSlug: "test-type",
+        folderId: "1",
+    }),
+    useSearchParams: () => new URLSearchParams(),
+    usePathname: () => "/services/test/test/1",
 }));
 
 describe('FolderDetailPage', () => {

@@ -49,6 +49,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             setCurrentPage(response.data.current_page);
             setTotalPages(response.data.total_pages);
             setTotalItems(response.data.total_items);
+
+            console.log('Fetched notifications:', response.data.data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Gagal memuat notifikasi');
         } finally {
