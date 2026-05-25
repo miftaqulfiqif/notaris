@@ -1,9 +1,44 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { ArrowUpRight, File } from 'lucide-react';
+import { buildDemoRequestMailto } from '@/shared/utils/buildDemoRequestMailto';
 
 export function LandingCTA() {
+    const [namaInstansi, setNamaInstansi] = useState('');
+    const [alamatKantor, setAlamatKantor] = useState('');
+    const [namaPIC, setNamaPIC] = useState('');
+    const [emailInstansi, setEmailInstansi] = useState('');
+    const [deskripsiKebutuhan, setDeskripsiKebutuhan] = useState('');
+
+    const fields = [
+        { type: 'text', placeholder: 'Nama Instansi', value: namaInstansi, onChange: setNamaInstansi },
+        { type: 'text', placeholder: 'Alamat kantor', multiline: true, value: alamatKantor, onChange: setAlamatKantor },
+        { type: 'text', placeholder: 'Nama PIC', value: namaPIC, onChange: setNamaPIC },
+        { type: 'email', placeholder: 'Email instansi', value: emailInstansi, onChange: setEmailInstansi },
+        { type: 'text', placeholder: 'Deskripsikan kebutuhan mu', multiline: true, value: deskripsiKebutuhan, onChange: setDeskripsiKebutuhan },
+    ];
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        if (!namaInstansi.trim() || !alamatKantor.trim() || !namaPIC.trim() || !emailInstansi.trim() || !deskripsiKebutuhan.trim()) {
+            alert('Semua field wajib diisi.');
+            return;
+        }
+
+        const mailtoUrl = buildDemoRequestMailto({
+            namaInstansi: namaInstansi.trim(),
+            alamatKantor: alamatKantor.trim(),
+            namaPIC: namaPIC.trim(),
+            emailInstansi: emailInstansi.trim(),
+            deskripsiKebutuhan: deskripsiKebutuhan.trim(),
+        });
+
+        window.open(mailtoUrl, '_blank');
+    };
+
     return (
         <section id="demo" className="px-4 py-4 sm:py-6">
             <div className="mx-auto max-w-[1160px] overflow-hidden rounded-[12px] bg-[#6B5C48] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
@@ -18,25 +53,23 @@ export function LandingCTA() {
                             Siap untuk Memulai Bersama Notarix?
                         </h2>
 
-                        <form className="mt-7 space-y-4" onSubmit={(e) => e.preventDefault()}>
-                            {[
-                                { type: 'text', placeholder: 'Nama Instansi' },
-                                { type: 'text', placeholder: 'Alamat kantor', multiline: true },
-                                { type: 'text', placeholder: 'Nama PIC' },
-                                { type: 'email', placeholder: 'Email instansi' },
-                                { type: 'text', placeholder: 'Deskripsikan kebutuhan mu', multiline: true },
-                            ].map((field) => (
+                        <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+                            {fields.map((field) => (
                                 <div key={field.placeholder}>
                                     {'multiline' in field && field.multiline ? (
                                         <textarea
                                             placeholder={field.placeholder}
                                             rows={field.placeholder === 'Alamat kantor' ? 2 : 3}
+                                            value={field.value}
+                                            onChange={(e) => field.onChange(e.target.value)}
                                             className="min-h-[65px] w-full resize-none rounded-[6px] border border-[#6B5C48] bg-[#5E4E39] px-3 py-2.5 text-sm text-white placeholder-[#9B896E] transition-colors focus:outline-none focus:ring-2 focus:ring-white/25"
                                         />
                                     ) : (
                                         <input
                                             type={field.type}
                                             placeholder={field.placeholder}
+                                            value={field.value}
+                                            onChange={(e) => field.onChange(e.target.value)}
                                             className="h-8 w-full rounded-[6px] border border-[#6B5C48] bg-[#5E4E39] px-3 text-sm text-white placeholder-[#9B896E] transition-colors focus:outline-none focus:ring-2 focus:ring-white/25"
                                         />
                                     )}
@@ -57,7 +90,7 @@ export function LandingCTA() {
                         <div className="absolute right-10 top-8 flex items-center gap-2 text-white">
                             <File className="h-8 w-8" />
                             <span className="text-[30px] font-extrabold tracking-tight">
-                                Notarix<sup className="ml-0.5 text-[9px]">®</sup>
+                                Notarix<sup className="ml-0.5 text-[9px]">®️</sup>
                             </span>
                         </div>
 
